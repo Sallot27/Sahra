@@ -19,6 +19,13 @@ function norm(s){
    .replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
   return s.split(/[^\p{L}\p{N}.]+/u).filter(Boolean).map(w=>w.length>3&&w.startsWith("ال")?w.slice(2):w).join("");
 }
+function lev(a,b){let p=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const c=[i];for(let j=1;j<=b.length;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[b.length]}
+// true when a typed lie is the real answer or close enough to it (typos, extra/missing letters)
+function nearTruth(t,truths){const n=norm(t);if(!n)return false;
+  return truths.some(x=>{if(!x)return false;if(n===x)return true;if(/^[0-9.]+$/.test(x)||/^[0-9.]+$/.test(n))return false;
+    const L=Math.max(n.length,x.length),S=Math.min(n.length,x.length);
+    if(S>=3&&(x.includes(n)||n.includes(x))&&S/L>=.6)return true;
+    return L>=5&&lev(n,x)<=(L>=8?Math.floor(L*.2):1)})}
 const blankify=(q,fill)=>esc(q).replace("_____",fill?`<span class="blank filled">${esc(fill)}</span>`:`<span class="blank">&nbsp;</span>`);
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const root=document.getElementById("root");
@@ -48,13 +55,24 @@ const randCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.flo
 
 /* ================= sound, voice, confetti ================= */
 let ac=null;
-function initAudio(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}}
+function initAudio(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume();loadFx()}catch(e){}}
 function beep(f,d=.12,type="triangle",v=.2,delay=0,f2){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d+.05)}
+// Recorded sound effects (public/audio/sfx_*.mp3, made by tools/make_sfx.py); the synth beeps are the fallback.
+const FX={},FX_KEYS=["whoosh","pop","tada","join","submit","tick","trombone","sparkle","coin","applause","swoosh"];
+function loadFx(){if(ac)FX_KEYS.forEach(k=>{if(!(k in FX)){FX[k]=null;loadAudio("sfx_"+k).then(b=>{if(b)FX[k]=b})}})}
+function playFx(k,fb,vol=.8,delay=0){if(!ac)return;const b=FX[k];if(!b){fb&&fb();loadFx();return}
+  try{const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;g.gain.value=vol;src.connect(g).connect(ac.destination);src.start(ac.currentTime+delay)}catch(e){}}
 const sfx={
-  join:()=>{beep(520,.1,"square",.08);beep(780,.15,"square",.08,.08)},
-  tick:()=>beep(1300,.05,"square",.05),
-  lie:()=>{beep(400,.5,"sawtooth",.12,0,120)},
-  truth:()=>{[523,659,784,1046,1318].forEach((f,i)=>beep(f,.22,"triangle",.16,i*.08))},
+  join:()=>playFx("join",()=>{beep(520,.1,"square",.08);beep(780,.15,"square",.08,.08)},.7),
+  tick:()=>playFx("tick",()=>beep(1300,.05,"square",.05),.6),
+  lie:()=>playFx("trombone",()=>beep(400,.5,"sawtooth",.12,0,120),.75),
+  truth:()=>playFx("sparkle",()=>[523,659,784,1046,1318].forEach((f,i)=>beep(f,.22,"triangle",.16,i*.08)),.85),
+  submit:()=>playFx("submit",()=>beep(500,.12,"sine",.12,0,900),.7),
+  pop:()=>playFx("pop",null,.35),
+  tada:()=>playFx("tada",()=>sfx.drum(),.8),
+  coin:(d=0)=>playFx("coin",()=>beep(1318,.2,"square",.06,d),.5,d),
+  swoosh:()=>playFx("swoosh",null,.5),
+  applause:()=>playFx("applause",null,.6),
   go:()=>{beep(392,.1,"triangle",.18);beep(523,.1,"triangle",.18,.1);beep(784,.25,"triangle",.18,.2)},
   drum:()=>{for(let i=0;i<10;i++)beep(110+i*6,.06,"triangle",.12,i*.05)},
   win:()=>{[523,523,523,659,784,659,784,1046].forEach((f,i)=>beep(f,.18,"square",.07,i*.13))},
@@ -111,12 +129,12 @@ function runSpot(names){
   stopSpot();if(!names||!names.length)return;let i=0;
   const show=()=>{const box=$("spot");if(!box){stopSpot();return}const k=i%names.length,n=names[k],t=theme(n);
     box.innerHTML=`<div class="spotcard" style="--a:${t.a};--b:${t.b}"><span class="se">${t.e}</span><b>${esc(n)}</b></div>`;
-    document.querySelectorAll(".schip").forEach((c,j)=>c.classList.toggle("on",j===k));setThemeBg(n);i++};
+    document.querySelectorAll(".schip").forEach((c,j)=>c.classList.toggle("on",j===k));setThemeBg(n);if(i)sfx.pop();i++};
   show();spotTimer=setInterval(show,1400);
 }
 function topicCardHTML(n,cls=""){const t=theme(n);return`<div class="spotcard ${cls}" style="--a:${t.a};--b:${t.b}"><span class="se">${t.e}</span><b>${esc(n)}</b></div>`}
 // Short "landing" on the chosen category before the round starts.
-function goTopic(name,then,by){const g=H.g;g.topic=name;g.afterTopic=then;g.pickedBy=by||null;H.ph="topic";H.k++;setTimer(3);playSting("sting_reveal",sfx.drum)}
+function goTopic(name,then,by){const g=H.g;g.topic=name;g.afterTopic=then;g.pickedBy=by||null;H.ph="topic";H.k++;setTimer(3);sfx.tada()}
 
 /* ================= announcer: recorded host voice + a cappella music ================= */
 const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
@@ -171,14 +189,14 @@ function onPhase(){
   if(ph==="menu"){playVO(AUD.welcomed?VO.menu:VO.welcome);AUD.welcomed=true}
   else if(ph==="lobby")playVO(VO.intro[G]);
   else if(ph==="lie"){const p=playVO(G==="arsimha"?VO.dlie:(G==="fabraka"&&FAB.m()===3?VO.final:VO.lie));
-    if(G==="fabraka"&&ST.voice){const k=H.k;p.then(()=>{if(H.k===k&&H.ph==="lie")say(QS[H.g.q].q)})}} // optional robot reading, after your line
+}
   else if(ph==="choose")playVO(VO.choose);
   else if(ph==="draw")playVO(VO.draw);
   else if(ph==="ask")playVO(VO.ask);
   else if(ph==="vote")playVO(VO.vote);
   else if(ph==="guess")playVO(VO.guess);
-  else if(ph==="scores")playVO(VO.scores);
-  else if(ph==="end"){playSting("sting_win",sfx.win);setTimeout(()=>{const p=playVO(VO.winner);p&&p.then(()=>setTimeout(()=>playVO(VO.again),2500))},900)}
+  else if(ph==="scores"){sfx.swoosh();playVO(VO.scores)}
+  else if(ph==="end"){playSting("sting_win",sfx.win);setTimeout(sfx.applause,400);setTimeout(()=>{const p=playVO(VO.winner);p&&p.then(()=>setTimeout(()=>playVO(VO.again),2500))},900)}
 }
 
 const fx=$("fx"),fc=fx.getContext("2d");let parts=[],fxOn=false;
@@ -366,6 +384,8 @@ function hostTick(){
   if(["lie","choose","draw","vote","guess"].includes(H.ph)&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
   if((H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
   H._lastTl=tl();
+  {const g=H.g||{},src={lie:g.lies,choose:g.choices,draw:g.drawings,vote:g.votes}[H.ph],n=src?Object.keys(src).length:0;
+   if(H._dk===H.k&&n>H._dn)sfx.submit();H._dk=H.k;H._dn=n}
   const pk=[H.game,H.ph,H.k].join("|");if(pk!==AUD.lastPhase){AUD.lastPhase=pk;onPhase()}
   publish();renderHost();
 }
@@ -427,7 +447,6 @@ function renderHost(){
       ${joinPanel()}
     </div>`;
   }else if(H.ph==="lobby"){
-    const hasVoice="speechSynthesis" in window;
     body=`<div class="lobby">
       <div class="card" style="justify-content:space-between">
         <div class="row"><span style="font-size:70px;line-height:1">${G.emoji}</span><div><h2 style="font-size:52px;color:var(--sun)">${G.name}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
@@ -435,7 +454,7 @@ function renderHost(){
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
           <div class="spread"><button class="btn ghost" id="menuBtn">↩ قائمة الألعاب</button>
-          ${hasVoice?`<label class="toggle"><input type="checkbox" id="voiceT" ${ST.voice?"checked":""}> قراءة الأسئلة بصوت آلي</label>`:""}</div>
+          </div>
           <p class="note">من ${fmt(G.min)} إلى ${fmt(MAXP)} لاعبين. تقدر تلعب من نفس الكمبيوتر بفتح الرابط في تبويب ثانٍ.</p>
         </div>
       </div>
@@ -456,7 +475,6 @@ function renderHost(){
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();pickGame(b.dataset.g)});
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
   const mb=$("menuBtn");if(mb)mb.onclick=goMenu;
-  const vt=$("voiceT");if(vt)vt.onchange=()=>{ST.voice=vt.checked;saveST()};
   const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
   const mu=$("musBtn");if(mu)mu.onclick=()=>{setMusicOn(!ST.mus);mu.setAttribute("aria-pressed",ST.mus)};
   const ab=$("againBtn");if(ab)ab.onclick=()=>pickGame(H.game);
@@ -468,12 +486,12 @@ function renderHost(){
 
 /* ================= BLUFF ENGINE (shared by فبركة and ارسمها) ================= */
 // g.truth, g.alts, g.decoys, g.ex (artist who can't play this item)
-function bluffLie(g,secs){g.lies={};g.bad={};g.sug=shuffle(g.decoys).slice(0,2);H.ph="lie";H.k++;setTimer(secs);sfx.go()}
+function bluffLie(g,secs){g.lies={};g.bad={};H.ph="lie";H.k++;setTimer(secs);sfx.go()}
 function bluffTickLie(g,now){
   const truths=[g.truth,...(g.alts||[])].map(norm);
   H.order.forEach(id=>{if(id===g.ex)return;const a=actOf(id);if(!a||typeof a.lie!=="string"||(g.lies[id]&&g.lies[id].n===a.n)||g.bad[id]===a.n)return;
     const t=clip(a.lie,40);if(!t)return;
-    if(truths.includes(norm(t))){g.bad[id]=a.n;return}
+    if(nearTruth(t,truths)){g.bad[id]=a.n;return}
     g.lies[id]={t,n:a.n}});
   const need=active().filter(id=>id!==g.ex);
   return now>H.end||(need.length&&need.every(id=>g.lies[id]));
@@ -511,16 +529,16 @@ const stepLen=g=>{const s=g.rv[g.rvI];return s&&s.t?T_REVEAL+TRUTH_DELAY:T_REVEA
 function bluffFx(g){const s=g.rv[g.rvI];if(!s)return;
   if(s.t){ // "والحقيقة هي…" first, then the truth appears
     playVO(VO.truthIntro,{queue:false});
-    setTimeout(()=>{sfx.truth();if(s.f.length)confetti();
+    setTimeout(()=>{sfx.truth();if(s.f.length){confetti();sfx.coin(.9)}
       playVO(s.f.length?(g.ex&&s.ap?VO.artist:VO.truth):VO.notruth,{queue:false})},TRUTH_DELAY+800);
     return}
   playSting("sting_reveal",sfx.drum);
-  setTimeout(()=>{sfx.lie();const p=playVO(VO.lie1,{queue:false});if(s.f.length&&p)p.then(()=>playVO(VO.fooled))},1600);
+  setTimeout(()=>{sfx.lie();if(s.f.length)sfx.coin(2.3);const p=playVO(VO.lie1,{queue:false});if(s.f.length&&p)p.then(()=>playVO(VO.fooled))},1600);
   if(!s.f.length)setTimeout(()=>playVO(VO.nobody),2400);
 }
 function bluffTickReveal(g,now){if(now<=g.nextAt)return false;g.rvI++;if(g.rvI>=g.rv.length)return true;g.nextAt=now+stepLen(g);bluffFx(g);return false}
 function bluffView(g,v){
-  if(H.ph==="lie"){v.sug=g.sug;v.done=Object.keys(g.lies);v.bad=g.bad;v.ex=g.ex||null}
+  if(H.ph==="lie"){v.done=Object.keys(g.lies);v.bad=g.bad;v.ex=g.ex||null}
   if(H.ph==="choose"){v.opts=g.opts.map(o=>o.t);v.done=Object.keys(g.choices);v.ex=g.ex||null}
   if(H.ph==="reveal")v.rvI=g.rvI;
 }
@@ -770,7 +788,7 @@ function renderPlayer(){
   const key=[v.game,v.ph,v.k,v.rvI,idx>=0].join("|");
   if(key===ME.lastKey){
     if(v.ph==="lie"&&$("perr")){const bad=v.bad&&v.bad[myPeer]===ME.n&&ME.n>0;const done=(v.done||[]).includes(myPeer);
-      if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"😅 هذي الإجابة الصحيحة نفسها! اكتب كذبة بدالها.")}
+      if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"",true)}
       else if(done&&!ME.shownDone){ME.shownDone=true;$("lieArea").innerHTML=`<div class="emoji">🤫</div><p class="big">تم!</p><p class="note center">كذبتك: «${esc(ME.myLie)}»<br>خلك طبيعي… لا تفضح نفسك.</p>`}}
     if(v.ph==="draw"&&(v.done||[]).includes(myPeer)&&!ME.drawShown){ME.drawShown=true;$("drawArea").innerHTML=`<div class="emoji">🖼️</div><p class="big">وصلت رسمتك!</p><p class="note center">انتظر الباقين يخلّصون.</p>`}
     const t=$("ptl");if(t)t.textContent=v.tl;
@@ -842,10 +860,10 @@ function salPlayer(v,head,f){
     return}
   root.innerHTML=head+`<div class="emoji">👀</div><p class="big">ناظر الشاشة!</p><p class="note center">نقاطك: <b>${fmt(v.sc?.[myPeer])}</b></p>`;
 }
-function showLieForm(v,err){
+function showLieForm(v,err,found){
   const a=$("lieArea");if(!a)return;
-  a.innerHTML=`<div class="col"><input type="text" id="lieIn" maxlength="40" placeholder="${v.game==="arsimha"?"اكتب عنوان كذب للرسمة…":"اكتب كذبتك هنا…"}" autocomplete="off"><p class="count" id="cnt">0/40</p><button class="btn coral wide" id="lieBtn">أرسل 🤥</button>
-  ${(v.sug||[]).length?`<p class="note">ما جاك إلهام؟ خذ وحدة جاهزة:</p><div class="row">${v.sug.map((s,i)=>`<button class="btn ghost" data-s="${i}">${esc(s)}</button>`).join("")}</div>`:""}</div>`;
+  if(found)sfx.truth();
+  a.innerHTML=(found?`<div class="found"><div class="emoji">🎉</div><p class="big">مبروك! لقيت الإجابة الصحيحة</p><p class="note center">بس لا تقولها لأحد 🤫 الحين اكتب كذبة واضحك عليهم 😈</p></div>`:"")+`<div class="col"><input type="text" id="lieIn" maxlength="40" placeholder="${v.game==="arsimha"?"اكتب عنوان كذب للرسمة…":"اكتب كذبتك هنا…"}" autocomplete="off"><p class="count" id="cnt">0/40</p><button class="btn coral wide" id="lieBtn">أرسل 🤥</button></div>`;
   $("perr").textContent=err||"";
   const send=t=>{t=clip(t,40);if(!t)return;ME.n++;ME.myLie=t;ME.shownBad=false;sendAct({k:v.k,lie:t,n:ME.n});
     a.innerHTML=`<p class="big">جاري الإرسال…</p>`;$("perr").textContent=""};
@@ -853,7 +871,6 @@ function showLieForm(v,err){
   inp.oninput=()=>$("cnt").textContent=inp.value.length+"/40";
   $("lieBtn").onclick=()=>send(inp.value);
   inp.onkeydown=e=>{if(e.key==="Enter")send(e.target.value)};
-  a.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>send(v.sug[+b.dataset.s]));
   setTimeout(()=>inp.focus(),50);
 }
 function showLikes(v,mine){

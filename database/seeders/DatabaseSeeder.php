@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\GameController;
 use App\Models\DrawPrompt;
 use App\Models\Question;
 use App\Models\Word;
@@ -45,5 +46,8 @@ class DatabaseSeeder extends Seeder
                 Word::firstOrCreate(['category' => $category, 'word' => $word]);
             }
         }
+
+        // New rows must show up in the game right after a deploy.
+        GameController::forgetContent();
     }
 }

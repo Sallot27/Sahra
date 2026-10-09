@@ -206,3 +206,8 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .tbtn span{font-size:34px;line-height:1.1}
 @keyframes spotPop{0%{transform:scale(.25) rotate(-10deg);opacity:0}16%{transform:scale(1.08) rotate(2deg);opacity:1}26%{transform:scale(1) rotate(0)}80%{transform:scale(1);opacity:1;filter:blur(0)}100%{transform:scale(1.55) rotate(4deg);opacity:0;filter:blur(6px)}}
 @keyframes landPop{0%{transform:scale(.3) rotate(-8deg);opacity:0}60%{transform:scale(1.1) rotate(2deg);opacity:1}100%{transform:none;opacity:1}}
+/* player typed the real answer (or close to it) */
+.found{text-align:center;padding:14px 12px;margin-bottom:12px;border-radius:18px;background:linear-gradient(135deg,#0f3d33f2,#2a2160f2);box-shadow:0 10px 30px #0006;border:2px solid #2ee6a6;animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+.found .emoji{font-size:54px;margin:0}
+.found .big{color:#2ee6a6;margin:4px 0;font-size:30px}
+.found .note{color:#fff;font-size:17px;font-weight:700;opacity:1}

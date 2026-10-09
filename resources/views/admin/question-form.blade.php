@@ -36,7 +36,7 @@
   <label>كذبات جاهزة (٣ على الأقل، سطر لكل وحدة)
     <textarea name="decoys" id="decoys" required placeholder="الكناغر&#10;الكوالا&#10;التماسيح">{{ old('decoys', implode("\n", $question->decoys ?? [])) }}</textarea>
   </label>
-  <p class="note">الكذبات الجاهزة تطلع لما لاعب ما يكتب كذبة، وكاقتراحات للي ما جاه إلهام. تأكد إنها مو صحيحة بالغلط.</p>
+  <p class="note">الكذبات الجاهزة تطلع بين الخيارات لما لاعب ما يكتب كذبة، أو لما يكون عدد اللاعبين قليل. تأكد إنها مو صحيحة بالغلط.</p>
 
   <label style="flex-direction:row;align-items:center">
     <input type="hidden" name="active" value="0">
