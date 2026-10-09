@@ -31,6 +31,11 @@ class GameApiTest extends TestCase
             ->assertJsonStructure(['questions' => [['id', 'c', 'q', 'a', 'alt', 'd']], 'prompts', 'words']);
 
         $this->assertGreaterThan(100, Question::count());
+
+        // Second request is served from the cache and must still be real data.
+        $this->getJson('/api/content')
+            ->assertOk()
+            ->assertJsonPath('questions.0.id', Question::active()->orderBy('id')->value('id'));
     }
 
     public function test_seeder_can_run_twice_without_duplicates(): void

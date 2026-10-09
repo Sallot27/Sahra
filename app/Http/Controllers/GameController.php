@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 class GameController extends Controller
 {
-    public const CONTENT_CACHE_KEY = 'game-content';
+    public const CONTENT_CACHE_KEY = 'game-content-v2';
 
     public function index(): View
     {
@@ -28,12 +28,14 @@ class GameController extends Controller
     /** Everything the three games need, cached until the admin changes something. */
     public function content(): JsonResponse
     {
+        // Plain arrays only: Laravel 13 will not unserialize objects from the cache.
         $content = Cache::rememberForever(self::CONTENT_CACHE_KEY, fn () => [
-            'questions' => Question::active()->orderBy('id')->get()->map->toGame()->values(),
-            'prompts' => DrawPrompt::active()->orderBy('id')->pluck('text')->values(),
+            'questions' => Question::active()->orderBy('id')->get()->map->toGame()->values()->all(),
+            'prompts' => DrawPrompt::active()->orderBy('id')->pluck('text')->values()->all(),
             'words' => Word::active()->orderBy('category')->orderBy('id')->get()
                 ->groupBy('category')
-                ->map(fn ($group) => $group->pluck('word')->values()),
+                ->map(fn ($group) => $group->pluck('word')->values()->all())
+                ->all(),
         ]);
 
         return response()->json($content);
