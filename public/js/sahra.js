@@ -755,9 +755,11 @@ function fetchDrawing(g,id,drawId){
 }
 async function boot(){
   root.innerHTML=`<div class="emoji" style="margin-top:20vh">🎉</div><p class="big">لحظة…</p>`;
+  const fail=(t,d)=>{root.innerHTML=`<div class="emoji" style="margin-top:20vh">😵</div><p class="big">${esc(t)}</p><p class="note center">${esc(d)}</p>`};
   try{const c=await api("GET","/content");QS=c.questions||[];DRAW=c.prompts||[];WORDS=c.words||{}}
-  catch(e){root.innerHTML=`<div class="emoji" style="margin-top:20vh">😵</div><p class="big">ما قدرنا نحمّل الألعاب</p><p class="note center">تأكد من الإنترنت وحدّث الصفحة.</p>`;return}
-  landing("");
+  catch(e){return fail("ما قدرنا نحمّل الألعاب",e.status?"خطأ من السيرفر ("+e.status+"). افتح /api/status لمعرفة السبب.":"تأكد من الإنترنت وحدّث الصفحة.")}
+  if(!QS.length)return fail("ما فيه أسئلة في قاعدة البيانات","شغّل الأمر: php artisan db:seed --force");
+  landing(CFG.ready?"":"تنبيه: WebSockets مو مربوطة بالتطبيق، اللعب الجماعي ما بيشتغل.");
 }
 boot();
 })();

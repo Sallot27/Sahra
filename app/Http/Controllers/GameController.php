@@ -20,7 +20,7 @@ class GameController extends Controller
             'config' => [
                 'reverb' => Reverb::clientConfig(),
                 'ready' => Reverb::configured(),
-                'api' => url('/api'),
+                'api' => '/api',
             ],
         ]);
     }
@@ -37,6 +37,38 @@ class GameController extends Controller
         ]);
 
         return response()->json($content);
+    }
+
+    /**
+     * Quick health report for setup problems: database, content and WebSockets.
+     * Shows no secrets.
+     */
+    public function status(): JsonResponse
+    {
+        $db = ['connected' => false];
+        try {
+            $db = [
+                'connected' => true,
+                'questions' => Question::count(),
+                'prompts' => DrawPrompt::count(),
+                'words' => Word::count(),
+            ];
+        } catch (\Throwable $e) {
+            $db['error'] = class_basename($e);
+        }
+
+        $reverb = Reverb::clientConfig();
+
+        return response()->json([
+            'app' => 'ok',
+            'database' => $db,
+            'websockets' => [
+                'configured' => Reverb::configured(),
+                'host' => $reverb['host'],
+                'port' => $reverb['port'],
+                'tls' => $reverb['tls'],
+            ],
+        ]);
     }
 
     public static function forgetContent(): void
