@@ -41,7 +41,7 @@ const QUIP={
   dtruth:["الرسام يستاهل ميدالية… أو نظارة","شفتوا؟ كانت واضحة… لا ما كانت واضحة"],
 };
 
-let ST={nick:"",code:"",voice:true};
+let ST={nick:"",code:"",voice:false,vo:true,mus:true};
 try{Object.assign(ST,JSON.parse(localStorage.getItem("fabraka")||"{}"))}catch(e){}
 const saveST=()=>{try{localStorage.setItem("fabraka",JSON.stringify(ST))}catch(e){}};
 const randCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random()*24)]).join("");
@@ -66,6 +66,69 @@ function say(text){
   if(!ST.voice||!arVoice)return;
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text.replace(/_____/g," فراغ ").replace(/[«»"]/g,""));u.voice=arVoice;u.lang=arVoice.lang;u.rate=1.02;speechSynthesis.speak(u)}catch(e){}
 }
+/* ================= announcer: recorded host voice + a cappella music ================= */
+const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
+  intro:{fabraka:["intro_fabraka"],arsimha:["intro_arsimha"],sawalif:["intro_sawalif"]},
+  lie:["write_lie_1","write_lie_2","write_lie_3"],choose:["choose_1","choose_2"],draw:["draw_1","draw_2"],dlie:["draw_guess"],
+  ask:["sawalif_ask"],vote:["vote"],hurry:["hurry_1","hurry_2"],lie1:["lie_1"],fooled:["fooled_1","fooled_2","fooled_3"],nobody:["nobody"],
+  truthIntro:["truth_1"],truth:["truth_2"],notruth:["no_truth"],caught:["caught"],escaped:["escaped"],guess:["guess_last"],artist:["artist_win"],
+  scores:["scores_1","scores_2"],final:["final_round"],winner:["winner"],again:["play_again"]};
+const AUD={buf:{},voice:null,busyUntil:0,music:null,musicKey:null,musicGain:null,last:{},lastPhase:"",welcomed:false};
+const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win"])];
+function loadAudio(key){
+  if(!AUD.buf[key])AUD.buf[key]=fetch("/audio/"+key+".mp3").then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()})
+    .then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).catch(()=>null);
+  return AUD.buf[key];
+}
+function preloadAudio(){if(ac)ALL_AUDIO.forEach(loadAudio)}
+function pickVO(list){if(!list||!list.length)return null;let k=pick(list);const id=list.join();if(list.length>1&&k===AUD.last[id])k=list[(list.indexOf(k)+1)%list.length];AUD.last[id]=k;return k}
+// Plays one recording. queue:true waits for the current line to end; otherwise it cuts it off.
+async function playVO(list,{queue=true}={}){
+  if(!ac||!ST.vo)return;
+  const key=pickVO(list);if(!key)return;const b=await loadAudio(key);if(!b||!ST.vo)return;
+  let at=ac.currentTime+.02;
+  if(queue)at=Math.max(at,AUD.busyUntil);else if(AUD.voice){try{AUD.voice.stop()}catch(e){}}
+  if(at-ac.currentTime>6)return; // too far behind: skip rather than talk late
+  const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.connect(g).connect(ac.destination);src.start(at);
+  AUD.voice=src;AUD.busyUntil=at+b.duration;duck(at,b.duration);
+  return new Promise(r=>src.onended=r);
+}
+function playSting(key,fallback){
+  if(!ac)return;loadAudio(key).then(b=>{if(!b){fallback&&fallback();return}
+    const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;g.gain.value=.9;src.connect(g).connect(ac.destination);src.start();duck(ac.currentTime,b.duration)});
+}
+const MUSIC_LEVEL=.45;
+function duck(at,dur){const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL:0;
+  g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
+async function music(key){
+  if(!ac||AUD.musicKey===key)return;AUD.musicKey=key;
+  const old=AUD.music,oldG=AUD.musicGain;
+  if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}
+  AUD.music=null;AUD.musicGain=null;
+  if(!key)return;const b=await loadAudio(key);if(!b||AUD.musicKey!==key)return;
+  const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.loop=true;g.gain.value=0;src.connect(g).connect(ac.destination);src.start();
+  g.gain.setTargetAtTime(ST.mus?MUSIC_LEVEL:0,ac.currentTime,.6);AUD.music=src;AUD.musicGain=g;
+}
+function setMusicOn(on){ST.mus=on;saveST();if(AUD.musicGain&&ac)AUD.musicGain.gain.setTargetAtTime(on?MUSIC_LEVEL:0,ac.currentTime,.2)}
+function setVoiceOn(on){ST.vo=on;saveST();if(!on&&AUD.voice){try{AUD.voice.stop()}catch(e){}}}
+// Called whenever the host screen enters a new phase.
+function onPhase(){
+  const ph=H.ph,G=H.game;
+  const thinking=["lie","choose","draw","ask","vote","guess","pick"].includes(ph);
+  if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(thinking?"music_thinking":"music_lobby");
+  if(ph==="menu"){playVO(AUD.welcomed?VO.menu:VO.welcome);AUD.welcomed=true}
+  else if(ph==="lobby")playVO(VO.intro[G]);
+  else if(ph==="lie"){const p=playVO(G==="arsimha"?VO.dlie:(G==="fabraka"&&FAB.m()===3?VO.final:VO.lie));
+    if(G==="fabraka"&&ST.voice){const k=H.k;p.then(()=>{if(H.k===k&&H.ph==="lie")say(QS[H.g.q].q)})}} // optional robot reading, after your line
+  else if(ph==="choose")playVO(VO.choose);
+  else if(ph==="draw")playVO(VO.draw);
+  else if(ph==="ask")playVO(VO.ask);
+  else if(ph==="vote")playVO(VO.vote);
+  else if(ph==="guess")playVO(VO.guess);
+  else if(ph==="scores")playVO(VO.scores);
+  else if(ph==="end"){playSting("sting_win",sfx.win);setTimeout(()=>{const p=playVO(VO.winner);p&&p.then(()=>setTimeout(()=>playVO(VO.again),2500))},900)}
+}
+
 const fx=$("fx"),fc=fx.getContext("2d");let parts=[],fxOn=false;
 function confetti(n=160){
   if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -235,7 +298,7 @@ const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
 const active=()=>{const here=new Set(peers().map(p=>p.peer));return H.order.filter(id=>here.has(id))};
 let actOf=()=>null;
 function startHost(){
-  role="host";H.quip=pick(QUIP.menu);
+  role="host";H.quip=pick(QUIP.menu);preloadAudio();
   room.presence({role:"host",code:ST.code}).catch(()=>{});
   setInterval(hostTick,250);hostTick();
 }
@@ -248,7 +311,9 @@ function hostTick(){
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
   if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
   if(["lie","choose","draw","vote","guess"].includes(H.ph)&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
+  if((H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
   H._lastTl=tl();
+  const pk=[H.game,H.ph,H.k].join("|");if(pk!==AUD.lastPhase){AUD.lastPhase=pk;onPhase()}
   publish();renderHost();
 }
 function publish(){
@@ -261,8 +326,8 @@ function publish(){
 }
 function goMenu(){H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
-function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();GAMES[H.game].start()}
-function finishGame(){H.ph="end";H.k++;sfx.win();setTimeout(()=>confetti(260),300)}
+function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
+function finishGame(){H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
 
 /* shared host pieces */
 const plHTML=(id,cls="",i=0)=>`<div class="pl ${cls}" style="--i:${i}"><div class="av" style="--c:${col(id)}">${face(id)}</div><span>${esc(nm(id))}</span></div>`;
@@ -298,7 +363,7 @@ function renderHost(){
   }
   H.lastKey=key;root.className="wrap";
   const G=H.game?GAMES[H.game]:null;
-  const bar=`<div class="hbar"><span class="mini-logo">${G?G.emoji+" "+G.name:"🎉 سهرة"}</span><div class="row">${G&&G.pill&&!["lobby","end"].includes(H.ph)?G.pill():""}<span class="pill" style="direction:ltr">${ST.code}</span></div></div>`;
+  const bar=`<div class="hbar"><span class="mini-logo">${G?G.emoji+" "+G.name:"🎉 سهرة"}</span><div class="row"><button class="snd" id="voBtn" aria-pressed="${ST.vo}" title="صوت المقدّم">🎤</button><button class="snd" id="musBtn" aria-pressed="${ST.mus}" title="الموسيقى">🎵</button>${G&&G.pill&&!["lobby","end"].includes(H.ph)?G.pill():""}<span class="pill" style="direction:ltr">${ST.code}</span></div></div>`;
   let body="";
   if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
@@ -315,7 +380,7 @@ function renderHost(){
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
           <div class="spread"><button class="btn ghost" id="menuBtn">↩ قائمة الألعاب</button>
-          ${hasVoice?`<label class="toggle"><input type="checkbox" id="voiceT" ${ST.voice?"checked":""}> قراءة بصوت</label>`:""}</div>
+          ${hasVoice?`<label class="toggle"><input type="checkbox" id="voiceT" ${ST.voice?"checked":""}> قراءة الأسئلة بصوت آلي</label>`:""}</div>
           <p class="note">من ${fmt(G.min)} إلى ${fmt(MAXP)} لاعبين. تقدر تلعب من نفس الكمبيوتر بفتح الرابط في تبويب ثانٍ.</p>
         </div>
       </div>
@@ -334,7 +399,9 @@ function renderHost(){
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();pickGame(b.dataset.g)});
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
   const mb=$("menuBtn");if(mb)mb.onclick=goMenu;
-  const vt=$("voiceT");if(vt)vt.onchange=()=>{ST.voice=vt.checked;saveST();if(ST.voice)say("أهلاً فيكم في سهرة")};
+  const vt=$("voiceT");if(vt)vt.onchange=()=>{ST.voice=vt.checked;saveST()};
+  const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
+  const mu=$("musBtn");if(mu)mu.onclick=()=>{setMusicOn(!ST.mus);mu.setAttribute("aria-pressed",ST.mus)};
   const ab=$("againBtn");if(ab)ab.onclick=()=>pickGame(H.game);
   const kb=$("skipBtn");if(kb)kb.onclick=()=>{H.end=0;if(H.g)H.g.forceSkip=true};
   if(G&&G.after)G.after();
@@ -378,12 +445,21 @@ function bluffReveal(g,m,artistPer,truthQuips){
   const ap=artistPer*m*finders.length;if(g.ex&&ap)H.sc[g.ex]=(H.sc[g.ex]||0)+ap;
   Object.entries(g.likes).forEach(([id,arr])=>arr.forEach(i=>{const o=g.opts[i];if(o&&!o.truth)o.a.forEach(a=>{if(a!==id)H.lk[a]=(H.lk[a]||0)+1})}));
   g.rv=[...shuffle(steps),{o:ti,a:[],f:finders,p:1000*m,ap,t:1,q:finders.length?pick(truthQuips||QUIP.truth):pick(QUIP.notruth)}];
-  g.rvI=0;g.nextAt=Date.now()+T_REVEAL;H.ph="reveal";H.k++;bluffFx(g);
+  g.rvI=0;g.nextAt=Date.now()+stepLen(g);H.ph="reveal";H.k++;bluffFx(g);
 }
-function bluffFx(g){const s=g.rv[g.rvI];if(!s)return;sfx.drum();
-  setTimeout(()=>{if(s.t){sfx.truth();if(s.f.length)confetti()}else sfx.lie()},1600);
-  setTimeout(()=>say(s.t?"الحقيقة: "+g.opts[s.o].t:"كذبة!"),1700)}
-function bluffTickReveal(g,now){if(now<=g.nextAt)return false;g.rvI++;if(g.rvI>=g.rv.length)return true;g.nextAt=now+T_REVEAL;bluffFx(g);return false}
+const TRUTH_DELAY=3600;
+const stepLen=g=>{const s=g.rv[g.rvI];return s&&s.t?T_REVEAL+TRUTH_DELAY:T_REVEAL};
+function bluffFx(g){const s=g.rv[g.rvI];if(!s)return;
+  if(s.t){ // "والحقيقة هي…" first, then the truth appears
+    playVO(VO.truthIntro,{queue:false});
+    setTimeout(()=>{sfx.truth();if(s.f.length)confetti();
+      playVO(s.f.length?(g.ex&&s.ap?VO.artist:VO.truth):VO.notruth,{queue:false})},TRUTH_DELAY+800);
+    return}
+  playSting("sting_reveal",sfx.drum);
+  setTimeout(()=>{sfx.lie();const p=playVO(VO.lie1,{queue:false});if(s.f.length&&p)p.then(()=>playVO(VO.fooled))},1600);
+  if(!s.f.length)setTimeout(()=>playVO(VO.nobody),2400);
+}
+function bluffTickReveal(g,now){if(now<=g.nextAt)return false;g.rvI++;if(g.rvI>=g.rv.length)return true;g.nextAt=now+stepLen(g);bluffFx(g);return false}
 function bluffView(g,v){
   if(H.ph==="lie"){v.sug=g.sug;v.done=Object.keys(g.lies);v.bad=g.bad;v.ex=g.ex||null}
   if(H.ph==="choose"){v.opts=g.opts.map(o=>o.t);v.done=Object.keys(g.choices);v.ex=g.ex||null}
@@ -395,13 +471,13 @@ function bluffRevealHTML(g,stageHTML){
   let who;
   if(s.t)who=s.f.length?`<span>${s.f.map(id=>esc(nm(id))).join("، ")} عرفوها</span><span class="pts">+${fmt(s.p)}</span>${g.ex&&s.ap?`<span>· ${esc(nm(g.ex))} الرسام</span><span class="pts">+${fmt(s.ap)}</span>`:""}`:`<span>ولا أحد عرفها!</span>`;
   else who=o.a.length?`${o.a.map(id=>`<div class="av sm" style="--c:${col(id)}">${face(id)}</div>`).join("")}<span>كذبة ${o.a.map(id=>esc(nm(id))).join(" و")}</span><span class="pts">+${fmt(s.p)}</span>`:`<span>كذبة من عندنا 😏</span>`;
-  return stageHTML(s.t)+`<div class="reveal ${g.ex?"tight":""}">
+  return`<div class="col ${s.t?"late":""}" style="gap:20px">`+stageHTML(s.t)+`<div class="reveal ${g.ex?"tight":""}">
       <div class="answer">${esc(o.t)}</div>
       <div class="fooled">${s.t?(s.f.length?fooled:""):`<span class="note" style="font-size:19px">صدّقها:</span>${fooled}`}</div>
       <div class="stamp ${s.t?"truth":"lie"}">${s.t?"الحقيقة!":"كذبة!"}</div>
       <div class="who">${who}</div>
       <div class="quip">🎤 ${esc(s.q)}</div>
-    </div>`;
+    </div></div>`;
 }
 function bluffDyn(g){
   if(H.ph==="lie")return troupe(H.order,new Set(Object.keys(g.lies)),g.ex);
@@ -429,12 +505,12 @@ const FAB={
     const act=active();g.picker=act[g.step%Math.max(1,act.length)]||null;g.pick=this.fresh().slice(0,4);
     H.ph="pick";H.quip=pick(QUIP.pick);setTimer(15)},
   lie(qi){const g=H.g,q=QS[qi];this.mark(qi);g.q=qi;g.truth=q.a;g.alts=q.alt;g.decoys=q.d;g.ex=null;
-    bluffLie(g,60);if(this.m()!==3)H.quip=pick(QUIP.lie);say(q.q)},
+    bluffLie(g,60);if(this.m()!==3)H.quip=pick(QUIP.lie)},
   tick(now){const g=H.g;
     if(H.ph==="pick"){const a=g.picker&&actOf(g.picker);
       if(a&&Number.isInteger(a.pick)&&g.pick[a.pick]!==undefined)this.lie(g.pick[a.pick]);
       else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;this.lie(pick(g.pick))}}
-    else if(H.ph==="lie"){if(bluffTickLie(g,now)){bluffChoose(g,30);H.quip=pick(QUIP.choose);say("وين الحقيقة؟")}}
+    else if(H.ph==="lie"){if(bluffTickLie(g,now)){bluffChoose(g,30);H.quip=pick(QUIP.choose)}}
     else if(H.ph==="choose"){if(bluffTickChoose(g,now))bluffReveal(g,this.m(),0)}
     else if(H.ph==="reveal"){if(bluffTickReveal(g,now)){H.ph="scores";H.k++;setTimer(8);H.quip=pick(QUIP.scores)}}
     else if(H.ph==="scores"){if(now>H.end)this.next()}},
@@ -468,7 +544,7 @@ const DRW={
   newRound(){const g=H.g;g.round++;
     let pool=DRAW.filter(p=>!this.used.has(p));if(pool.length<H.order.length+6){this.used.clear();pool=[...DRAW]}
     pool=shuffle(pool);g.prompts={};active().forEach(id=>{const p=pool.pop();g.prompts[id]=p;this.used.add(p)});
-    g.drawings={};g.queue=[];H.ph="draw";H.k++;setTimer(90);H.quip=pick(QUIP.draw);sfx.go();say("ارسموا!")},
+    g.drawings={};g.queue=[];H.ph="draw";H.k++;setTimer(90);H.quip=pick(QUIP.draw);sfx.go()},
   nextDrawing(){const g=H.g;
     if(!g.queue.length){H.ph="scores";H.k++;setTimer(8);H.quip=pick(QUIP.scores);return}
     g.ex=g.queue.shift();g.truth=g.prompts[g.ex];g.alts=[];
@@ -523,7 +599,7 @@ const SAL={
   begin(cat){const g=H.g,act=active();g.cat=cat;g.word=pick(WORDS[cat]);g.out=pick(act);g.players=[...act];
     const ring=shuffle(act);g.pairs=[];for(let r=0;r<2;r++)ring.forEach((id,i)=>g.pairs.push([id,ring[(i+1)%ring.length]]));
     g.rvI=0;g.pairAt=Date.now()+20000;g.ready={};H.ph="ask";H.k++;setTimer(180);sfx.go();
-    H.quip=pick(["كل واحد يسأل سؤال ذكي… لا تفضحون السالفة!","اللي برا السالفة الحين يعرق 😅","ركّزوا في الأجوبة… فيه واحد يألّف"]);say("السالفة جاهزة. يلا نبدأ الأسئلة")},
+    H.quip=pick(["كل واحد يسأل سؤال ذكي… لا تفضحون السالفة!","اللي برا السالفة الحين يعرق 😅","ركّزوا في الأجوبة… فيه واحد يألّف"])},
   tick(now){const g=H.g;
     if(H.ph==="pick"){const a=g.picker&&actOf(g.picker);
       if(a&&Number.isInteger(a.pick)&&g.cats[a.pick])this.begin(g.cats[a.pick]);
@@ -544,18 +620,18 @@ const SAL={
       else if(now>H.end||!active().includes(g.out)){this.result()}}
     else if(H.ph==="result"){if(now>H.end){H.ph="scores";H.k++;setTimer(7);H.quip=pick(QUIP.scores)}}
     else if(H.ph==="scores"){if(now>H.end)this.next()}},
-  vote(){const g=H.g;g.votes={};H.ph="vote";H.k++;setTimer(40);sfx.go();H.quip="مين برا السالفة؟ صوّتوا من جوالاتكم 🗳️";say("وقت التصويت. مين برا السالفة؟")},
+  vote(){const g=H.g;g.votes={};H.ph="vote";H.k++;setTimer(40);sfx.go();H.quip="مين برا السالفة؟ صوّتوا من جوالاتكم 🗳️"},
   tally(){const g=H.g,count={};Object.values(g.votes).forEach(t=>count[t]=(count[t]||0)+1);g.count=count;
     const max=Math.max(0,...Object.values(count)),tops=Object.keys(count).filter(id=>count[id]===max);
     g.caught=max>0&&tops.length===1&&tops[0]===g.out;
     Object.entries(g.votes).forEach(([id,t])=>{if(t===g.out&&id!==g.out)H.sc[id]=(H.sc[id]||0)+500});
     if(!g.caught)H.sc[g.out]=(H.sc[g.out]||0)+1500;
-    H.ph="tally";H.k++;setTimer(7);sfx.drum();setTimeout(()=>g.caught?sfx.truth():sfx.lie(),1600);
+    H.ph="tally";H.k++;setTimer(7);playSting("sting_reveal",sfx.drum);setTimeout(()=>{g.caught?sfx.truth():sfx.lie();playVO(g.caught?VO.caught:VO.escaped,{queue:false})},1600);
     if(g.caught)setTimeout(()=>confetti(),1700)},
   guess(){const g=H.g;g.opts=shuffle([g.word,...shuffle(WORDS[g.cat].filter(w=>w!==g.word)).slice(0,7)]);g.guessed=null;
     H.ph="guess";H.k++;setTimer(25);H.quip="فرصته الأخيرة… إذا عرف السالفة ياخذ نقاط!"},
   result(){const g=H.g;g.right=g.guessed===g.word;if(g.right)H.sc[g.out]=(H.sc[g.out]||0)+1000;
-    H.ph="result";H.k++;setTimer(8);sfx.truth();say("السالفة كانت: "+g.word)},
+    H.ph="result";H.k++;setTimer(8);sfx.truth()},
   view(v){const g=H.g;v.m=g.round;
     if(H.ph==="pick"){v.picker=g.picker;v.cats=g.cats}
     if(["ask","vote"].includes(H.ph)){v.cat=g.cat;v.w=g.word;v.out=g.out;v.pl=g.players}

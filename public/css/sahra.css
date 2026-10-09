@@ -172,3 +172,13 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 @keyframes beat{50%{transform:scale(1.15)}}
 @keyframes slide{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+
+/* announcer controls + truth reveal timing */
+.snd{font-size:20px;width:44px;height:38px;border-radius:12px;border:2px solid var(--line);background:var(--plum);cursor:pointer;line-height:1}
+.snd[aria-pressed="false"]{opacity:.4;filter:grayscale(1)}
+.late .answer,.late .blank.filled{animation-delay:3.6s}
+.late .fooled .pl{animation-delay:calc(3.9s + var(--i)*.15s)}
+.late .stamp{animation-delay:4.4s}
+.late .who{animation-delay:4.9s}
+.late .pts{animation-delay:5.1s}
+.late .quip{animation-delay:5.3s}
