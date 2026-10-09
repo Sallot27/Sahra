@@ -379,6 +379,7 @@ function hostTick(){
     if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
   if(H.ph==="menu"||H.ph==="lobby"){const here=new Set(ps.map(p=>p.peer));H.order=H.order.filter(id=>here.has(id))}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
+  if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
   if(H.game&&H.ph==="topic"){if(now>H.end&&H.g.afterTopic){const f=H.g.afterTopic;H.g.afterTopic=null;f()}}
   else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
   const G0=H.game?GAMES[H.game]:null,timed=(G0&&G0.timed||[]).includes(H.ph);
@@ -400,6 +401,8 @@ function publish(){
   const s=JSON.stringify(v);if(s===H.lastView)return;H.lastView=s;
   room.presence(v).catch(()=>{});
 }
+// A skip only counts for the step it was pressed in; it must never carry over to the next one.
+function skipNow(endTimer){if(!H.g)return;H.g.forceSkip=true;H.g._skipK=H.k;if(endTimer)H.end=0}
 function goMenu(){H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
@@ -480,7 +483,7 @@ function renderHost(){
   const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
   const mu=$("musBtn");if(mu)mu.onclick=()=>{setMusicOn(!ST.mus);mu.setAttribute("aria-pressed",ST.mus)};
   const ab=$("againBtn");if(ab)ab.onclick=()=>pickGame(H.game);
-  const kb=$("skipBtn");if(kb)kb.onclick=()=>{H.end=0;if(H.g)H.g.forceSkip=true};
+  const kb=$("skipBtn");if(kb)kb.onclick=()=>{if(Date.now()-(H._skipAt||0)<1500)return;H._skipAt=Date.now();kb.disabled=true;skipNow(true)};
   if(G&&G.after)G.after();
   if(H.ph==="pick"&&G&&G.spotNames)runSpot(G.spotNames());
   else{stopSpot();setThemeBg(H.ph==="topic"?H.g.topic:(G&&G.themeName?G.themeName():null))}
@@ -755,7 +758,7 @@ const SAL={
     return""},
   after(){const g=H.g;
     const n=$("nextQ");if(n)n.onclick=()=>{if(g.rvI<g.pairs.length-1){g.rvI++;g.pairAt=Date.now()+20000;sfx.join()}};
-    const t=$("toVote");if(t)t.onclick=()=>{g.forceSkip=true}},
+    const t=$("toVote");if(t)t.onclick=()=>{t.disabled=true;skipNow(false)}},
   dyn(){const g=H.g;
     if(H.ph==="ask"){const r=new Set(Object.keys(g.ready));return troupe(g.players,r)+`<p class="note center">اللي ضغطوا «جاهز للتصويت»: ${fmt(r.size)} من ${fmt(g.players.length)}</p>`}
     if(H.ph==="vote")return troupe(g.players,new Set(Object.keys(g.votes)));
