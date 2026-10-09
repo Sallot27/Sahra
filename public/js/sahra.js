@@ -184,7 +184,7 @@ function setVoiceOn(on){ST.vo=on;saveST();if(!on&&AUD.voice){try{AUD.voice.stop(
 // Called whenever the host screen enters a new phase.
 function onPhase(){
   const ph=H.ph,G=H.game;
-  const thinking=["lie","choose","draw","ask","vote","guess","pick"].includes(ph);
+  const GG=G?GAMES[G]:null,thinking=["lie","choose","draw","ask","vote","guess","pick"].includes(ph)||!!(GG&&(GG.timed||[]).includes(ph));
   if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(thinking?"music_thinking":"music_lobby");
   if(ph==="menu"){playVO(AUD.welcomed?VO.menu:VO.welcome);AUD.welcomed=true}
   else if(ph==="lobby")playVO(VO.intro[G]);
@@ -368,7 +368,7 @@ const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
 const active=()=>{const here=new Set(peers().map(p=>p.peer));return H.order.filter(id=>here.has(id))};
 let actOf=()=>null;
 function startHost(){
-  role="host";H.quip=pick(QUIP.menu);preloadAudio();
+  role="host";if(CFG.debug)window.__H=H;H.quip=pick(QUIP.menu);preloadAudio();
   room.presence({role:"host",code:ST.code}).catch(()=>{});
   setInterval(hostTick,250);hostTick();
 }
@@ -381,10 +381,11 @@ function hostTick(){
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
   if(H.game&&H.ph==="topic"){if(now>H.end&&H.g.afterTopic){const f=H.g.afterTopic;H.g.afterTopic=null;f()}}
   else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
-  if(["lie","choose","draw","vote","guess"].includes(H.ph)&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
-  if((H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
+  const G0=H.game?GAMES[H.game]:null,timed=(G0&&G0.timed||[]).includes(H.ph);
+  if((timed||["lie","choose","draw","vote","guess"].includes(H.ph))&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
+  if((timed||H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
   H._lastTl=tl();
-  {const g=H.g||{},src={lie:g.lies,choose:g.choices,draw:g.drawings,vote:g.votes}[H.ph],n=src?Object.keys(src).length:0;
+  {const g=H.g||{},src=G0&&G0.doneMap?G0.doneMap():{lie:g.lies,choose:g.choices,draw:g.drawings,vote:g.votes}[H.ph],n=src?Object.keys(src).length:0;
    if(H._dk===H.k&&n>H._dn)sfx.submit();H._dk=H.k;H._dn=n}
   const pk=[H.game,H.ph,H.k].join("|");if(pk!==AUD.lastPhase){AUD.lastPhase=pk;onPhase()}
   publish();renderHost();
@@ -443,13 +444,14 @@ function renderHost(){
   if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
     <div class="lobby">
-      <div class="col"><div class="games">${Object.values(GAMES).map((g,i)=>`<button class="gcard" data-g="${g.id}" style="--g:${g.color};animation-delay:${i*.1}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p><div class="tags">${g.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div></button>`).join("")}</div></div>
+      <div class="col"><div class="games">${Object.values(GAMES).filter(g=>!g.beta).map((g,i)=>`<button class="gcard" data-g="${g.id}" style="--g:${g.color};animation-delay:${i*.1}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p><div class="tags">${g.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div></button>`).join("")}</div>
+      ${Object.values(GAMES).some(g=>g.beta)?`<h3 class="betahead">🧪 ألعاب تجريبية <small>جرّبوها وقولوا رأيكم</small></h3><div class="games beta">${Object.values(GAMES).filter(g=>g.beta).map((g,i)=>`<button class="gcard sm" data-g="${g.id}" style="--g:${g.color};animation-delay:${.3+i*.06}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p></button>`).join("")}</div>`:""}</div>
       ${joinPanel()}
     </div>`;
   }else if(H.ph==="lobby"){
     body=`<div class="lobby">
       <div class="card" style="justify-content:space-between">
-        <div class="row"><span style="font-size:70px;line-height:1">${G.emoji}</span><div><h2 style="font-size:52px;color:var(--sun)">${G.name}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
+        <div class="row"><span style="font-size:70px;line-height:1">${G.emoji}</span><div><h2 style="font-size:52px;color:var(--sun)">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
         <div class="col" style="gap:8px">${G.rules.map(r=>`<p style="font-weight:700;font-size:19px">• ${esc(r)}</p>`).join("")}</div>
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
@@ -470,7 +472,7 @@ function renderHost(){
   }else if(H.ph==="topic"){
     body=`<div class="landing"><p class="lbl">الموضوع</p>${topicCardHTML(H.g.topic,"land")}${H.g.pickedBy?`<p class="note" style="font-size:20px">اختاره ${esc(nm(H.g.pickedBy))}</p>`:""}</div>`;
   }else body=G.render();
-  const skip=["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
+  const skip=(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
   root.innerHTML=bar+body+skip;
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();pickGame(b.dataset.g)});
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
@@ -760,6 +762,11 @@ const SAL={
     return""},
 };
 const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
+/* Beta games live in /js/sahra-beta.js and plug in through this kit. */
+const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
+  act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
+  sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code};
+(window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={beta:true,...g}}catch(e){console.error("sahra beta",e)}});
 addEventListener("resize",()=>{if(role==="host"&&H.game==="arsimha"&&$("art"))paint($("art"),H.g.drawings[H.g.ex],H.g.ex,false)});
 
 /* ================= PLAYER ================= */
@@ -792,6 +799,7 @@ function renderPlayer(){
       else if(done&&!ME.shownDone){ME.shownDone=true;$("lieArea").innerHTML=`<div class="emoji">🤫</div><p class="big">تم!</p><p class="note center">كذبتك: «${esc(ME.myLie)}»<br>خلك طبيعي… لا تفضح نفسك.</p>`}}
     if(v.ph==="draw"&&(v.done||[]).includes(myPeer)&&!ME.drawShown){ME.drawShown=true;$("drawArea").innerHTML=`<div class="emoji">🖼️</div><p class="big">وصلت رسمتك!</p><p class="note center">انتظر الباقين يخلّصون.</p>`}
     const t=$("ptl");if(t)t.textContent=v.tl;
+    const Gl=GAMES[v.game];if(Gl&&Gl.phoneLive&&idx>=0)Gl.phoneLive(v);
     return;
   }
   ME.lastKey=key;
@@ -808,6 +816,7 @@ function renderPlayer(){
 
   if(v.ph==="topic"){root.innerHTML=head+`<div class="landing" style="margin-top:6vh"><p class="lbl">الموضوع</p>${topicCardHTML(v.topic,"land")}${v.picker?`<p class="note center">اختاره ${esc(v.nm?.[v.picker]||"")}</p>`:""}</div>`;return}
   if(v.game==="sawalif"&&["ask","vote","tally","guess","result"].includes(v.ph)){salPlayer(v,head,f);return}
+  {const Gp=GAMES[v.game];if(Gp&&Gp.phone&&v.ph!=="end"){root.innerHTML=head;Gp.phone(v,{root,head,tline,idx,me:myPeer});return}}
   if(v.ph==="draw"){
     ME.drawShown=false;const prompt=v.prompts&&v.prompts[myPeer];
     if(!prompt){root.innerHTML=head+`<div class="emoji">🍿</div><p class="big">تفرّج على الباقين</p>`;return}

@@ -19,6 +19,7 @@
 
 <script>window.SAHRA = @json($config);</script>
 <script src="/js/vendor/pusher-8.4.0.min.js"></script>
+<script src="/js/sahra-beta.js?v={{ filemtime(public_path('js/sahra-beta.js')) }}"></script>
 <script src="/js/sahra.js?v={{ filemtime(public_path('js/sahra.js')) }}"></script>
 </body>
 </html>
