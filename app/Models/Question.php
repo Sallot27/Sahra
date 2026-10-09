@@ -11,6 +11,7 @@ class Question extends Model
     public const TOPICS = [
         'حيوانات', 'تاريخ غريب', 'أكل وشرب', 'جسم الإنسان', 'علوم وفضاء',
         'دول ومدن', 'عادات وقوانين', 'كلمات وأصلها', 'شركات واختراعات', 'رياضة وألعاب',
+        'سبيستون', 'أفلام ومسلسلات', 'ديزني', 'أغاني الأفلام',
     ];
 
     protected $fillable = ['category', 'topic', 'text', 'answer', 'alternates', 'decoys', 'active'];
