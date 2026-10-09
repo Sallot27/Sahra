@@ -13,6 +13,7 @@
 </head>
 <body>
 <div class="stagebg"></div>
+<div id="themebg"></div>
 <canvas id="fx"></canvas>
 <div id="app"><div class="wrap narrow" id="root"></div></div>
 

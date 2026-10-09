@@ -62,6 +62,7 @@ class AdminController extends Controller
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('text', 'like', "%{$search}%")
                 ->orWhere('category', 'like', "%{$search}%")
+                ->orWhere('topic', 'like', "%{$search}%")
                 ->orWhere('answer', 'like', "%{$search}%")))
             ->orderByDesc('id')
             ->paginate(25)
@@ -86,6 +87,7 @@ class AdminController extends Controller
     {
         $data = $request->validate([
             'category' => ['required', 'string', 'max:60'],
+            'topic' => ['required', Rule::in(Question::TOPICS)],
             'text' => ['required', 'string', 'max:400', function ($attr, $value, $fail) {
                 if (substr_count($value, '_____') !== 1) {
                     $fail('السؤال لازم يحتوي على فراغ واحد مكتوب هكذا: _____');
@@ -105,6 +107,7 @@ class AdminController extends Controller
         $question ??= new Question();
         $question->fill([
             'category' => $data['category'],
+            'topic' => $data['topic'],
             'text' => $data['text'],
             'answer' => $data['answer'],
             'alternates' => $this->lines($data['alternates'] ?? ''),

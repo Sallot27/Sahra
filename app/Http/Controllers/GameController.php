@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 class GameController extends Controller
 {
-    public const CONTENT_CACHE_KEY = 'game-content-v2';
+    public const CONTENT_CACHE_KEY = 'game-content-v3';
 
     public function index(): View
     {
@@ -30,6 +30,7 @@ class GameController extends Controller
     {
         // Plain arrays only: Laravel 13 will not unserialize objects from the cache.
         $content = Cache::rememberForever(self::CONTENT_CACHE_KEY, fn () => [
+            'topics' => Question::TOPICS,
             'questions' => Question::active()->orderBy('id')->get()->map->toGame()->values()->all(),
             'prompts' => DrawPrompt::active()->orderBy('id')->pluck('text')->values()->all(),
             'words' => Word::active()->orderBy('category')->orderBy('id')->get()

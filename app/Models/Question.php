@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Question extends Model
 {
-    protected $fillable = ['category', 'text', 'answer', 'alternates', 'decoys', 'active'];
+    /** The 10 categories players choose from in فبركة, in display order. */
+    public const TOPICS = [
+        'حيوانات', 'تاريخ غريب', 'أكل وشرب', 'جسم الإنسان', 'علوم وفضاء',
+        'دول ومدن', 'عادات وقوانين', 'كلمات وأصلها', 'شركات واختراعات', 'رياضة وألعاب',
+    ];
+
+    protected $fillable = ['category', 'topic', 'text', 'answer', 'alternates', 'decoys', 'active'];
 
     protected function casts(): array
     {
@@ -29,6 +35,7 @@ class Question extends Model
         return [
             'id' => $this->id,
             'c' => $this->category,
+            't' => $this->topic ?: 'منوعات',
             'q' => $this->text,
             'a' => $this->answer,
             'alt' => array_values($this->alternates ?? []),

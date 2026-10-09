@@ -13,11 +13,11 @@
 
 <div class="card table-wrap" style="padding:0">
   <table>
-    <thead><tr><th>الموضوع</th><th>السؤال</th><th>الإجابة الحقيقية</th><th>الكذبات الجاهزة</th><th></th></tr></thead>
+    <thead><tr><th>الفئة</th><th>السؤال</th><th>الإجابة الحقيقية</th><th>الكذبات الجاهزة</th><th></th></tr></thead>
     <tbody>
     @forelse ($questions as $q)
       <tr class="{{ $q->active ? '' : 'off' }}">
-        <td><span class="tag">{{ $q->category }}</span></td>
+        <td><span class="tag">{{ $q->topic ?? '—' }}</span><div class="note">{{ $q->category }}</div></td>
         <td style="max-width:420px">{{ $q->text }}</td>
         <td class="ans">{{ $q->answer }}</td>
         <td class="note">{{ implode('، ', $q->decoys ?? []) }}</td>

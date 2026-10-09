@@ -20,15 +20,20 @@ class DatabaseSeeder extends Seeder
         );
 
         foreach ($data('questions.json') as $q) {
-            Question::firstOrCreate(
+            $question = Question::firstOrCreate(
                 ['text' => $q['text']],
                 [
                     'category' => $q['category'],
+                    'topic' => $q['topic'] ?? null,
                     'answer' => $q['answer'],
                     'alternates' => $q['alternates'],
                     'decoys' => $q['decoys'],
                 ],
             );
+
+            if (blank($question->topic) && filled($q['topic'] ?? null)) {
+                $question->update(['topic' => $q['topic']]);
+            }
         }
 
         foreach ($data('draw_prompts.json') as $text) {

@@ -7,9 +7,18 @@
   @csrf
   @if ($question->exists) @method('PUT') @endif
 
-  <label>الموضوع (يظهر فوق السؤال)
-    <input type="text" name="category" id="category" maxlength="60" required value="{{ old('category', $question->category) }}" placeholder="مثلاً: حرب غريبة">
-  </label>
+  <div class="grid2">
+    <label>الفئة (اللي يختارها اللاعبين)
+      <select name="topic" id="topic" required style="font-family:var(--body);font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--ink);color:var(--text)">
+        @foreach (\App\Models\Question::TOPICS as $t)
+          <option value="{{ $t }}" @selected(old('topic', $question->topic) === $t)>{{ $t }}</option>
+        @endforeach
+      </select>
+    </label>
+    <label>عنوان طريف للسؤال (يظهر فوقه)
+      <input type="text" name="category" id="category" maxlength="60" required value="{{ old('category', $question->category) }}" placeholder="مثلاً: حرب غريبة">
+    </label>
+  </div>
 
   <label>الحقيقة الغريبة، مع فراغ مكتوب هكذا _____
     <textarea name="text" id="text" required maxlength="400" placeholder="في عام 1932 خاض الجيش الأسترالي حرباً ضد _____ وخسرها.">{{ old('text', $question->text) }}</textarea>

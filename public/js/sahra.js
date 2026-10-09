@@ -1,7 +1,7 @@
 /* سهرة: party games. Host screen + phone controller, synced over Laravel Reverb. */
 (()=>{
 const CFG=window.SAHRA||{};
-let QS=[],DRAW=[],WORDS={};
+let QS=[],DRAW=[],WORDS={},TOPICS=[];
 
 /* ================= helpers ================= */
 const COLORS=["#ff4f6d","#ffcc33","#2ee6a6","#4cc2ff","#b98cff","#ff9a3c","#ff7fd0","#a8e05f"];
@@ -66,6 +66,58 @@ function say(text){
   if(!ST.voice||!arVoice)return;
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text.replace(/_____/g," فراغ ").replace(/[«»"]/g,""));u.voice=arVoice;u.lang=arVoice.lang;u.rate=1.02;speechSynthesis.speak(u)}catch(e){}
 }
+/* ================= category themes: colors + emoji pattern backgrounds ================= */
+const THEMES={
+  "حيوانات":{e:"🐾",i:["🦁","🐘","🦒","🐧","🐙","🦘"],a:"#2f8f4e",b:"#0d3a1f"},
+  "تاريخ غريب":{e:"🏺",i:["🏛️","⚔️","📜","👑","🏺","🛡️"],a:"#a36a2c",b:"#3f230c"},
+  "أكل وشرب":{e:"🍕",i:["🍔","🍩","🍉","🌮","🍟","☕"],a:"#e0631c",b:"#6b1804"},
+  "جسم الإنسان":{e:"🫀",i:["🧠","🦴","👁️","🫁","🦷","💪"],a:"#d23a68",b:"#520b23"},
+  "علوم وفضاء":{e:"🚀",i:["🪐","⭐","🔭","🌙","☄️","🧪"],a:"#3443a8",b:"#060a2a"},
+  "دول ومدن":{e:"🌍",i:["🗺️","🏙️","🗼","🕌","🏝️","✈️"],a:"#1592ad",b:"#06303d"},
+  "عادات وقوانين":{e:"📜",i:["⚖️","🎎","🧧","🎉","🍜","🌹"],a:"#9b3fb5",b:"#33083f"},
+  "كلمات وأصلها":{e:"🔤",i:["✍️","📖","🔤","💬","🖋️","📚"],a:"#5a52e0",b:"#1a1747"},
+  "شركات واختراعات":{e:"💡",i:["⚙️","💡","🔧","📱","🤖","🔋"],a:"#14998c",b:"#03302c"},
+  "رياضة وألعاب":{e:"⚽",i:["🏀","🎾","🏆","🎮","⛳","🏸"],a:"#22a052",b:"#04290f"},
+  "أكلات":{e:"🍛",i:["🍛","🥙","🍢","🫓","🍮","🥘"],a:"#e0631c",b:"#6b1804"},
+  "أماكن":{e:"📍",i:["🏥","🏫","🎡","🏖️","🏕️","🏬"],a:"#1592ad",b:"#06303d"},
+  "مهن":{e:"👷",i:["👨‍⚕️","👩‍🏫","👨‍🍳","👮","👨‍🚒","🧑‍✈️"],a:"#c08a12",b:"#3d2104"},
+  "أشياء في البيت":{e:"🛋️",i:["🛋️","🛏️","📺","🧹","🪞","🕰️"],a:"#c2286b",b:"#4a0620"},
+  "دول":{e:"🌍",i:["🗺️","🏙️","🗼","🕌","🏝️","✈️"],a:"#1592ad",b:"#06303d"},
+  "رياضات وألعاب":{e:"⚽",i:["🏀","🎾","🏆","🎮","⛳","🏸"],a:"#22a052",b:"#04290f"},
+  "المدرسة":{e:"🎒",i:["📚","✏️","📐","🎒","🧮","🏫"],a:"#2f62e6",b:"#121f4f"},
+  "فواكه وخضار":{e:"🍉",i:["🍎","🍌","🥕","🍇","🍊","🥒"],a:"#7bb31a",b:"#1a2e05"},
+  "مواصلات":{e:"🚗",i:["🚗","✈️","🚆","🚲","🚢","🚁"],a:"#5b6b82",b:"#0c1324"},
+};
+function theme(n){return THEMES[n]||{e:"✨",i:["✨","❓","🎲","⭐","💡","🎉"],a:"#5b47b8",b:"#1b1244"}}
+function themePattern(t){
+  const cells=t.i.map((e,k)=>{const x=(k%3)*80+40,y=Math.floor(k/3)*120+60+(k%2)*28,r=((k*37)%40)-20;
+    return`<text x='${x}' y='${y}' font-size='46' text-anchor='middle' dominant-baseline='middle' opacity='.2' transform='rotate(${r} ${x} ${y})'>${e}</text>`}).join("");
+  return`url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'>${cells}</svg>`)}")`;
+}
+// Full-screen category background with a soft crossfade.
+function setThemeBg(name){
+  const el=$("themebg");if(!el)return;name=name||"";
+  if(el.dataset.n===name)return;el.dataset.n=name;
+  [...el.children].forEach(c=>{c.classList.remove("on");setTimeout(()=>c.remove(),900)});
+  if(!name)return;const t=theme(name),layer=document.createElement("div");layer.className="tlayer";
+  layer.style.backgroundImage=`${themePattern(t)},radial-gradient(120% 90% at 50% 0%,${t.a},${t.b})`;
+  layer.innerHTML=`<span class="tbig">${t.e}</span>`;el.appendChild(layer);requestAnimationFrame(()=>requestAnimationFrame(()=>layer.classList.add("on")));
+}
+// One category at a time pops in, holds, and flies out; then the next.
+let spotTimer=null;
+function spotlightHTML(names){return`<div class="spot" id="spot"></div><div class="spotstrip">${names.map(n=>`<span class="schip">${theme(n).e} ${esc(n)}</span>`).join("")}</div>`}
+function stopSpot(){clearInterval(spotTimer);spotTimer=null}
+function runSpot(names){
+  stopSpot();if(!names||!names.length)return;let i=0;
+  const show=()=>{const box=$("spot");if(!box){stopSpot();return}const k=i%names.length,n=names[k],t=theme(n);
+    box.innerHTML=`<div class="spotcard" style="--a:${t.a};--b:${t.b}"><span class="se">${t.e}</span><b>${esc(n)}</b></div>`;
+    document.querySelectorAll(".schip").forEach((c,j)=>c.classList.toggle("on",j===k));setThemeBg(n);i++};
+  show();spotTimer=setInterval(show,1400);
+}
+function topicCardHTML(n,cls=""){const t=theme(n);return`<div class="spotcard ${cls}" style="--a:${t.a};--b:${t.b}"><span class="se">${t.e}</span><b>${esc(n)}</b></div>`}
+// Short "landing" on the chosen category before the round starts.
+function goTopic(name,then,by){const g=H.g;g.topic=name;g.afterTopic=then;g.pickedBy=by||null;H.ph="topic";H.k++;setTimer(3);playSting("sting_reveal",sfx.drum)}
+
 /* ================= announcer: recorded host voice + a cappella music ================= */
 const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
   intro:{fabraka:["intro_fabraka"],arsimha:["intro_arsimha"],sawalif:["intro_sawalif"]},
@@ -309,7 +361,8 @@ function hostTick(){
     if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
   if(H.ph==="menu"||H.ph==="lobby"){const here=new Set(ps.map(p=>p.peer));H.order=H.order.filter(id=>here.has(id))}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
-  if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
+  if(H.game&&H.ph==="topic"){if(now>H.end&&H.g.afterTopic){const f=H.g.afterTopic;H.g.afterTopic=null;f()}}
+  else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
   if(["lie","choose","draw","vote","guess"].includes(H.ph)&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
   if((H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
   H._lastTl=tl();
@@ -320,6 +373,8 @@ function publish(){
   const v={role:"host",code:ST.code,game:H.game,ph:H.ph,k:H.k,tl:tl(),order:H.order,nm:{}};
   H.order.forEach(id=>v.nm[id]=nm(id));
   if(H.game&&GAMES[H.game].view)GAMES[H.game].view(v);
+  if(H.game&&GAMES[H.game].themeName)v.theme=GAMES[H.game].themeName()||null;
+  if(H.ph==="topic"){v.topic=H.g.topic;v.picker=H.g.pickedBy}
   if(["scores","end","reveal","tally","result"].includes(H.ph))v.sc=H.sc;
   const s=JSON.stringify(v);if(s===H.lastView)return;H.lastView=s;
   room.presence(v).catch(()=>{});
@@ -393,6 +448,8 @@ function renderHost(){
     ${fav&&H.lk[fav]?`<p class="bubble" style="margin-top:8px">😂 ${esc(G.likeTitle)}: ${esc(nm(fav))} (${fmt(H.lk[fav])} 👍)</p>`:""}</div>
     ${boardHTML()}
     <div class="row" style="justify-content:center"><button class="btn coral" id="againBtn">نفس اللعبة مرة ثانية</button><button class="btn" id="menuBtn">لعبة ثانية</button></div>`;
+  }else if(H.ph==="topic"){
+    body=`<div class="landing"><p class="lbl">الموضوع</p>${topicCardHTML(H.g.topic,"land")}${H.g.pickedBy?`<p class="note" style="font-size:20px">اختاره ${esc(nm(H.g.pickedBy))}</p>`:""}</div>`;
   }else body=G.render();
   const skip=["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
   root.innerHTML=bar+body+skip;
@@ -405,6 +462,8 @@ function renderHost(){
   const ab=$("againBtn");if(ab)ab.onclick=()=>pickGame(H.game);
   const kb=$("skipBtn");if(kb)kb.onclick=()=>{H.end=0;if(H.g)H.g.forceSkip=true};
   if(G&&G.after)G.after();
+  if(H.ph==="pick"&&G&&G.spotNames)runSpot(G.spotNames());
+  else{stopSpot();setThemeBg(H.ph==="topic"?H.g.topic:(G&&G.themeName?G.themeName():null))}
 }
 
 /* ================= BLUFF ENGINE (shared by فبركة and ارسمها) ================= */
@@ -495,34 +554,39 @@ const FAB={
   rules:["تطلع حقيقة غريبة فيها فراغ","كل واحد يكتب كذبة مقنعة تكمّل الفراغ","تختارون وش الحقيقة بين الأكاذيب","تاخذ نقاط إذا عرفت الحقيقة، أو إذا انخدعوا بكذبتك"],
   winTitle:"أكبر مفبرك!",likeTitle:"أظرف كذّاب",
   used:new Set((()=>{try{return JSON.parse(localStorage.getItem("fabraka_used")||"[]")}catch(e){return[]}})()),
-  fresh(){let pool=QS.map((_,i)=>i).filter(i=>!this.used.has(QS[i].id));if(pool.length<10){this.used.clear();pool=QS.map((_,i)=>i)}return shuffle(pool)},
+  topics(){const have=new Set(QS.map(q=>q.t));return[...TOPICS.filter(t=>have.has(t)),...[...have].filter(t=>!TOPICS.includes(t))]},
+  fresh(topic){const inT=QS.map((_,i)=>i).filter(i=>!topic||QS[i].t===topic);let pool=inT.filter(i=>!this.used.has(QS[i].id));
+    if(!pool.length){inT.forEach(i=>this.used.delete(QS[i].id));pool=inT}return shuffle(pool)},
+  choose(t,by){goTopic(t,()=>this.lie(this.fresh(t)[0]),by)},
   mark(i){this.used.add(QS[i].id);try{localStorage.setItem("fabraka_used",JSON.stringify([...this.used]))}catch(e){}},
   start(){H.g={step:-1};this.next()},
   m(){return FAB_STEPS[Math.max(0,H.g.step)]||1},
   next(){const g=H.g;g.step++;H.k++;
     if(g.step>=FAB_STEPS.length)return finishGame();
-    if(this.m()===3){H.quip=pick(QUIP.final);return this.lie(this.fresh()[0])}
-    const act=active();g.picker=act[g.step%Math.max(1,act.length)]||null;g.pick=this.fresh().slice(0,4);
-    H.ph="pick";H.quip=pick(QUIP.pick);setTimer(15)},
+    if(this.m()===3){H.quip=pick(QUIP.final);return this.choose(pick(this.topics()))}
+    const act=active();g.picker=act[g.step%Math.max(1,act.length)]||null;g.pick=this.topics();
+    H.ph="pick";H.quip=pick(QUIP.pick);setTimer(20)},
   lie(qi){const g=H.g,q=QS[qi];this.mark(qi);g.q=qi;g.truth=q.a;g.alts=q.alt;g.decoys=q.d;g.ex=null;
     bluffLie(g,60);if(this.m()!==3)H.quip=pick(QUIP.lie)},
   tick(now){const g=H.g;
     if(H.ph==="pick"){const a=g.picker&&actOf(g.picker);
-      if(a&&Number.isInteger(a.pick)&&g.pick[a.pick]!==undefined)this.lie(g.pick[a.pick]);
-      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;this.lie(pick(g.pick))}}
+      if(a&&Number.isInteger(a.pick)&&g.pick[a.pick]!==undefined)this.choose(g.pick[a.pick],g.picker);
+      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;this.choose(pick(g.pick))}}
     else if(H.ph==="lie"){if(bluffTickLie(g,now)){bluffChoose(g,30);H.quip=pick(QUIP.choose)}}
     else if(H.ph==="choose"){if(bluffTickChoose(g,now))bluffReveal(g,this.m(),0)}
     else if(H.ph==="reveal"){if(bluffTickReveal(g,now)){H.ph="scores";H.k++;setTimer(8);H.quip=pick(QUIP.scores)}}
     else if(H.ph==="scores"){if(now>H.end)this.next()}},
   view(v){const g=H.g;v.m=this.m();
-    if(H.ph==="pick"){v.picker=g.picker;v.cats=g.pick.map(i=>QS[i].c)}
+    if(H.ph==="pick"){v.picker=g.picker;v.cats=g.pick}
     if(H.ph==="lie"||H.ph==="choose"){v.q=QS[g.q].q}
     bluffView(g,v)},
   pill(){const m=this.m();return`<span class="pill ${m===3?"x":""}">${m===3?"الفبركة الأخيرة":m===2?"الجولة الثانية":"الجولة الأولى"}${m>1?` · ×${fmt(m)}`:""}</span>`},
-  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${esc(q.c)}</span><p class="qtext">${blankify(q.q,fill?q.a:"")}</p></div>`},
+  spotNames(){return H.g.pick},
+  themeName(){const g=H.g;return["lie","choose","reveal"].includes(H.ph)&&QS[g.q]?QS[g.q].t:null},
+  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)} · ${esc(q.c)}</span><p class="qtext">${blankify(q.q,fill?q.a:"")}</p></div>`},
   render(){const g=H.g;
     if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
-      ${sayHTML(H.quip)}<div class="cats">${g.pick.map((i,j)=>`<div class="catcard" style="--o:${OPTC[j]};animation-delay:${j*.1}s">${esc(QS[i].c)}</div>`).join("")}</div>`;
+      ${spotlightHTML(g.pick)}`;
     if(H.ph==="lie")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>${this.ticket()}
       <h3 style="font-size:26px;text-align:center">✍️ اكتبوا كذبة مقنعة من جوالاتكم</h3><div id="dyn" class="still">${bluffDyn(g)}</div>`;
     if(H.ph==="choose")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>${this.ticket()}${optsHTML(g)}<div id="dyn" class="still">${bluffDyn(g)}</div>`;
@@ -595,15 +659,15 @@ const SAL={
   next(){const g=H.g;g.round++;H.k++;
     if(g.round>g.rounds)return finishGame();
     const act=active();g.picker=act[(g.round-1)%Math.max(1,act.length)]||null;
-    g.cats=shuffle(Object.keys(WORDS)).slice(0,4);H.ph="pick";setTimer(15);H.quip="مين بيختار الموضوع؟ 🤔"},
+    g.cats=Object.keys(WORDS).filter(c=>(WORDS[c]||[]).length>=2);H.ph="pick";setTimer(20);H.quip="مين بيختار الموضوع؟ 🤔"},
   begin(cat){const g=H.g,act=active();g.cat=cat;g.word=pick(WORDS[cat]);g.out=pick(act);g.players=[...act];
     const ring=shuffle(act);g.pairs=[];for(let r=0;r<2;r++)ring.forEach((id,i)=>g.pairs.push([id,ring[(i+1)%ring.length]]));
     g.rvI=0;g.pairAt=Date.now()+20000;g.ready={};H.ph="ask";H.k++;setTimer(180);sfx.go();
     H.quip=pick(["كل واحد يسأل سؤال ذكي… لا تفضحون السالفة!","اللي برا السالفة الحين يعرق 😅","ركّزوا في الأجوبة… فيه واحد يألّف"])},
   tick(now){const g=H.g;
     if(H.ph==="pick"){const a=g.picker&&actOf(g.picker);
-      if(a&&Number.isInteger(a.pick)&&g.cats[a.pick])this.begin(g.cats[a.pick]);
-      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;this.begin(pick(g.cats))}}
+      if(a&&Number.isInteger(a.pick)&&g.cats[a.pick]){const c=g.cats[a.pick];goTopic(c,()=>this.begin(c),g.picker)}
+      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;const c=pick(g.cats);goTopic(c,()=>this.begin(c))}}
     else if(H.ph==="ask"){
       g.players.forEach(id=>{const a=actOf(id);if(a&&a.ready)g.ready[id]=1});
       const act=active().filter(id=>g.players.includes(id));
@@ -640,9 +704,11 @@ const SAL={
     if(H.ph==="guess"){v.out=g.out;v.opts=g.opts;v.cat=g.cat}
     if(["tally","result","scores"].includes(H.ph))v.sc=H.sc},
   pill(){const g=H.g;return`<span class="pill">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}</span>`},
+  spotNames(){return H.g.cats},
+  themeName(){return["ask","vote","tally","guess","result"].includes(H.ph)?H.g.cat:null},
   render(){const g=H.g;
     if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
-      <div class="cats">${g.cats.map((c,j)=>`<div class="catcard" style="--o:${OPTC[j]};animation-delay:${j*.1}s">${esc(c)}</div>`).join("")}</div>`;
+      ${spotlightHTML(g.cats)}`;
     if(H.ph==="ask"){const [a,b]=g.pairs[g.rvI]||[];
       return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
       <div class="ticket" style="text-align:center"><span class="cat">الموضوع: ${esc(g.cat)}</span><p class="qtext">الكل يعرف السالفة… إلا واحد 🕵️</p></div>
@@ -696,6 +762,7 @@ function hostView(){
 function renderPlayer(){
   if(ME.lost)return;
   const v=hostView();root.className="wrap narrow";
+  setThemeBg(v?(v.ph==="topic"?v.topic:v.theme):null);
   const idx=v&&Array.isArray(v.order)?v.order.indexOf(myPeer):-1;
   const c=idx>=0?COLORS[idx%8]:"#a99bd9",f=idx>=0?FACES[idx%8]:"🙂";
   const head=`<div class="phead"><span class="me"><div class="av sm" style="--c:${c}">${f}</div><span>${esc(ST.nick)}</span></span><span class="pill" style="direction:ltr">${esc(ST.code)}</span></div>`;
@@ -715,12 +782,13 @@ function renderPlayer(){
   if(v.ph==="menu"){root.innerHTML=head+`<div class="emoji">${f}</div><p class="big">أنت داخل!</p><p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;return}
   if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<div class="emoji">${G?G.emoji:f}</div><p class="big">${G?G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>`;return}
   if(v.ph==="pick"){
-    if(v.picker===myPeer){root.innerHTML=head+`<h2 style="font-size:30px">اختر الموضوع 👇</h2>${tline}<div class="col">${(v.cats||[]).map((cc,i)=>`<button class="pbtn" data-i="${i}" style="--o:${OPTC[i]}">${esc(cc)}</button>`).join("")}</div>`;
+    if(v.picker===myPeer){root.innerHTML=head+`<h2 style="font-size:30px">اختر الموضوع 👇</h2>${tline}<div class="tgrid">${(v.cats||[]).map((cc,i)=>{const t=theme(cc);return`<button class="pbtn tbtn" data-i="${i}" style="--a:${t.a};--b:${t.b}"><span>${t.e}</span>${esc(cc)}</button>`}).join("")}</div>`;
       root.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,pick:+b.dataset.i});root.querySelectorAll("[data-i]").forEach(x=>x.disabled=true)})}
     else root.innerHTML=head+`<div class="emoji">🤔</div><p class="big">${esc(v.nm?.[v.picker]||"لاعب")} يختار الموضوع…</p>`;
     return;
   }
 
+  if(v.ph==="topic"){root.innerHTML=head+`<div class="landing" style="margin-top:6vh"><p class="lbl">الموضوع</p>${topicCardHTML(v.topic,"land")}${v.picker?`<p class="note center">اختاره ${esc(v.nm?.[v.picker]||"")}</p>`:""}</div>`;return}
   if(v.game==="sawalif"&&["ask","vote","tally","guess","result"].includes(v.ph)){salPlayer(v,head,f);return}
   if(v.ph==="draw"){
     ME.drawShown=false;const prompt=v.prompts&&v.prompts[myPeer];
@@ -832,7 +900,7 @@ function fetchDrawing(g,id,drawId){
 async function boot(){
   root.innerHTML=`<div class="emoji" style="margin-top:20vh">🎉</div><p class="big">لحظة…</p>`;
   const fail=(t,d)=>{root.innerHTML=`<div class="emoji" style="margin-top:20vh">😵</div><p class="big">${esc(t)}</p><p class="note center">${esc(d)}</p>`};
-  try{const c=await api("GET","/content");QS=c.questions||[];DRAW=c.prompts||[];WORDS=c.words||{}}
+  try{const c=await api("GET","/content");QS=c.questions||[];DRAW=c.prompts||[];WORDS=c.words||{};TOPICS=c.topics||[]}
   catch(e){return fail("ما قدرنا نحمّل الألعاب",e.status?"خطأ من السيرفر ("+e.status+"). افتح /api/status لمعرفة السبب.":"تأكد من الإنترنت وحدّث الصفحة.")}
   if(!QS.length)return fail("ما فيه أسئلة في قاعدة البيانات","شغّل الأمر: php artisan db:seed --force");
   landing(CFG.ready?"":"تنبيه: WebSockets مو مربوطة بالتطبيق، اللعب الجماعي ما بيشتغل.");
