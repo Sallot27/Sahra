@@ -294,7 +294,7 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .ih-big.sm{font-size:clamp(90px,12vw,140px)}
 .ih-big.xs{font-size:72px;text-shadow:0 5px 0 rgba(0,0,0,.35)}
 .ih-top{display:flex;gap:28px;align-items:center;justify-content:center;flex-wrap:wrap}
-.ih-chips{display:flex;flex-wrap:wrap;gap:10px;max-width:640px}
+.ih-chips{display:flex;flex-wrap:wrap;gap:10px;max-width:760px}
 .ih-chips span{background:var(--paper);color:var(--ink);font-weight:800;font-size:clamp(20px,2.4vw,28px);padding:8px 18px;border-radius:16px;box-shadow:0 5px 0 var(--paper2)}
 .ih-stop{text-align:center;font-family:var(--display);font-size:clamp(30px,4vw,48px);color:var(--coral);animation:pop .4s ease-out both}
 .ih-h{text-align:center;font-size:clamp(30px,4vw,48px)}

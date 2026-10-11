@@ -556,17 +556,18 @@ B.push(K=>{
 B.push(K=>{
   const {H,esc,clip,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,norm}=K;
   const C=common(K);
-  const CATS=[{n:"إنسان",e:"🧑",h:"اسم شخص"},{n:"حيوان",e:"🐪",h:""},{n:"نبات",e:"🌴",h:"أو فاكهة وخضار"},{n:"جماد",e:"🪑",h:"أي شي ما يتحرك"},{n:"بلاد",e:"🌍",h:"دولة أو مدينة"}];
+  const CATS=[{n:"إنسان",e:"🧑",h:"اسم شخص"},{n:"مشهور",e:"⭐",h:"صحابي، صحابية، شخصية تاريخية، أو مشهور اليوم",long:"شخص مشهور: صحابي أو صحابية، شخصية تاريخية، أو مشهور حالياً، من زمان أو من اليوم"},{n:"حيوان",e:"🐪",h:""},{n:"نبات",e:"🌴",h:"أو فاكهة وخضار"},{n:"جماد",e:"🪑",h:"أي شي ما يتحرك"},{n:"بلاد",e:"🌍",h:"دولة أو مدينة"}];
   const LETTERS=[..."ابتجحخدرزسشصطعفقكلمنهوي"];
   const ROUNDS=3,FILL=75,STOP_LEFT=10;
   const fold=w=>String(w||"").trim().replace(/[ًٌٍَُِّْـ]/g,"").replace(/^[إأآٱ]/,"ا");
   // does the word start with the letter? ("ال" is skipped for things, not for people's names)
-  function okLetter(w,L,cat){w=fold(w);if(!w)return false;if(cat!==0&&w.startsWith("ال")&&w.length>3)w=w.slice(2).replace(/^[إأآٱ]/,"ا");return w[0]===L}
+  function okLetter(w,L,cat){w=fold(w);if(!w)return false;const bare=w.startsWith("ال")&&w.length>3?w.slice(2).replace(/^[إأآٱ]/,"ا"):w;
+    if(cat===0)return w[0]===L;if(cat===1)return w[0]===L||bare[0]===L;return bare[0]===L}
   return{
     id:"insan",name:"إنسان حيوان",emoji:"🔤",color:"#2ee6a6",min:2,
-    desc:"يطلع حرف، وكل واحد يكتب إنسان وحيوان ونبات وجماد وبلاد تبدأ فيه… وأسرع واحد يقول «ستوب»!",
+    desc:"يطلع حرف، وكل واحد يكتب إنسان ومشهور وحيوان ونبات وجماد وبلاد تبدأ فيه… وأسرع واحد يقول «ستوب»!",
     tags:["٢-٨ لاعبين","كتابة","سرعة"],
-    rules:["يطلع حرف عشوائي","اكتب إنسان، حيوان، نبات، جماد، بلاد تبدأ بالحرف","أول واحد يخلّص يضغط «ستوب» ويبقى للباقين ١٠ ثواني","تراجعون الأجوبة سوا: ١٠ نقاط للجواب الفريد، ٥ إذا تكرر، ١٥ إذا ما جاوب أحد غيرك"],
+    rules:["يطلع حرف عشوائي","اكتب إنسان، مشهور، حيوان، نبات، جماد، بلاد تبدأ بالحرف","«مشهور» = صحابي أو صحابية أو شخصية تاريخية أو مشهور حالياً","أول واحد يخلّص يضغط «ستوب» ويبقى للباقين ١٠ ثواني","تراجعون الأجوبة سوا: ١٠ نقاط للجواب الفريد، ٥ إذا تكرر، ١٥ إذا ما جاوب أحد غيرك"],
     winTitle:"أسرع عقل!",likeTitle:"",
     timed:["fill","check"],
     start(){H.g={round:0,used:[]};this.next()},
@@ -576,7 +577,7 @@ B.push(K=>{
     tick(now){const g=H.g;
       if(H.ph==="letter"){if(now>H.end){H.ph="fill";H.k++;setTimer(FILL);H.quip=pick(["يلا بسرعة! ✍️","أول واحد يخلّص يقول ستوب!","فكّروا… وش يبدأ بهالحرف؟"])}}
       else if(H.ph==="fill"){
-        g.pl.forEach(id=>{const a=K.act(id);if(!a||!Array.isArray(a.a))return;g.ans[id]=a.a.slice(0,5).map(x=>clip(x,24));
+        g.pl.forEach(id=>{const a=K.act(id);if(!a||!Array.isArray(a.a))return;g.ans[id]=a.a.slice(0,CATS.length).map(x=>clip(x,30));
           if(a.done&&!g.done[id]){g.done[id]=1;sfx.submit();if(!g.stopBy){g.stopBy=id;sfx.tada();if(H.end-now>STOP_LEFT*1000){H.end=now+STOP_LEFT*1000}H.quip="ستوب! ✋ "+nm(id)+" خلّص… باقي لكم ثواني!"}}});
         const live=g.pl.filter(id=>active().includes(id));
         if(now>H.end||g.forceSkip||(live.length&&live.every(id=>g.done[id]))){g.forceSkip=false;g.ci=-1;g.pts={};this.nextCat()}}
@@ -611,7 +612,7 @@ B.push(K=>{
       if(H.ph==="fill")return C.head(H.quip)+`<div class="ih-top"><div class="ih-big sm">${esc(g.L)}</div><div class="ih-chips">${CATS.map(c=>`<span>${c.e} ${c.n}</span>`).join("")}</div></div>
         ${g.stopBy?`<div class="ih-stop">✋ ستوب! ${esc(nm(g.stopBy))} خلّص</div>`:""}<div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="check"||H.ph==="catpts"){const c=this.cat(),ct=CATS[g.ci];
-        return(H.ph==="check"?C.head(H.quip):"")+`<h2 class="ih-h">${ct.e} ${ct.n} بحرف «${esc(g.L)}»</h2>${this.cards(c,H.ph==="catpts")}${H.ph==="check"?`<div id="dyn" class="still">${this.dyn()}</div>`:""}`}
+        return(H.ph==="check"?C.head(H.quip):"")+`<h2 class="ih-h">${ct.e} ${ct.n} بحرف «${esc(g.L)}»</h2>${ct.long?`<p class="note center" style="font-size:19px">${esc(ct.long)}</p>`:""}${this.cards(c,H.ph==="catpts")}${H.ph==="check"?`<div id="dyn" class="still">${this.dyn()}</div>`:""}`}
       if(H.ph==="scores")return C.scoresHTML();
       return""},
     after(){if(H.ph!=="letter")return;const el=document.getElementById("ihL");if(!el)return;const L=H.g.L;let n=0;
@@ -625,13 +626,13 @@ B.push(K=>{
       if(v.ph==="letter"){C.watch(root,v,"🎰","الحرف يطلع على الشاشة…","");return}
       if(v.ph==="fill"){
         root.insertAdjacentHTML("beforeend",`<div class="ih-phead"><div class="ih-big xs">${esc(v.L)}</div><div>${tline}<p class="note" id="ihStop"></p></div></div>
-          <div class="col" id="ihBox">${CATS.map((c,i)=>`<label class="ih-f"><span>${c.e} ${c.n}${c.h?` <small>(${c.h})</small>`:""}</span><input type="text" class="ih-in" data-i="${i}" maxlength="24" autocomplete="off" placeholder="${esc(v.L)}…"></label>`).join("")}
+          <div class="col" id="ihBox">${CATS.map((c,i)=>`<label class="ih-f"><span>${c.e} ${c.n}${c.h?` <small>(${c.h})</small>`:""}</span><input type="text" class="ih-in" data-i="${i}" maxlength="30" autocomplete="off" placeholder="${esc(v.L)}…"></label>`).join("")}
           <button class="btn coral wide" id="ihDone">خلصت! ستوب ✋</button></div>`);
-        const ins=[...root.querySelectorAll(".ih-in")];L.vals=["","","","",""];
+        const ins=[...root.querySelectorAll(".ih-in")];L.vals=CATS.map(()=>"");
         const push=done=>{K.sendAct({k:v.k,a:L.vals,done:!!done})};
         ins.forEach(inp=>inp.oninput=()=>{L.vals[+inp.dataset.i]=inp.value;clearTimeout(L.t);L.t=setTimeout(()=>push(L.sent),350)});
         ins.forEach((inp,i)=>inp.onkeydown=e=>{if(e.key==="Enter"&&ins[i+1])ins[i+1].focus()});
-        document.getElementById("ihDone").onclick=()=>{L.vals=ins.map(x=>x.value);if(L.vals.some(x=>!x.trim())){document.getElementById("ihStop").textContent="عبّ الخمسة كلها أول 😅";return}
+        document.getElementById("ihDone").onclick=()=>{L.vals=ins.map(x=>x.value);if(L.vals.some(x=>!x.trim())){document.getElementById("ihStop").textContent="عبّ الخانات كلها أول 😅";return}
           L.sent=1;push(true);ins.forEach(x=>x.disabled=true);const b=document.getElementById("ihDone");b.disabled=true;b.textContent="✋ قلت ستوب!"};
         setTimeout(()=>ins[0].focus(),60);this.phoneLive(v);return}
       if(v.ph==="check"){const ct=CATS[v.ci];L.rej=new Set();
