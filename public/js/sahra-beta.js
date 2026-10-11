@@ -550,4 +550,100 @@ B.push(K=>{
       C.watch(root,v);},
   };
 });
+/* =====================================================================
+   8) إنسان حيوان: one letter, five categories, the group checks the answers
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,clip,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,norm}=K;
+  const C=common(K);
+  const CATS=[{n:"إنسان",e:"🧑",h:"اسم شخص"},{n:"حيوان",e:"🐪",h:""},{n:"نبات",e:"🌴",h:"أو فاكهة وخضار"},{n:"جماد",e:"🪑",h:"أي شي ما يتحرك"},{n:"بلاد",e:"🌍",h:"دولة أو مدينة"}];
+  const LETTERS=[..."ابتجحخدرزسشصطعفقكلمنهوي"];
+  const ROUNDS=3,FILL=75,STOP_LEFT=10;
+  const fold=w=>String(w||"").trim().replace(/[ًٌٍَُِّْـ]/g,"").replace(/^[إأآٱ]/,"ا");
+  // does the word start with the letter? ("ال" is skipped for things, not for people's names)
+  function okLetter(w,L,cat){w=fold(w);if(!w)return false;if(cat!==0&&w.startsWith("ال")&&w.length>3)w=w.slice(2).replace(/^[إأآٱ]/,"ا");return w[0]===L}
+  return{
+    id:"insan",name:"إنسان حيوان",emoji:"🔤",color:"#2ee6a6",min:2,
+    desc:"يطلع حرف، وكل واحد يكتب إنسان وحيوان ونبات وجماد وبلاد تبدأ فيه… وأسرع واحد يقول «ستوب»!",
+    tags:["٢-٨ لاعبين","كتابة","سرعة"],
+    rules:["يطلع حرف عشوائي","اكتب إنسان، حيوان، نبات، جماد، بلاد تبدأ بالحرف","أول واحد يخلّص يضغط «ستوب» ويبقى للباقين ١٠ ثواني","تراجعون الأجوبة سوا: ١٠ نقاط للجواب الفريد، ٥ إذا تكرر، ١٥ إذا ما جاوب أحد غيرك"],
+    winTitle:"أسرع عقل!",likeTitle:"",
+    timed:["fill","check"],
+    start(){H.g={round:0,used:[]};this.next()},
+    next(){const g=H.g;g.round++;if(g.round>ROUNDS)return K.finishGame();
+      g.L=pick(LETTERS.filter(l=>!g.used.includes(l)));g.used.push(g.L);g.pl=active();g.ans={};g.done={};g.stopBy=null;
+      H.ph="letter";H.k++;setTimer(4);H.quip="";sfx.go()},
+    tick(now){const g=H.g;
+      if(H.ph==="letter"){if(now>H.end){H.ph="fill";H.k++;setTimer(FILL);H.quip=pick(["يلا بسرعة! ✍️","أول واحد يخلّص يقول ستوب!","فكّروا… وش يبدأ بهالحرف؟"])}}
+      else if(H.ph==="fill"){
+        g.pl.forEach(id=>{const a=K.act(id);if(!a||!Array.isArray(a.a))return;g.ans[id]=a.a.slice(0,5).map(x=>clip(x,24));
+          if(a.done&&!g.done[id]){g.done[id]=1;sfx.submit();if(!g.stopBy){g.stopBy=id;sfx.tada();if(H.end-now>STOP_LEFT*1000){H.end=now+STOP_LEFT*1000}H.quip="ستوب! ✋ "+nm(id)+" خلّص… باقي لكم ثواني!"}}});
+        const live=g.pl.filter(id=>active().includes(id));
+        if(now>H.end||g.forceSkip||(live.length&&live.every(id=>g.done[id]))){g.forceSkip=false;g.ci=-1;g.pts={};this.nextCat()}}
+      else if(H.ph==="check"){const c=this.cat();
+        active().forEach(id=>{const a=K.act(id);if(!a)return;if(Array.isArray(a.rej))c.rej[id]=a.rej.filter(x=>x!==id&&c.list.some(e=>e.id===x));if(a.ok)c.ok[id]=1});
+        const live=g.pl.filter(id=>active().includes(id));
+        if(now>H.end||g.forceSkip||(live.length&&live.every(id=>c.ok[id]))){g.forceSkip=false;this.score()}}
+      else if(H.ph==="catpts"){if(now>H.end)this.nextCat()}
+      else if(H.ph==="scores"){if(now>H.end)this.next()}},
+    cat(){return H.g.cats[H.g.ci]},
+    nextCat(){const g=H.g;g.ci++;
+      if(g.ci===0)g.cats=CATS.map((_,ci)=>({rej:{},ok:{},list:g.pl.map(id=>{const t=((g.ans[id]||[])[ci]||"").trim();return{id,t,bad:t?!okLetter(t,g.L,ci):false}})}));
+      if(g.ci>=CATS.length)return C.scores(7);
+      H.ph="check";H.k++;setTimer(25);sfx.swoosh();H.quip="فيه جواب غلط؟ اضغطوا ❌ عليه من جوالاتكم"},
+    score(){const g=H.g,c=this.cat(),voters=id=>g.pl.filter(x=>x!==id&&active().includes(x)).length;
+      c.list.forEach(e=>{const r=Object.values(c.rej).filter(arr=>arr.includes(e.id)).length;e.r=r;e.out=e.t&&!e.bad&&r>=Math.floor(voters(e.id)/2)+1});
+      const valid=c.list.filter(e=>e.t&&!e.bad&&!e.out),groups={};valid.forEach(e=>{const k=norm(e.t);(groups[k]=groups[k]||[]).push(e)});
+      c.list.forEach(e=>e.p=0);valid.forEach(e=>{e.p=valid.length===1?15:groups[norm(e.t)].length>1?5:10;C.add(e.id,e.p)});
+      if(valid.some(e=>e.p>0))sfx.coin();H.ph="catpts";H.k++;setTimer(5)},
+    doneMap(){const g=H.g;return H.ph==="fill"?g.done:H.ph==="check"?this.cat().ok:null},
+    view(v){const g=H.g;if(!g.L)return;v.L=g.L;v.r=g.round;
+      if(H.ph==="fill"){v.stop=g.stopBy;v.done=Object.keys(g.done)}
+      if(H.ph==="check"){const c=this.cat();v.ci=g.ci;v.list=c.list.map(e=>({id:e.id,t:e.t,bad:e.bad}));v.done=Object.keys(c.ok)}
+      if(["catpts","scores"].includes(H.ph))v.sc=H.sc},
+    pill(){const g=H.g;return`<span class="pill">الجولة ${fmt(g.round)} من ${fmt(ROUNDS)} · حرف «${esc(g.L||"")}»</span>`},
+    cards(c,pts){const g=H.g;return`<div class="ih-cards">${c.list.map((e,i)=>{
+        const cls=!e.t?"empty":e.bad?"bad":pts&&e.out?"out":pts?(e.p===15?"solo":e.p===5?"dup":"ok"):"";
+        const tag=!e.t?"ما كتب شي":e.bad?`ما يبدأ بـ «${esc(g.L)}»`:pts&&e.out?`رفضوه ❌ ${fmt(e.r)}`:"";
+        return`<div class="ih-card ${cls}" style="animation-delay:${i*.08}s">${C.avatar(e.id)}<div class="ih-t"><small>${esc(nm(e.id))}</small><b>${esc(e.t||"—")}</b>${tag?`<em>${tag}</em>`:""}</div>${pts?`<span class="ih-p">+${fmt(e.p)}</span>`:(c.rej&&!e.bad&&e.t?`<span class="ih-r" data-x="${esc(e.id)}"></span>`:"")}</div>`}).join("")}</div>`},
+    render(){const g=H.g;
+      if(H.ph==="letter")return`<div class="col center" style="gap:10px;margin-top:6vh"><p class="note" style="font-size:24px">الحرف هو…</p><div class="ih-big" id="ihL">${esc(g.L)}</div></div>`;
+      if(H.ph==="fill")return C.head(H.quip)+`<div class="ih-top"><div class="ih-big sm">${esc(g.L)}</div><div class="ih-chips">${CATS.map(c=>`<span>${c.e} ${c.n}</span>`).join("")}</div></div>
+        ${g.stopBy?`<div class="ih-stop">✋ ستوب! ${esc(nm(g.stopBy))} خلّص</div>`:""}<div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="check"||H.ph==="catpts"){const c=this.cat(),ct=CATS[g.ci];
+        return(H.ph==="check"?C.head(H.quip):"")+`<h2 class="ih-h">${ct.e} ${ct.n} بحرف «${esc(g.L)}»</h2>${this.cards(c,H.ph==="catpts")}${H.ph==="check"?`<div id="dyn" class="still">${this.dyn()}</div>`:""}`}
+      if(H.ph==="scores")return C.scoresHTML();
+      return""},
+    after(){if(H.ph!=="letter")return;const el=document.getElementById("ihL");if(!el)return;const L=H.g.L;let n=0;
+      const t=setInterval(()=>{if(!el.isConnected||++n>14){clearInterval(t);el.textContent=L;el.classList.add("land");sfx.tada();return}el.textContent=pick(LETTERS);sfx.tick()},110)},
+    dyn(){const g=H.g;
+      if(H.ph==="fill")return K.troupe(g.pl,new Set(Object.keys(g.done)));
+      if(H.ph==="check"){const c=this.cat();setTimeout(()=>document.querySelectorAll(".ih-r").forEach(el=>{const r=Object.values(c.rej).filter(a=>a.includes(el.dataset.x)).length;el.textContent=r?"❌".repeat(Math.min(r,5)):""}),0);
+        return K.troupe(g.pl,new Set(Object.keys(c.ok)))+`<p class="note center">${fmt(Object.keys(c.ok).length)} من ${fmt(g.pl.length)} قالوا تمام · رفض: ${fmt(Object.values(c.rej).reduce((n,a)=>n+a.length,0))}</p>`}
+      return""},
+    phone(v,{root,tline}){const me=K.me(),L=C.L;C.fresh(v);
+      if(v.ph==="letter"){C.watch(root,v,"🎰","الحرف يطلع على الشاشة…","");return}
+      if(v.ph==="fill"){
+        root.insertAdjacentHTML("beforeend",`<div class="ih-phead"><div class="ih-big xs">${esc(v.L)}</div><div>${tline}<p class="note" id="ihStop"></p></div></div>
+          <div class="col" id="ihBox">${CATS.map((c,i)=>`<label class="ih-f"><span>${c.e} ${c.n}${c.h?` <small>(${c.h})</small>`:""}</span><input type="text" class="ih-in" data-i="${i}" maxlength="24" autocomplete="off" placeholder="${esc(v.L)}…"></label>`).join("")}
+          <button class="btn coral wide" id="ihDone">خلصت! ستوب ✋</button></div>`);
+        const ins=[...root.querySelectorAll(".ih-in")];L.vals=["","","","",""];
+        const push=done=>{K.sendAct({k:v.k,a:L.vals,done:!!done})};
+        ins.forEach(inp=>inp.oninput=()=>{L.vals[+inp.dataset.i]=inp.value;clearTimeout(L.t);L.t=setTimeout(()=>push(L.sent),350)});
+        ins.forEach((inp,i)=>inp.onkeydown=e=>{if(e.key==="Enter"&&ins[i+1])ins[i+1].focus()});
+        document.getElementById("ihDone").onclick=()=>{L.vals=ins.map(x=>x.value);if(L.vals.some(x=>!x.trim())){document.getElementById("ihStop").textContent="عبّ الخمسة كلها أول 😅";return}
+          L.sent=1;push(true);ins.forEach(x=>x.disabled=true);const b=document.getElementById("ihDone");b.disabled=true;b.textContent="✋ قلت ستوب!"};
+        setTimeout(()=>ins[0].focus(),60);this.phoneLive(v);return}
+      if(v.ph==="check"){const ct=CATS[v.ci];L.rej=new Set();
+        root.insertAdjacentHTML("beforeend",`<h2 style="font-size:26px">${ct.e} ${ct.n} بحرف «${esc(v.L)}»</h2><p class="note">اضغط ❌ على أي جواب غلط</p>${tline}<div class="col" id="ihBox">
+          ${(v.list||[]).map(e=>`<div class="likerow ${e.bad||!e.t?"dim":""}"><span class="txt"><small>${C.pnm(v,e.id)}${e.id===me?" (أنت)":""}</small><br>${esc(e.t||"—")}${e.bad?` <small>· ما يبدأ بالحرف</small>`:""}</span>${e.id!==me&&e.t&&!e.bad?`<button class="like" data-x="${esc(e.id)}" aria-pressed="false" aria-label="رفض">❌</button>`:""}</div>`).join("")}
+          <button class="btn mint wide" id="ihOk">تمام ✅</button></div>`);
+        const send=ok=>K.sendAct({k:v.k,rej:[...L.rej],ok:!!ok});
+        root.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{const x=b.dataset.x;L.rej.has(x)?L.rej.delete(x):L.rej.add(x);b.setAttribute("aria-pressed",L.rej.has(x));send(L.ok)});
+        document.getElementById("ihOk").onclick=()=>{L.ok=1;send(true);const b=document.getElementById("ihOk");b.disabled=true;b.textContent="تمام، ننتظر الباقين…"};return}
+      C.watch(root,v);},
+    phoneLive(v){if(v.ph!=="fill")return;const el=document.getElementById("ihStop");if(!el)return;
+      if(v.stop&&v.stop!==K.me()&&!C.L.stopShown){C.L.stopShown=1;sfx.tada();el.innerHTML=`<b style="color:var(--coral);font-size:20px">✋ ${C.pnm(v,v.stop)} قال ستوب! بسرعة!</b>`}},
+  };
+});
 })();

@@ -287,3 +287,26 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .lt-btns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
 .lt-b{font-size:76px;border:0;border-radius:24px;padding:18px 0;background:var(--night2);cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.3);transition:transform .1s}
 .lt-b[aria-pressed="true"]{background:var(--sun);transform:scale(1.06)}
+
+/* إنسان حيوان */
+.ih-big{font-family:var(--display);font-size:clamp(150px,24vw,260px);line-height:1;color:var(--sun);text-shadow:0 10px 0 rgba(0,0,0,.35);text-align:center}
+.ih-big.land{animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+.ih-big.sm{font-size:clamp(90px,12vw,140px)}
+.ih-big.xs{font-size:72px;text-shadow:0 5px 0 rgba(0,0,0,.35)}
+.ih-top{display:flex;gap:28px;align-items:center;justify-content:center;flex-wrap:wrap}
+.ih-chips{display:flex;flex-wrap:wrap;gap:10px;max-width:640px}
+.ih-chips span{background:var(--paper);color:var(--ink);font-weight:800;font-size:clamp(20px,2.4vw,28px);padding:8px 18px;border-radius:16px;box-shadow:0 5px 0 var(--paper2)}
+.ih-stop{text-align:center;font-family:var(--display);font-size:clamp(30px,4vw,48px);color:var(--coral);animation:pop .4s ease-out both}
+.ih-h{text-align:center;font-size:clamp(30px,4vw,48px)}
+.ih-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.ih-card{display:flex;gap:10px;align-items:center;background:var(--paper);color:var(--ink);border-radius:18px;padding:10px 14px;box-shadow:0 6px 0 rgba(0,0,0,.28);animation:pop .35s ease-out both;position:relative}
+.ih-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.ih-t small{font-weight:700;color:#6b5c96}.ih-t b{font-size:clamp(20px,2.3vw,28px);overflow-wrap:anywhere}.ih-t em{font-style:normal;font-weight:800;font-size:14px;color:#b4233f}
+.ih-card.empty,.ih-card.bad,.ih-card.out{opacity:.55;background:#e9e2f5}
+.ih-card.bad b,.ih-card.out b{text-decoration:line-through}
+.ih-card.solo{outline:4px solid var(--sun)}.ih-card.dup{outline:4px solid #4cc2ff}.ih-card.ok{outline:4px solid #2ee6a6}
+.ih-p{font-family:var(--display);font-size:30px;color:var(--ink)}
+.ih-r{font-size:18px}
+.ih-phead{display:flex;gap:14px;align-items:center}
+.ih-f{display:flex;flex-direction:column;gap:4px;font-weight:800}.ih-f small{color:var(--muted);font-weight:700}
+.likerow.dim{opacity:.5}
