@@ -14,6 +14,17 @@ class Question extends Model
         'سبيستون', 'أفلام ومسلسلات', 'ديزني', 'أغاني الأفلام',
     ];
 
+    /** Topics built on other companies' films, characters and songs: private edition only. */
+    public const LICENSED_TOPICS = ['سبيستون', 'أفلام ومسلسلات', 'ديزني', 'أغاني الأفلام'];
+
+    /** Topics shown in the current edition. */
+    public static function topics(): array
+    {
+        return config('sahra.edition') === 'commercial'
+            ? array_values(array_diff(self::TOPICS, self::LICENSED_TOPICS))
+            : self::TOPICS;
+    }
+
     protected $fillable = ['category', 'topic', 'text', 'answer', 'alternates', 'decoys', 'active'];
 
     protected function casts(): array

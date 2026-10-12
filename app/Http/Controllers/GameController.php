@@ -21,6 +21,8 @@ class GameController extends Controller
                 'reverb' => Reverb::clientConfig(),
                 'ready' => Reverb::configured(),
                 'api' => '/api',
+                'edition' => config('sahra.edition'),
+                'hostCode' => config('sahra.host_codes') !== [],
             ],
         ]);
     }
@@ -29,9 +31,13 @@ class GameController extends Controller
     public function content(): JsonResponse
     {
         // Plain arrays only: Laravel 13 will not unserialize objects from the cache.
-        $content = Cache::rememberForever(self::CONTENT_CACHE_KEY, fn () => [
-            'topics' => Question::TOPICS,
-            'questions' => Question::active()->orderBy('id')->get()->map->toGame()->values()->all(),
+        $commercial = config('sahra.edition') === 'commercial';
+        $content = Cache::rememberForever(self::cacheKey(), fn () => [
+            'topics' => Question::topics(),
+            'questions' => Question::active()
+                ->when($commercial, fn ($q) => $q->where(fn ($w) => $w
+                    ->whereNull('topic')->orWhereNotIn('topic', Question::LICENSED_TOPICS)))
+                ->orderBy('id')->get()->map->toGame()->values()->all(),
             'prompts' => DrawPrompt::active()->orderBy('id')->pluck('text')->values()->all(),
             'words' => Word::active()->orderBy('category')->orderBy('id')->get()
                 ->groupBy('category')
@@ -64,6 +70,8 @@ class GameController extends Controller
 
         return response()->json([
             'app' => 'ok',
+            'edition' => config('sahra.edition'),
+            'host_code_required' => config('sahra.host_codes') !== [],
             'database' => $db,
             'websockets' => [
                 'configured' => Reverb::configured(),
@@ -74,8 +82,15 @@ class GameController extends Controller
         ]);
     }
 
+    private static function cacheKey(?string $edition = null): string
+    {
+        return self::CONTENT_CACHE_KEY.'-'.($edition ?? config('sahra.edition'));
+    }
+
     public static function forgetContent(): void
     {
         Cache::forget(self::CONTENT_CACHE_KEY);
+        Cache::forget(self::cacheKey('private'));
+        Cache::forget(self::cacheKey('commercial'));
     }
 }

@@ -48,7 +48,7 @@ const QUIP={
   dtruth:["الرسام يستاهل ميدالية… أو نظارة","شفتوا؟ كانت واضحة… لا ما كانت واضحة"],
 };
 
-let ST={nick:"",code:"",voice:false,vo:true,mus:true};
+let ST={nick:"",code:"",voice:false,vo:true,mus:true,hcode:""};
 try{Object.assign(ST,JSON.parse(localStorage.getItem("fabraka")||"{}"))}catch(e){}
 const saveST=()=>{try{localStorage.setItem("fabraka",JSON.stringify(ST))}catch(e){}};
 const randCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random()*24)]).join("");
@@ -281,7 +281,7 @@ function makeSender(ch,event,build){
   return send;
 }
 async function hostRoom(){
-  const {code,host_token}=await api("POST","/rooms");
+  const {code,host_token}=await api("POST","/rooms",CFG.hostCode?{host_code:ST.hcode||""}:undefined).catch(e=>{throw e.status===403?"hostcode":e});
   ST.code=code;
   const {ch,members}=await openChannel(host_token);
   const self={peer:members.me.id,sameTab:true,presence:{}},players=new Map();
@@ -323,6 +323,7 @@ async function connect(asHost){
   catch(e){
     try{pusher&&pusher.disconnect()}catch(_){}
     if(e==="nohost")return"ما لقينا غرفة بهذا الرمز. تأكد من الرمز وأن الشاشة الكبيرة مفتوحة.";
+    if(e==="hostcode")return"رمز الشراء غير صحيح. تلقاه في صفحة التحميل بعد الشراء.";
     if(e==="timeout")return"الاتصال تأخر كثير. تأكد من الإنترنت وجرّب مرة ثانية.";
     return"تعذّر الاتصال. جرّب مرة ثانية.";
   }
@@ -331,7 +332,7 @@ const peers=()=>room?[...room.peers()].filter(p=>p.presence&&p.presence.code===S
 const P=p=>p.presence||{};
 
 /* ================= landing ================= */
-function landing(msg){
+function landing(msg,hostMsg){
   root.className="wrap narrow";
   root.innerHTML=`
   <div class="col center" style="padding-top:14px"><div class="logo"><span class="nose">🎉</span><b>سهرة</b><small>ألعاب جماعية بالعربي</small></div></div>
@@ -346,10 +347,12 @@ function landing(msg){
   <div class="card">
     <h2 style="font-size:30px">📺 الشاشة الكبيرة</h2>
     <p class="note">افتحها على الكمبيوتر أو التلفزيون، وخلّوا الكل يشوفها.</p>
+    ${CFG.hostCode?`<label class="f">رمز الشراء<input type="text" id="hcodeIn" maxlength="40" value="${esc(ST.hcode||"")}" autocomplete="off" placeholder="SAHRA-XXXX" style="direction:ltr;text-align:left"></label><p class="note" style="font-size:14px">اللاعبين ما يحتاجون رمز، بس الشاشة الكبيرة.</p>`:""}
     <button class="btn wide" id="hostBtn">افتح سهرة جديدة</button>
+    <p class="err" id="hmsg">${hostMsg?esc(hostMsg):""}</p>
   </div>`;
-  $("hostBtn").onclick=async e=>{initAudio();e.target.disabled=true;e.target.textContent="جاري التجهيز…";
-    const err=await connect(true);if(err)return landing(err);saveST();startHost()};
+  $("hostBtn").onclick=async e=>{initAudio();if(CFG.hostCode){ST.hcode=clip($("hcodeIn").value,40).toUpperCase();if(!ST.hcode){$("hmsg").textContent="اكتب رمز الشراء أول.";return}saveST()}e.target.disabled=true;e.target.textContent="جاري التجهيز…";
+    const err=await connect(true);if(err)return landing("",err);saveST();startHost()};
   $("codeIn").oninput=e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"")};
   $("joinBtn").onclick=async()=>{
     const nk=clip($("nickIn").value,14),cd=$("codeIn").value.toUpperCase(),m=$("msg");
@@ -772,7 +775,10 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 /* Beta games live in /js/sahra-beta.js and plug in through this kit. */
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
-  sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code};
+  sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code,
+  commercial:CFG.edition==="commercial",
+  // drops items that use other companies' titles/characters in the commercial edition
+  own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
 (window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={beta:true,...g}}catch(e){console.error("sahra beta",e)}});
 addEventListener("resize",()=>{if(role==="host"&&H.game==="arsimha"&&$("art"))paint($("art"),H.g.drawings[H.g.ex],H.g.ex,false)});
 

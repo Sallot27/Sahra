@@ -13,10 +13,23 @@ class RoomController extends Controller
     private const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
     /** The big screen opens a room and gets a secret host token back. */
-    public function store(): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         if (! Reverb::configured()) {
             return response()->json(['message' => 'websockets_not_configured'], 503);
+        }
+
+        // Paid copies: only the big screen needs a purchase code, players join free.
+        $codes = config('sahra.host_codes');
+        if ($codes !== []) {
+            $given = strtoupper(trim((string) $request->input('host_code', '')));
+            $ok = false;
+            foreach ($codes as $code) {
+                $ok = hash_equals($code, $given) || $ok;
+            }
+            if (! $ok) {
+                return response()->json(['message' => 'host_code_required'], 403);
+            }
         }
 
         for ($attempt = 0; $attempt < 20; $attempt++) {
