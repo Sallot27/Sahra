@@ -647,4 +647,151 @@ B.push(K=>{
       if(v.stop&&v.stop!==K.me()&&!C.L.stopShown){C.L.stopShown=1;sfx.tada();el.innerHTML=`<b style="color:var(--coral);font-size:20px">✋ ${C.pnm(v,v.stop)} قال ستوب! بسرعة!</b>`}},
   };
 });
+/* =====================================================================
+   9) لسانك معقود: a sound-alike spelling, everyone races to type the real thing
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,norm,nearTruth}=K;
+  const C=common(K);
+  const T="🎬 كرتون أو فيلم أو مسلسل",P="📜 مثل",W="💬 عبارة نقولها";
+  const ITEMS=[
+    {g:"سِن دِري لا",c:T,a:"سندريلا",alt:["سندرلا"]},
+    {g:"عَ لا ئِد دين",c:T,a:"علاء الدين",alt:["علاءالدين","علا الدين"]},
+    {g:"ألْ أ سَدِلْ مَ لِك",c:T,a:"الأسد الملك",alt:["الملك الأسد","الاسد الملك"]},
+    {g:"تو موجي ري",c:T,a:"توم وجيري",alt:["توم و جيري"]},
+    {g:"كاب تِنما جِد",c:T,a:"كابتن ماجد",alt:["الكابتن ماجد"]},
+    {g:"البح ثعَنْ ني مو",c:T,a:"البحث عن نيمو",alt:["نيمو"]},
+    {g:"الْ جَ مي لَ تُلْ وَحْش",c:T,a:"الجميلة والوحش",alt:["الجميله والوحش"]},
+    {g:"حِكا يَ تِلْ عُبَه",c:T,a:"حكاية لعبة",alt:["حكايه لعبه","توي ستوري"]},
+    {g:"سَ لا حِفُنْ نِنْ جا",c:T,a:"سلاحف النينجا",alt:["سلاحف نينجا"]},
+    {g:"الْ مُ حَقْ قِ قُ كو نان",c:T,a:"المحقق كونان",alt:["كونان","المحقق كونن"]},
+    {g:"عَدْ نا نُو لي نا",c:T,a:"عدنان ولينا",alt:["عدنان و لينا"]},
+    {g:"با بِلْ حا رَه",c:T,a:"باب الحارة",alt:["باب الحاره"]},
+    {g:"طا شما طاش",c:T,a:"طاش ما طاش",alt:["طاش ماطاش"]},
+    {g:"جَ زي رَ تُلْ كَنْز",c:T,a:"جزيرة الكنز",alt:["جزيره الكنز"]},
+    {g:"سْنُو وا يِت",c:T,a:"سنو وايت",alt:["سنووايت","بياض الثلج"]},
+    {g:"أنْ نِ مِ رُلْ مُ قَنْ نَع",c:T,a:"النمر المقنع",alt:["النمر المقنّع"]},
+    {g:"اصْ صَبْ رُمِفْ تا حُلْ فَرَج",c:P,a:"الصبر مفتاح الفرج",alt:["الصبر مفتاح"]},
+    {g:"الْ عَجَ لَ تُمِ نَشْ شَيْ طان",c:P,a:"العجلة من الشيطان",alt:["العجله من الشيطان"]},
+    {g:"اللي ما يِعْ رِفِصْ صَقِرْ يِشْ ويه",c:P,a:"اللي ما يعرف الصقر يشويه",alt:["الي ما يعرف الصقر يشويه","اللي ما يعرف الصقر يشويه"]},
+    {g:"عُصْ فو رِنْ فِلْ يَد",c:P,a:"عصفور في اليد",alt:["عصفور باليد","عصفور في اليد خير من عشرة على الشجرة"]},
+    {g:"اللي فا تِما ت",c:P,a:"اللي فات مات",alt:["الي فات مات"]},
+    {g:"ألْ قِرْ دِفي عَيْ نِ أمْ مِه غَ زال",c:P,a:"القرد في عين أمه غزال",alt:["القرد بعين امه غزال"]},
+    {g:"صَ با حَلْ خِير",c:W,a:"صباح الخير",alt:["صباح الخيرر"]},
+    {g:"كُلْ لَ عا مِوَنْ تُمْ بِ خير",c:W,a:"كل عام وأنتم بخير",alt:["كل عام وانتم بخير","كل عام وانت بخير"]},
+    {g:"مَ عَسْ سَ لا مَه",c:W,a:"مع السلامة",alt:["مع السلامه"]},
+    {g:"بِلْ هَ نا ئِوَشْ شِ فا",c:W,a:"بالهناء والشفاء",alt:["بالهنا والشفا","بالعافية"]},
+    {g:"تِصْ بَ حُعْ لا خِير",c:W,a:"تصبح على خير",alt:["تصبحون على خير"]},
+    {g:"عِي دُكْ مُبا رَك",c:W,a:"عيدك مبارك",alt:["عيد مبارك"]},
+  ];
+  const ROUNDS=8,PTS=[10,5,3];
+  const ptsFor=i=>i<PTS.length?PTS[i]:1;
+  return{
+    id:"lisan",name:"لسانك معقود",emoji:"👅",color:"#ff9a3c",min:2,
+    desc:"تطلع كلمة مكتوبة بطريقة غريبة… اقراها بصوت عالي وخمّن وش هي قبل الكل!",
+    tags:["٢-٨ لاعبين","سرعة","ضحك"],
+    rules:["تطلع للكل كلمة أو عبارة مكتوبة بشكل يلخبط","اقروها بصوت عالي… وبتسمعون الكلمة الحقيقية","اكتب الكلمة الحقيقية في جوالك بأسرع وقت","الأول ١٠، الثاني ٥، الثالث ٣، وأي أحد يعرفها بعدهم ١"],
+    winTitle:"صاحب أسرع لسان!",likeTitle:"",
+    timed:["decode"],
+    start(){H.g={list:shuffle(ITEMS).slice(0,ROUNDS),i:-1};this.next()},
+    next(){const g=H.g;g.i++;if(g.i>=g.list.length)return K.finishGame();
+      if(g.i===4&&!g.mid){g.mid=1;g.i--;return C.scores(6)}
+      g.p=g.list[g.i];g.truths=[g.p.a,...g.p.alt].map(norm);g.solved=[];g.wrong={};g.seen={};
+      H.ph="decode";H.k++;setTimer(30);sfx.tada();H.quip=pick(["اقروها بصوت عالي! 🗣️","لسانكم بيتعقد… 😂","قولوها بسرعة… وش طلعت؟"])},
+    tick(now){const g=H.g;
+      if(H.ph==="decode"){active().forEach(id=>{if(g.solved.includes(id))return;const a=K.act(id);if(!a||typeof a.ans!=="string"||g.seen[id]===a.n)return;g.seen[id]=a.n;
+          if(nearTruth(a.ans,g.truths)){g.solved.push(id);C.add(id,ptsFor(g.solved.length-1));sfx.coin()}else g.wrong[id]=a.n});
+        if(now>H.end||g.forceSkip||(active().length&&active().every(id=>g.solved.includes(id)))){g.forceSkip=false;H.ph="answer";H.k++;setTimer(6);if(g.solved.length){sfx.truth();confetti(60)}else sfx.lie()}}
+      else if(H.ph==="answer"){if(now>H.end)this.next()}
+      else if(H.ph==="scores"){if(now>H.end)this.next()}},
+    doneMap(){const g=H.g;if(H.ph!=="decode")return null;const m={};g.solved.forEach(id=>m[id]=1);return m},
+    view(v){const g=H.g;if(H.ph==="decode"){v.gt=g.p.g;v.c=g.p.c;v.solved=g.solved;v.wrong=g.wrong}if(["answer","scores"].includes(H.ph))v.sc=H.sc},
+    pill(){const g=H.g;return`<span class="pill">${fmt(Math.min(g.i+1,g.list.length))} من ${fmt(g.list.length)}</span>`},
+    render(){const g=H.g;
+      if(H.ph==="decode")return C.head(H.quip)+`<div class="ticket" style="text-align:center"><span class="cat">${esc(g.p.c)}</span><div class="ls-big">${esc(g.p.g)}</div></div><div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="answer")return`<div class="reveal" style="padding-top:20px"><p class="ls-old">${esc(g.p.g)}</p><div class="answer">${esc(g.p.a)}</div>
+        <div class="who">${g.solved.length?g.solved.map((id,i)=>`${C.avatar(id)}<span>${esc(nm(id))}</span><span class="pts">+${fmt(ptsFor(i))}</span>`).join(""):"<span>ولا أحد عرفها! 😅</span>"}</div></div>`;
+      if(H.ph==="scores")return C.scoresHTML();
+      return""},
+    dyn(){const g=H.g;if(H.ph!=="decode")return"";
+      return`<div class="ls-order">${g.solved.map((id,i)=>`<span class="ls-rank">${["🥇","🥈","🥉"][i]||"✅"} ${esc(nm(id))} <b>+${fmt(ptsFor(i))}</b></span>`).join("")}</div>${K.troupe(active(),new Set(g.solved))}`},
+    phone(v,{root,tline}){C.fresh(v);
+      if(v.ph==="decode"){root.insertAdjacentHTML("beforeend",`<div class="pq" style="text-align:center"><small>${esc(v.c)}</small><div class="ls-big sm">${esc(v.gt)}</div></div><p class="note center">اقراها بصوت عالي 🗣️ واكتب وش هي</p>${tline}<div id="lsBox"></div>`);
+        this.form(v);this.phoneLive(v);return}
+      C.watch(root,v);},
+    form(v,msg){const box=document.getElementById("lsBox");if(!box)return;C.L.n=C.L.n||0;
+      C.textForm(box,{ph:"وش الكلمة الحقيقية؟",max:50,btn:"جرّب 🎯",onSend:t=>{C.L.n++;C.L.wait=C.L.n;K.sendAct({k:v.k,ans:t,n:C.L.n});box.innerHTML=`<p class="big">🤔…</p>`}});
+      if(msg)box.insertAdjacentHTML("afterbegin",`<p class="err">${msg}</p>`)},
+    phoneLive(v){if(v.ph!=="decode")return;const me=K.me(),L=C.L,box=document.getElementById("lsBox");if(!box)return;
+      if((v.solved||[]).includes(me)){if(!L.ok){L.ok=1;sfx.truth();const r=v.solved.indexOf(me);C.sent(box,["🥇","🥈","🥉"][r]||"✅","صح عليك!","المركز "+fmt(r+1)+" · +"+fmt(ptsFor(r)))}return}
+      if(L.wait&&v.wrong&&v.wrong[me]===L.wait){L.wait=0;sfx.lie();this.form(v,"❌ مو هي… قولها مرة ثانية بصوت عالي")}},
+  };
+});
+
+/* =====================================================================
+   10) إكس أو: two teams, everyone votes a square at once every few seconds
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti}=K;
+  const C=common(K);
+  const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const SYM=["❌","⭕"],TNAME=["فريق إكس","فريق أو"],BOARDS=3,TURN=8;
+  const winLine=(b,t)=>LINES.find(l=>l.every(i=>b[i]===t));
+  return{
+    id:"xo",name:"إكس أو",emoji:"⭕",color:"#4cc2ff",min:2,
+    desc:"فريقين، والكل يلعب في نفس الوقت! كل فريق يصوّت على مربعه بسرعة… وإذا اخترتوا نفس المربع: تصادم!",
+    tags:["٢-٨ لاعبين","فرق","سرعة"],
+    rules:["تنقسمون فريقين: ❌ و ⭕","كل جولة قصيرة، كل واحد يصوّت من جواله على مربع","المربع اللي ياخذ أكثر أصوات في فريقك ينحط… للفريقين في نفس الوقت!","إذا الفريقين اختاروا نفس المربع: تصادم 💥 ويبقى فاضي","٣ لوحات، والفريق اللي يفوز باللوحة كل لاعب فيه ياخذ ٥٠٠"],
+    winTitle:"بطل إكس أو!",likeTitle:"",
+    timed:["xo"],
+    start(){const pl=shuffle(active());H.g={team:{},pl,board:-1,wins:[0,0]};pl.forEach((id,i)=>H.g.team[id]=i%2);this.newBoard()},
+    newBoard(){const g=H.g;g.board++;if(g.board>=BOARDS)return K.finishGame();
+      g.b=Array(9).fill(null);g.turn=0;g.last=null;g.line=null;g.result=null;this.turn()},
+    turn(){const g=H.g;g.turn++;g.votes={};H.ph="xo";H.k++;setTimer(TURN);sfx.pop();
+      H.quip=g.turn===1?"يلا! كل فريق يختار مربعه… بسرعة 🏃":pick(["الوقت يطير! ⏱️","تكلموا مع فريقكم… بس بسرعة!","انتبهوا للتصادم 💥"])},
+    tick(now){const g=H.g;
+      if(H.ph==="xo"){g.pl.forEach(id=>{const a=K.act(id);if(a&&Number.isInteger(a.sq)&&a.sq>=0&&a.sq<9&&!g.b[a.sq])g.votes[id]=a.sq});
+        const live=g.pl.filter(id=>active().includes(id));
+        if(now>H.end||g.forceSkip||(live.length&&live.every(id=>g.votes[id]!==undefined))){g.forceSkip=false;this.place()}}
+      else if(H.ph==="xomove"){if(now>H.end){if(g.result)this.endBoard();else this.turn()}}
+      else if(H.ph==="xoend"){if(now>H.end)this.newBoard()}},
+    pickFor(t){const g=H.g,cnt={};Object.entries(g.votes).forEach(([id,sq])=>{if(g.team[id]===t)cnt[sq]=(cnt[sq]||0)+1});
+      const max=Math.max(0,...Object.values(cnt));if(!max)return null;return+pick(Object.keys(cnt).filter(k=>cnt[k]===max))},
+    place(){const g=H.g,a=this.pickFor(0),b=this.pickFor(1);g.last={a,b,clash:a!==null&&a===b};
+      if(g.last.clash)sfx.lie();else{if(a!==null)g.b[a]=0;if(b!==null)g.b[b]=1;if(a!==null||b!==null)sfx.coin()}
+      const w0=winLine(g.b,0),w1=winLine(g.b,1);
+      if(w0&&w1){g.result="draw";g.line=w0}else if(w0){g.result=0;g.line=w0}else if(w1){g.result=1;g.line=w1}
+      else if(g.b.every(x=>x!==null)||g.turn>=14)g.result="draw";
+      H.ph="xomove";H.k++;setTimer(g.result!==null?2.5:2)},
+    endBoard(){const g=H.g;if(g.result===0||g.result===1){g.wins[g.result]++;g.pl.forEach(id=>{if(g.team[id]===g.result)C.add(id,500)});sfx.truth();confetti()}else sfx.lie();
+      H.ph="xoend";H.k++;setTimer(6)},
+    doneMap(){return H.ph==="xo"?H.g.votes:null},
+    view(v){const g=H.g;if(!g.b)return;v.b=g.b;v.team=g.team;v.last=g.last;v.result=g.result;v.wins=g.wins;
+      if(H.ph==="xo")v.done=Object.keys(g.votes);if(H.ph==="xoend")v.sc=H.sc},
+    pill(){const g=H.g;return`<span class="pill">اللوحة ${fmt(g.board+1)} من ${fmt(BOARDS)} · ${fmt(g.wins[0])} - ${fmt(g.wins[1])}</span>`},
+    boardHTML(){const g=H.g,L=g.last||{},show=H.ph!=="xo";
+      return`<div class="xo-board">${g.b.map((x,i)=>{const isNew=show&&!L.clash&&(i===L.a||i===L.b),clash=show&&L.clash&&i===L.a,inLine=g.line&&g.line.includes(i)&&H.ph!=="xo";
+        return`<div class="xo-cell ${x===0?"x":x===1?"o":""} ${isNew?"new":""} ${clash?"clash":""} ${inLine?"line":""}">${x!==null?SYM[x]:clash?"💥":""}</div>`}).join("")}</div>`},
+    teamsHTML(){const g=H.g;return`<div class="xo-teams">${[0,1].map(t=>`<div class="xo-team t${t}"><b>${SYM[t]} ${TNAME[t]} <span>${fmt(g.wins[t])}</span></b><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span class="xo-m ${H.ph==="xo"&&g.votes[id]!==undefined?"ok":""}">${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
+    render(){const g=H.g;
+      if(H.ph==="xo"||H.ph==="xomove"){const L=g.last||{};
+        const msg=H.ph==="xomove"?(L.clash?"💥 تصادم! الفريقين اختاروا نفس المربع":g.result===0||g.result===1?`${SYM[g.result]} ${TNAME[g.result]} كمّل خط! 🎉`:g.result==="draw"?"تعادل! 🤝":L.a===null&&L.b===null?"ولا فريق صوّت! 😴":""):"";
+        return(H.ph==="xo"?C.head(H.quip):"")+`<div class="xo-wrap">${this.teamsHTML()}${this.boardHTML()}</div>${msg?`<p class="xo-msg">${msg}</p>`:""}<div id="dyn" class="still"></div>`}
+      if(H.ph==="xoend"){const r=g.result;return`<div class="reveal" style="padding-top:10px"><div class="xo-wrap small">${this.boardHTML()}</div>
+        <div class="stamp ${r==="draw"?"lie":"truth"}" style="position:static">${r==="draw"?"تعادل! 🤝":`فاز ${TNAME[r]} ${SYM[r]}`}</div>
+        ${r!=="draw"?`<div class="who">${g.pl.filter(id=>g.team[id]===r).map(id=>`${C.avatar(id)}<span>${esc(nm(id))}</span>`).join("")}<span class="pts">+٥٠٠</span></div>`:""}
+        <p class="note" style="font-size:22px">النتيجة: ${SYM[0]} ${fmt(g.wins[0])} - ${fmt(g.wins[1])} ${SYM[1]}</p></div>`}
+      return""},
+    dyn(){const g=H.g;if(H.ph!=="xo")return"";const t=[0,1].map(x=>g.pl.filter(id=>g.team[id]===x&&g.votes[id]!==undefined).length);
+      return`<p class="note center" style="font-size:19px">صوّتوا: ${SYM[0]} ${fmt(t[0])} · ${SYM[1]} ${fmt(t[1])}</p>`},
+    phone(v,{root,tline}){const me=K.me(),L=C.L;C.fresh(v);const t=v.team?v.team[me]:undefined;
+      if(t===undefined){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
+      const head=`<div class="xo-me t${t}">أنت في ${SYM[t]} ${TNAME[t]}</div>`;
+      if(v.ph==="xo"){root.insertAdjacentHTML("beforeend",head+`${tline}<p class="note center">اختار مربع لفريقك 👇</p><div class="xo-board phone" id="xoB">${v.b.map((x,i)=>`<button class="xo-cell ${x===0?"x":x===1?"o":""}" data-i="${i}" ${x!==null?"disabled":""}>${x!==null?SYM[x]:""}</button>`).join("")}</div>`);
+        root.querySelectorAll("#xoB [data-i]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,sq:+b.dataset.i});root.querySelectorAll("#xoB [data-i]").forEach(x=>x.classList.toggle("pick",x===b));sfx.pop()});return}
+      if(v.ph==="xomove"){root.insertAdjacentHTML("beforeend",head+`<div class="xo-board phone">${v.b.map(x=>`<div class="xo-cell ${x===0?"x":x===1?"o":""}">${x!==null?SYM[x]:""}</div>`).join("")}</div><p class="big" style="font-size:28px">${v.last&&v.last.clash?"💥 تصادم!":"👀 ناظر الشاشة"}</p>`);return}
+      if(v.ph==="xoend"){const r=v.result;C.watch(root,v,r==="draw"?"🤝":r===t?"🏆":"😅",r==="draw"?"تعادل!":r===t?"فاز فريقك!":"المرة الجاية لكم 💪");return}
+      C.watch(root,v);},
+  };
+});
 })();
