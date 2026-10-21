@@ -245,7 +245,7 @@ function cleanStrokes(d){
    The big screen is the referee. It sends the full game view as "client-host";
    each phone sends its own small state as "client-p". Drawings go over HTTP. */
 let room=null,role=null,myPeer=null,pusher=null;
-const listeners=[];let onLost=()=>{};
+const listeners=[];let onLost=()=>{},onFound=()=>{};
 const notify=()=>listeners.forEach(f=>{try{f()}catch(e){}});
 async function api(method,path,body){
   const r=await fetch((CFG.api||"/api")+path,{method,headers:{"Accept":"application/json",...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
@@ -275,26 +275,36 @@ function openChannel(hostToken){return new Promise((res,rej)=>{
 function makeSender(ch,event,build){
   let timer=null,last=0;
   const flush=()=>{timer=null;last=Date.now();const d=build();const s=JSON.stringify(d);
-    if(s.length>9500)console.warn("sahra: message is large",s.length);try{ch.trigger(event,d)}catch(e){}};
+    const bytes=new Blob([s]).size;if(bytes>9000)console.warn("sahra: message is large",bytes);try{ch.trigger(event,d)}catch(e){}};
   const send=()=>{if(timer)return;const wait=Math.max(0,120-(Date.now()-last));timer=setTimeout(flush,wait)};
   setInterval(send,3000);
   return send;
 }
-async function hostRoom(){
-  const {code,host_token}=await api("POST","/rooms",CFG.hostCode?{host_code:ST.hcode||""}:undefined).catch(e=>{throw e.status===403?"hostcode":e});
-  ST.code=code;
-  const {ch,members}=await openChannel(host_token);
+const savedHost=()=>{try{return JSON.parse(sessionStorage.getItem("sahra_host")||"null")}catch(e){return null}};
+async function hostRoom(resume){
+  let opened=null,saved=resume?savedHost():null;
+  if(saved&&saved.code&&saved.t){ST.code=saved.code;
+    try{opened=await openChannel(saved.t)}catch(e){try{pusher&&pusher.disconnect()}catch(_){}opened=null}}
+  if(!opened){
+    const {code,host_token}=await api("POST","/rooms",CFG.hostCode?{host_code:ST.hcode||""}:undefined).catch(e=>{throw e.status===403?"hostcode":e});
+    ST.code=code;try{sessionStorage.setItem("sahra_host",JSON.stringify({code,t:host_token}));sessionStorage.removeItem("sahra_snap")}catch(e){}
+    opened=await openChannel(host_token);
+  }
+  const {ch,members}=opened;
   const self={peer:members.me.id,sameTab:true,presence:{}},players=new Map();
   const isPlayer=m=>m&&m.info&&m.info.role==="player";
   members.each(m=>{if(isPlayer(m))players.set(m.id,{peer:m.id,sameTab:false,presence:{}})});
   const send=makeSender(ch,"client-host",()=>({p:self.presence}));
   ch.bind("pusher:member_added",m=>{if(isPlayer(m)&&!players.has(m.id))players.set(m.id,{peer:m.id,sameTab:false,presence:{}});send();notify()});
   ch.bind("pusher:member_removed",m=>{players.delete(m.id);notify()});
-  ch.bind("client-p",d=>{if(!d||typeof d.from!=="string"||!d.p||typeof d.p!=="object")return;
+  // only trust a phone's own events: the sender id (when the server provides it) must match "from"
+  ch.bind("client-p",(d,meta)=>{if(!d||typeof d.from!=="string"||!d.from.startsWith("p-")||!d.p||typeof d.p!=="object")return;
+    if(meta&&meta.user_id&&meta.user_id!==d.from)return;
     const e=players.get(d.from);if(!e)return;Object.assign(e.presence,d.p);notify()});
   return{
     peers:()=>[self,...players.values()],
-    presence:async patch=>{Object.assign(self.presence,patch);send()},
+    // the host sends its whole view each time: replace it so old fields never pile up
+    presence:async patch=>{if(patch&&patch.k!==undefined)self.presence={...patch};else Object.assign(self.presence,patch);send()},
     onPeers:fn=>listeners.push(fn),
   };
 }
@@ -306,8 +316,9 @@ async function playerRoom(){
   members.each(m=>{if(m.info&&m.info.role==="host")host.peer=m.id});
   let lostTimer=null;
   const send=makeSender(ch,"client-p",()=>({from:self.peer,p:self.presence}));
-  ch.bind("client-host",d=>{if(d&&d.p&&typeof d.p==="object"){host.presence=d.p;notify()}});
-  ch.bind("pusher:member_added",m=>{if(m.info&&m.info.role==="host"){host.peer=m.id;clearTimeout(lostTimer);lostTimer=null;send()}});
+  ch.bind("client-host",(d,meta)=>{if(meta&&meta.user_id&&!String(meta.user_id).startsWith("h-"))return;
+    if(d&&d.p&&typeof d.p==="object"){host.presence=d.p;notify()}});
+  ch.bind("pusher:member_added",m=>{if(m.info&&m.info.role==="host"){host.peer=m.id;clearTimeout(lostTimer);lostTimer=null;send();onFound()}});
   ch.bind("pusher:member_removed",m=>{if(m.id===host.peer&&!lostTimer)lostTimer=setTimeout(()=>onLost(),8000)});
   pusher.connection.bind("state_change",s=>{if(s.current==="connected")send()});
   return{
@@ -316,10 +327,10 @@ async function playerRoom(){
     onPeers:fn=>listeners.push(fn),
   };
 }
-async function connect(asHost){
+async function connect(asHost,resume){
   if(typeof Pusher==="undefined")return"تعذّر تحميل مكتبة الاتصال. تأكد من الإنترنت وحدّث الصفحة.";
   if(!CFG.ready)return"السيرفر ما هو جاهز للعب الجماعي بعد (WebSockets مو مفعّلة).";
-  try{room=asHost?await hostRoom():await playerRoom();return""}
+  try{room=asHost?await hostRoom(resume):await playerRoom();return""}
   catch(e){
     try{pusher&&pusher.disconnect()}catch(_){}
     if(e==="nohost")return"ما لقينا غرفة بهذا الرمز. تأكد من الرمز وأن الشاشة الكبيرة مفتوحة.";
@@ -340,7 +351,7 @@ function landing(msg,hostMsg){
   <div class="card">
     <h2 style="font-size:30px">🎮 ادخل كلاعب</h2>
     <label class="f">اسمك<input type="text" id="nickIn" maxlength="14" value="${esc(ST.nick)}" autocomplete="off" placeholder="مثلاً: أبو فهد"></label>
-    <label class="f">رمز الغرفة<input type="text" id="codeIn" maxlength="4" value="" autocomplete="off" placeholder="ABCD"></label>
+    <label class="f">رمز الغرفة<input type="text" id="codeIn" maxlength="4" value="${esc(ST.code||"")}" autocomplete="off" placeholder="ABCD"></label>
     <button class="btn coral wide" id="joinBtn">ادخل</button>
     <p class="err" id="msg">${msg?esc(msg):""}</p>
   </div>
@@ -348,11 +359,15 @@ function landing(msg,hostMsg){
     <h2 style="font-size:30px">📺 الشاشة الكبيرة</h2>
     <p class="note">افتحها على الكمبيوتر أو التلفزيون، وخلّوا الكل يشوفها.</p>
     ${CFG.hostCode?`<label class="f">رمز الشراء<input type="text" id="hcodeIn" maxlength="40" value="${esc(ST.hcode||"")}" autocomplete="off" placeholder="SAHRA-XXXX" style="direction:ltr;text-align:left"></label><p class="note" style="font-size:14px">اللاعبين ما يحتاجون رمز، بس الشاشة الكبيرة.</p>`:""}
+    ${resumeInfo()?`<button class="btn coral wide" id="resumeBtn">↩️ كمّل السهرة (${esc(resumeInfo().code)})</button>`:""}
     <button class="btn wide" id="hostBtn">افتح سهرة جديدة</button>
     <p class="err" id="hmsg">${hostMsg?esc(hostMsg):""}</p>
   </div>`;
   $("hostBtn").onclick=async e=>{initAudio();if(CFG.hostCode){ST.hcode=clip($("hcodeIn").value,40).toUpperCase();if(!ST.hcode){$("hmsg").textContent="اكتب رمز الشراء أول.";return}saveST()}e.target.disabled=true;e.target.textContent="جاري التجهيز…";
+    try{sessionStorage.removeItem("sahra_host");sessionStorage.removeItem("sahra_snap")}catch(_){}
     const err=await connect(true);if(err)return landing("",err);saveST();startHost()};
+  const rb=$("resumeBtn");if(rb)rb.onclick=async()=>{initAudio();rb.disabled=true;rb.textContent="جاري الرجوع للسهرة…";
+    const snap=resumeInfo();const err=await connect(true,true);if(err)return landing("",err);saveST();startHost(ST.code===snap.code?snap:null)};
   $("codeIn").oninput=e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"")};
   $("joinBtn").onclick=async()=>{
     const nk=clip($("nickIn").value,14),cd=$("codeIn").value.toUpperCase(),m=$("msg");
@@ -366,6 +381,11 @@ function landing(msg,hostMsg){
 }
 
 /* ================= HOST core ================= */
+// a snapshot of the evening, so refreshing the big screen doesn't end the game for everyone
+function resumeInfo(){try{const s=JSON.parse(sessionStorage.getItem("sahra_snap")||"null"),h=savedHost();
+  return s&&h&&s.code===h.code&&Date.now()-s.at<6*3600e3?s:null}catch(e){return null}}
+function saveSnap(){try{sessionStorage.setItem("sahra_snap",JSON.stringify({code:ST.code,at:Date.now(),
+  H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g}}))}catch(e){}}
 const H={game:null,ph:"menu",k:0,order:[],names:{},sc:{},lk:{},end:0,total:1,quip:"",lastView:"",lastKey:"",g:{}};
 const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%8];
 const face=id=>FACES[Math.max(0,H.order.indexOf(id))%8];
@@ -374,28 +394,36 @@ const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
 const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
 const active=()=>{const here=new Set(peers().map(p=>p.peer));return H.order.filter(id=>here.has(id))};
 let actOf=()=>null;
-function startHost(){
-  role="host";if(CFG.debug)window.__H=H;H.quip=pick(QUIP.menu);preloadAudio();
+function startHost(snap){
+  role="host";if(CFG.debug)window.__H=H;
+  if(snap&&snap.H){Object.assign(H,snap.H,{lastView:"",lastKey:""});H.k++; // new step number: stale phone actions are ignored
+    if(H.ph==="topic"){const G=GAMES[H.game],t=H.g.topic;H.g.afterTopic=G&&G.afterTopic?()=>G.afterTopic(t):null;if(!H.g.afterTopic)goMenu()}
+    if(H.game&&!GAMES[H.game])goMenu();H.end=Math.max(H.end,Date.now()+8000);
+    H.hold=Date.now()+4000} // wait for every phone to report back before judging "everyone answered"H.quip=pick(QUIP.menu);preloadAudio();
   room.presence({role:"host",code:ST.code}).catch(()=>{});
   setInterval(hostTick,250);hostTick();
 }
 function hostTick(){
   const ps=peers(),now=Date.now();
-  ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;
+  H.seen=H.seen||{};
+  ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;H.seen[p.peer]=now;
     H.names[p.peer]=clip(pr.nm,14)||"لاعب";
     if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
-  if(H.ph==="menu"||H.ph==="lobby"){const here=new Set(ps.map(p=>p.peer));H.order=H.order.filter(id=>here.has(id))}
+  // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
+  if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
   if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
   if(H.game&&H.ph==="topic"){if(now>H.end&&H.g.afterTopic){const f=H.g.afterTopic;H.g.afterTopic=null;f()}}
-  else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end")GAMES[H.game].tick(now);
+  else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end"&&!(H.hold&&now<H.hold)){
+    try{GAMES[H.game].tick(now);H._err=0}catch(e){console.error("sahra tick",e);if(++H._err>8){H._err=0;goMenu();H.quip="صار خلل بسيط في اللعبة… اختاروا لعبة ثانية 🙏"}}}
   const G0=H.game?GAMES[H.game]:null,timed=(G0&&G0.timed||[]).includes(H.ph);
   if((timed||["lie","choose","draw","vote","guess"].includes(H.ph))&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
   if((timed||H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
   H._lastTl=tl();
   {const g=H.g||{},src=G0&&G0.doneMap?G0.doneMap():{lie:g.lies,choose:g.choices,draw:g.drawings,vote:g.votes}[H.ph],n=src?Object.keys(src).length:0;
    if(H._dk===H.k&&n>H._dn)sfx.submit();H._dk=H.k;H._dn=n}
-  const pk=[H.game,H.ph,H.k].join("|");if(pk!==AUD.lastPhase){AUD.lastPhase=pk;onPhase()}
+  const pk=[H.game,H.ph,H.k].join("|");if(pk!==AUD.lastPhase){AUD.lastPhase=pk;onPhase();saveSnap()}
+  else if(now-(H._snapAt||0)>3000){H._snapAt=now;saveSnap()}
   publish();renderHost();
 }
 function publish(){
@@ -454,8 +482,8 @@ function renderHost(){
   if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
     <div class="lobby">
-      <div class="col"><div class="games">${Object.values(GAMES).filter(g=>!g.beta).map((g,i)=>`<button class="gcard" data-g="${g.id}" style="--g:${g.color};animation-delay:${i*.1}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p><div class="tags">${g.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div></button>`).join("")}</div>
-      ${Object.values(GAMES).some(g=>g.beta)?`<h3 class="betahead">🧪 ألعاب تجريبية <small>جرّبوها وقولوا رأيكم</small></h3><div class="games beta">${Object.values(GAMES).filter(g=>g.beta).map((g,i)=>`<button class="gcard sm" data-g="${g.id}" style="--g:${g.color};animation-delay:${.3+i*.06}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p></button>`).join("")}</div>`:""}</div>
+      <div class="col"><div class="games">${Object.values(GAMES).filter(g=>!g.more).map((g,i)=>`<button class="gcard" data-g="${g.id}" style="--g:${g.color};animation-delay:${i*.1}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p><div class="tags">${g.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div></button>`).join("")}</div>
+      ${Object.values(GAMES).some(g=>g.more)?`<h3 class="betahead">🎲 ألعاب أكثر <small>${fmt(Object.values(GAMES).filter(g=>g.more).length)} لعبة</small></h3><div class="games beta">${Object.values(GAMES).filter(g=>g.more).map((g,i)=>`<button class="gcard sm" data-g="${g.id}" style="--g:${g.color};animation-delay:${.3+i*.06}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p></button>`).join("")}</div>`:""}</div>
       ${joinPanel()}
     </div>`;
   }else if(H.ph==="lobby"){
@@ -587,7 +615,8 @@ const FAB={
   topics(){const have=new Set(QS.map(q=>q.t));return[...TOPICS.filter(t=>have.has(t)),...[...have].filter(t=>!TOPICS.includes(t))]},
   fresh(topic){const inT=QS.map((_,i)=>i).filter(i=>!topic||QS[i].t===topic);let pool=inT.filter(i=>!this.used.has(QS[i].id));
     if(!pool.length){inT.forEach(i=>this.used.delete(QS[i].id));pool=inT}return shuffle(pool)},
-  choose(t,by){goTopic(t,()=>this.lie(this.fresh(t)[0]),by)},
+  choose(t,by){goTopic(t,()=>this.afterTopic(t),by)},
+  afterTopic(t){const f=this.fresh(t);if(!f.length)return this.next();this.lie(f[0])},
   mark(i){this.used.add(QS[i].id);try{localStorage.setItem("fabraka_used",JSON.stringify([...this.used]))}catch(e){}},
   start(){H.g={step:-1};this.next()},
   m(){return FAB_STEPS[Math.max(0,H.g.step)]||1},
@@ -647,9 +676,12 @@ const DRW={
     bluffLie(g,45);H.quip=pick(QUIP.dlie)},
   tick(now){const g=H.g;
     if(H.ph==="draw"){
-      H.order.forEach(id=>{const a=actOf(id);if(a&&typeof a.draw==="string"&&!g.drawings[id])fetchDrawing(g,id,a.draw)});
+      H.order.forEach(id=>{const a=actOf(id);if(a&&typeof a.draw==="string"&&/^[0-9A-Za-z]{10,40}$/.test(a.draw)&&!g.drawings[id])fetchDrawing(g,id,a.draw)});
       const need=active().filter(id=>g.prompts[id]);
-      if(now>H.end||g.forceSkip||(need.length&&need.every(id=>g.drawings[id]))){g.forceSkip=false;
+      const all=need.length&&need.every(id=>g.drawings[id]);
+      // when time is up, phones auto-send what they drew: give the uploads a few seconds
+      if(!all&&(now>H.end||g.forceSkip)){if(!g.graceAt)g.graceAt=now+4500;if(now<g.graceAt)return}
+      if(all||now>H.end||g.forceSkip){g.forceSkip=false;g.graceAt=0;
         g.queue=shuffle(Object.keys(g.drawings).filter(id=>g.prompts[id]));
         if(!g.queue.length){H.ph="scores";H.k++;setTimer(5);H.quip="ولا أحد رسم شي؟! 😅";return}
         this.nextDrawing()}}
@@ -689,15 +721,17 @@ const SAL={
   next(){const g=H.g;g.round++;H.k++;
     if(g.round>g.rounds)return finishGame();
     const act=active();g.picker=act[(g.round-1)%Math.max(1,act.length)]||null;
-    g.cats=Object.keys(WORDS).filter(c=>(WORDS[c]||[]).length>=2);H.ph="pick";setTimer(20);H.quip="مين بيختار الموضوع؟ 🤔"},
+    g.cats=Object.keys(WORDS).filter(c=>(WORDS[c]||[]).length>=2);if(!g.cats.length)return finishGame();
+    H.ph="pick";setTimer(20);H.quip="مين بيختار الموضوع؟ 🤔"},
+  afterTopic(c){this.begin(c)},
   begin(cat){const g=H.g,act=active();g.cat=cat;g.word=pick(WORDS[cat]);g.out=pick(act);g.players=[...act];
     const ring=shuffle(act);g.pairs=[];for(let r=0;r<2;r++)ring.forEach((id,i)=>g.pairs.push([id,ring[(i+1)%ring.length]]));
     g.rvI=0;g.pairAt=Date.now()+20000;g.ready={};H.ph="ask";H.k++;setTimer(180);sfx.go();
     H.quip=pick(["كل واحد يسأل سؤال ذكي… لا تفضحون السالفة!","اللي برا السالفة الحين يعرق 😅","ركّزوا في الأجوبة… فيه واحد يألّف"])},
   tick(now){const g=H.g;
     if(H.ph==="pick"){const a=g.picker&&actOf(g.picker);
-      if(a&&Number.isInteger(a.pick)&&g.cats[a.pick]){const c=g.cats[a.pick];goTopic(c,()=>this.begin(c),g.picker)}
-      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;const c=pick(g.cats);goTopic(c,()=>this.begin(c))}}
+      if(a&&Number.isInteger(a.pick)&&g.cats[a.pick]){const c=g.cats[a.pick];goTopic(c,()=>this.afterTopic(c),g.picker)}
+      else if(!g.picker||!active().includes(g.picker)||now>H.end||g.forceSkip){g.forceSkip=false;const c=pick(g.cats);goTopic(c,()=>this.afterTopic(c))}}
     else if(H.ph==="ask"){
       g.players.forEach(id=>{const a=actOf(id);if(a&&a.ready)g.ready[id]=1});
       const act=active().filter(id=>g.players.includes(id));
@@ -776,10 +810,10 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
   sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code,
-  commercial:CFG.edition==="commercial",
+  commercial:CFG.edition==="commercial",okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
-(window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={beta:true,...g}}catch(e){console.error("sahra beta",e)}});
+(window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={more:true,...g}}catch(e){console.error("sahra beta",e)}});
 addEventListener("resize",()=>{if(role==="host"&&H.game==="arsimha"&&$("art"))paint($("art"),H.g.drawings[H.g.ex],H.g.ex,false)});
 
 /* ================= PLAYER ================= */
@@ -788,7 +822,8 @@ function startPlayer(){
   role="player";
   room.presence({role:"player",code:ST.code,nm:ST.nick,act:null}).catch(()=>{});
   room.onPeers(()=>renderPlayer());
-  onLost=()=>{ME.lost=true;root.innerHTML=`<div class="emoji">🔌</div><p class="big">انقطع الاتصال</p><p class="note center">الشاشة الكبيرة انقفلت أو النت فصل.</p><button class="btn wide" id="rj">ادخل من جديد</button>`;$("rj").onclick=()=>location.reload()};
+  onFound=()=>{if(ME.lost){ME.lost=false;ME.lastKey="";renderPlayer()}};
+  onLost=()=>{ME.lost=true;root.innerHTML=`<div class="emoji">🔌</div><p class="big">انقطع الاتصال</p><p class="note center">الشاشة الكبيرة انقفلت أو النت فصل.<br>إذا رجعت بنرجعك تلقائياً 🔄</p><button class="btn wide" id="rj">ادخل من جديد</button>`;$("rj").onclick=()=>location.reload()};
   setTimeout(renderPlayer,50);setInterval(renderPlayer,500);
 }
 function sendAct(a){room.presence({act:a}).catch(()=>{})}
@@ -811,13 +846,14 @@ function renderPlayer(){
       if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"",true)}
       else if(done&&!ME.shownDone){ME.shownDone=true;$("lieArea").innerHTML=`<div class="emoji">🤫</div><p class="big">تم!</p><p class="note center">كذبتك: «${esc(ME.myLie)}»<br>خلك طبيعي… لا تفضح نفسك.</p>`}}
     if(v.ph==="draw"&&(v.done||[]).includes(myPeer)&&!ME.drawShown){ME.drawShown=true;$("drawArea").innerHTML=`<div class="emoji">🖼️</div><p class="big">وصلت رسمتك!</p><p class="note center">انتظر الباقين يخلّصون.</p>`}
-    const t=$("ptl");if(t)t.textContent=v.tl;
+    const t=$("ptl");if(t)t.textContent=Number(v.tl)||0;
+    if(ME.padSend&&ME.padK===v.k&&v.tl<=3)ME.padSend();
     const Gl=GAMES[v.game];if(Gl&&Gl.phoneLive&&idx>=0)Gl.phoneLive(v);
     return;
   }
-  ME.lastKey=key;
-  if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?`<div class="emoji">⏳</div><p class="big">لحظة…</p>`:`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
-  const tline=`<p class="note">⏱ باقي <b id="ptl">${v.tl}</b> ثانية</p>`;
+  ME.lastKey=key;ME.padSend=null;
+  if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=MAXP?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
+  const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
   if(v.ph==="menu"){root.innerHTML=head+`<div class="emoji">${f}</div><p class="big">أنت داخل!</p><p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;return}
   if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<div class="emoji">${G?G.emoji:f}</div><p class="big">${G?G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>`;return}
   if(v.ph==="pick"){
@@ -887,7 +923,7 @@ function showLieForm(v,err,found){
   if(found)sfx.truth();
   a.innerHTML=(found?`<div class="found"><div class="emoji">🎉</div><p class="big">مبروك! لقيت الإجابة الصحيحة</p><p class="note center">بس لا تقولها لأحد 🤫 الحين اكتب كذبة واضحك عليهم 😈</p></div>`:"")+`<div class="col"><input type="text" id="lieIn" maxlength="40" placeholder="${v.game==="arsimha"?"اكتب عنوان كذب للرسمة…":"اكتب كذبتك هنا…"}" autocomplete="off"><p class="count" id="cnt">0/40</p><button class="btn coral wide" id="lieBtn">أرسل 🤥</button></div>`;
   $("perr").textContent=err||"";
-  const send=t=>{t=clip(t,40);if(!t)return;ME.n++;ME.myLie=t;ME.shownBad=false;sendAct({k:v.k,lie:t,n:ME.n});
+  const send=t=>{t=clip(t,40);if(!t)return;ME.n=Date.now();ME.myLie=t;ME.shownBad=false;sendAct({k:v.k,lie:t,n:ME.n});
     a.innerHTML=`<p class="big">جاري الإرسال…</p>`;$("perr").textContent=""};
   const inp=$("lieIn");
   inp.oninput=()=>$("cnt").textContent=inp.value.length+"/40";
@@ -925,10 +961,16 @@ function drawPad(box,v,idx){
   box.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{w=+b.dataset.w;if(c===2){c=0;box.querySelector('[data-c="0"]').setAttribute("aria-pressed","true");box.querySelector('[data-c="2"]').setAttribute("aria-pressed","false")}box.querySelectorAll("[data-w]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
   $("undo").onclick=()=>{strokes.pop();redraw()};
   $("clr").onclick=()=>{strokes.length=0;redraw()};
-  $("sendDraw").onclick=()=>{if(!strokes.length){$("sendDraw").textContent="ارسم شي أول 😅";return}
-    const sb=$("sendDraw");sb.disabled=true;sb.textContent="جاري الإرسال…";
-    api("POST","/rooms/"+ST.code+"/drawings",{strokes}).then(r=>sendAct({k:v.k,draw:r.id}))
-      .catch(()=>{sb.disabled=false;sb.textContent="ما وصلت، جرّب مرة ثانية 🔁"})};
+  let sending=false,sent=false;
+  const send=auto=>{const sb=$("sendDraw");if(sending||sent)return;
+    if(!strokes.length){if(!auto&&sb)sb.textContent="ارسم شي أول 😅";return}
+    sending=true;if(sb){sb.disabled=true;sb.textContent=auto?"⏰ خلص الوقت… نرسل رسمتك":"جاري الإرسال…"}
+    api("POST","/rooms/"+ST.code+"/drawings",{strokes}).then(r=>{sent=true;sendAct({k:v.k,draw:r.id})})
+      .catch(()=>{if(sb&&sb.isConnected){sb.disabled=false;sb.textContent="ما وصلت، جرّب مرة ثانية 🔁"}})
+      .finally(()=>{sending=false})};
+  $("sendDraw").onclick=()=>send(false);
+  // time is almost up: send whatever is on the pad so the drawing isn't lost
+  ME.padK=v.k;ME.padSend=()=>{if(cv.isConnected)send(true)};
 }
 
 function fetchDrawing(g,id,drawId){

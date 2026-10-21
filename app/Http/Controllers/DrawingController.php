@@ -16,6 +16,11 @@ class DrawingController extends Controller
     /** A phone uploads its drawing; the big screen then fetches it by id. */
     public function store(Request $request, string $code): JsonResponse
     {
+        // a full pad is well under 200KB; refuse anything far bigger before parsing it
+        if (strlen((string) $request->getContent()) > 300_000) {
+            return response()->json(['message' => 'drawing_too_large'], 413);
+        }
+
         $room = Room::where('code', strtoupper($code))->firstOrFail();
         $strokes = $this->clean($request->input('strokes'));
 
