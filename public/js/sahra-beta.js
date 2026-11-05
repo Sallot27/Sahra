@@ -1057,7 +1057,7 @@ B.push(K=>{
           <p class="note center">خبّ جوالك عن اللي جنبك 🙈</p>`);return}
       if(v.ph==="accuse"){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:28px">مين كان يمثّل؟ 🕵️</h2>${tline}<div id="mmBox"></div>`);
         const box=document.getElementById("mmBox"),others=v.pl.filter(id=>id!==me);
-        C.choices(box,others.map(id=>{const j=(v.order||[]).indexOf(id);return{val:id,c:K.COLORS[j%8],html:`${K.FACES[j%8]} ${C.pnm(v,id)}`}}),it=>{K.sendAct({k:v.k,vote:it.val});C.sent(box,"🗳️","صوّتت على "+((v.nm&&v.nm[it.val])||""),"")});return}
+        C.choices(box,others.map(id=>{const j=(v.order||[]).indexOf(id);return{val:id,c:K.COLORS[j%8],html:`${K.avImg(v.av&&v.av[id],K.FACES[j%8]).replace('class="avimg"','class="avimg inl"')} ${C.pnm(v,id)}`}}),it=>{K.sendAct({k:v.k,vote:it.val});C.sent(box,"🗳️","صوّتت على "+((v.nm&&v.nm[it.val])||""),"")});return}
       C.watch(root,v);},
   };
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\DrawingController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\RoomController;
@@ -14,3 +15,6 @@ Route::post('/rooms/auth', [RoomController::class, 'auth'])->middleware('throttl
 
 Route::post('/rooms/{code}/drawings', [DrawingController::class, 'store'])->middleware('throttle:30,1');
 Route::get('/drawings/{id}', [DrawingController::class, 'show'])->middleware('throttle:240,1');
+
+Route::post('/rooms/{code}/avatars', [AvatarController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/avatars/{id}', [AvatarController::class, 'show'])->middleware('throttle:600,1');

@@ -395,3 +395,17 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .segb[aria-pressed="true"]{background:var(--sun);color:#1a1033;border-color:var(--sun)}
 .wlabel.flip b{transform:translateY(-50%) rotate(180deg)}
 .wlabel.flip span{transform:translateY(-50%) rotate(-90deg)}
+
+/* avatars, QR, name */
+.avimg{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.avimg.inl{display:inline-block;width:1.4em;height:1.4em;vertical-align:middle}
+.av .avimg{position:absolute;inset:0}
+.emoji .avimg{width:96px;height:96px;margin:0 auto}
+.namerow{display:flex;gap:8px}.namerow input{flex:1;min-width:0}.namerow .tool{width:56px;height:auto;font-size:26px}
+.avpick{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px}
+.avopt{aspect-ratio:1;border-radius:50%;border:3px solid transparent;background:var(--night2);padding:0;cursor:pointer;font-size:26px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.avopt.on{border-color:var(--sun);transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,204,51,.35)}
+.avopt.cam{background:var(--plum)}
+.qr{display:flex;flex-direction:column;align-items:center;gap:6px}
+.qrbox{width:min(22vh,190px);background:#fff;border-radius:16px;padding:6px;box-shadow:0 6px 0 rgba(0,0,0,.3)}
+.qrbox svg{display:block;width:100%;height:auto}

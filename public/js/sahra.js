@@ -12,6 +12,12 @@ const MAXP=8,T_REVEAL=5200;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clip=(s,n)=>String(s??"").replace(/\s+/g," ").trim().slice(0,n);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
+const AV_COUNT=10;
+// "p:3" = picture 3, "u:<id>" = uploaded selfie
+const okAv=a=>typeof a==="string"&&(/^p:([1-9]|10)$/.test(a)||/^u:[0-9A-Za-z]{10,40}$/.test(a));
+const avSrc=a=>a.startsWith("p:")?"/img/av/"+a.slice(2)+".svg":(CFG.api||"/api")+"/avatars/"+a.slice(2);
+const avImg=(a,fallback)=>okAv(a)?`<img class="avimg" src="${avSrc(a)}" alt="">`:fallback;
+const FUN_NAMES=["بطريق مستعجل","قطوة نعسانة","فلافل خارقة","دبدوب زعلان","سمبوسة طايرة","جمل رايق","بطة مهايطة","زرافة فضولية","نملة مجتهدة","ثعلب ذكي","بطيخة سعيدة","أسد مرتاح","كنغر نطاط","بومة سهرانة","موزة مستعجلة","صقر سريع","تمرة لذيذة","ديناصور لطيف","فراولة معصبة","حلزون رياضي"];
 const fmt=n=>(n||0).toLocaleString("ar-EG");
 function norm(s){
   s=String(s??"").replace(/ی/g,"ي").replace(/ک/g,"ك").replace(/ۀ/g,"ه"); // Persian keyboard letters
@@ -49,7 +55,7 @@ const QUIP={
   dtruth:["الرسام يستاهل ميدالية… أو نظارة","شفتوا؟ كانت واضحة… لا ما كانت واضحة"],
 };
 
-let ST={nick:"",code:"",voice:false,vo:true,mus:true,hcode:""};
+let ST={nick:"",code:"",voice:false,vo:true,mus:true,hcode:"",av:"",selfie:""};
 try{Object.assign(ST,JSON.parse(localStorage.getItem("fabraka")||"{}"))}catch(e){}
 const saveST=()=>{try{localStorage.setItem("fabraka",JSON.stringify(ST))}catch(e){}};
 const randCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random()*24)]).join("");
@@ -346,17 +352,24 @@ const P=p=>p.presence||{};
 /* ================= landing ================= */
 function landing(msg,hostMsg){
   root.className="wrap narrow";
+  const qp=new URLSearchParams(location.search).get("code");
+  if(qp&&/^[A-Za-z]{4}$/.test(qp))ST.code=qp.toUpperCase();
+  const viaQr=!!qp;
   root.innerHTML=`
   <div class="col center" style="padding-top:14px"><div class="logo"><span class="nose">🎉</span><b>سهرة</b><small>ألعاب جماعية بالعربي</small></div></div>
   <p class="note center" style="font-size:18px;margin-inline:auto;max-width:40ch">شاشة كبيرة للعرض، وكل واحد يلعب من جواله. للصغار والكبار.</p>
   <div class="card">
     <h2 style="font-size:30px">🎮 ادخل كلاعب</h2>
-    <label class="f">اسمك<input type="text" id="nickIn" maxlength="14" value="${esc(ST.nick)}" autocomplete="off" placeholder="مثلاً: أبو فهد"></label>
+    <label class="f">اسمك<span class="namerow"><input type="text" id="nickIn" maxlength="14" value="${esc(ST.nick)}" autocomplete="off" placeholder="اكتب اسمك أو اضغط 🎲"><button class="tool" id="diceName" type="button" aria-label="اسم عشوائي">🎲</button></span></label>
+    <div class="f"><span>صورتك</span><div class="avpick" id="avPick">
+      <button class="avopt cam ${ST.av==="s"&&ST.selfie?"on":""}" data-av="s" type="button" aria-label="صورة سيلفي">${ST.selfie?`<img class="avimg" src="${ST.selfie}" alt="">`:"📷"}</button>
+      ${Array.from({length:AV_COUNT},(_,i)=>`<button class="avopt ${ST.av==="p:"+(i+1)?"on":""}" data-av="p:${i+1}" type="button"><img class="avimg" src="/img/av/${i+1}.svg" alt=""></button>`).join("")}
+    </div><input type="file" id="selfieIn" accept="image/*" capture="user" hidden></div>
     <label class="f">رمز الغرفة<input type="text" id="codeIn" maxlength="4" value="${esc(ST.code||"")}" autocomplete="off" placeholder="ABCD"></label>
     <button class="btn coral wide" id="joinBtn">ادخل</button>
     <p class="err" id="msg">${msg?esc(msg):""}</p>
   </div>
-  <div class="card">
+  <div class="card" ${viaQr?'style="display:none"':""} id="hostCard">
     <h2 style="font-size:30px">📺 الشاشة الكبيرة</h2>
     <p class="note">افتحها على الكمبيوتر أو التلفزيون، وخلّوا الكل يشوفها.</p>
     ${CFG.hostCode?`<label class="f">رمز الشراء<input type="text" id="hcodeIn" maxlength="40" value="${esc(ST.hcode||"")}" autocomplete="off" placeholder="SAHRA-XXXX" style="direction:ltr;text-align:left"></label><p class="note" style="font-size:14px">اللاعبين ما يحتاجون رمز، بس الشاشة الكبيرة.</p>`:""}
@@ -370,9 +383,19 @@ function landing(msg,hostMsg){
   const rb=$("resumeBtn");if(rb)rb.onclick=async()=>{initAudio();rb.disabled=true;rb.textContent="جاري الرجوع للسهرة…";
     const snap=resumeInfo();const err=await connect(true,true);if(err)return landing("",err);saveST();startHost(ST.code===snap.code?snap:null)};
   $("codeIn").oninput=e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"")};
+  $("diceName").onclick=()=>{const n=$("nickIn");let x;do{x=pick(FUN_NAMES)}while(x===n.value&&FUN_NAMES.length>1);n.value=x};
+  const markAv=()=>root.querySelectorAll(".avopt").forEach(b=>b.classList.toggle("on",b.dataset.av===ST.av));
+  root.querySelectorAll(".avopt").forEach(b=>b.onclick=()=>{if(b.dataset.av==="s"){$("selfieIn").click();return}ST.av=b.dataset.av;saveST();markAv()});
+  // selfie: crop to a square and shrink on the phone, so only a small picture is uploaded
+  $("selfieIn").onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const img=new Image(),url=URL.createObjectURL(f);
+    img.onload=()=>{const S=160,cv=document.createElement("canvas");cv.width=cv.height=S;const s=Math.min(img.width,img.height);
+      cv.getContext("2d").drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,S,S);URL.revokeObjectURL(url);
+      ST.selfie=cv.toDataURL("image/jpeg",.78);ST.av="s";saveST();const cam=root.querySelector(".avopt.cam");cam.innerHTML=`<img class="avimg" src="${ST.selfie}" alt="">`;markAv()};
+    img.onerror=()=>{URL.revokeObjectURL(url);$("msg").textContent="ما قدرنا نقرا الصورة، جرّب صورة ثانية."};img.src=url};
+  if(viaQr)setTimeout(()=>$("nickIn").focus(),100);
   $("joinBtn").onclick=async()=>{
-    const nk=clip($("nickIn").value,14),cd=$("codeIn").value.toUpperCase(),m=$("msg");
-    if(!nk)return m.textContent="اكتب اسمك أولاً.";
+    let nk=clip($("nickIn").value,14);const cd=$("codeIn").value.toUpperCase(),m=$("msg");
+    if(!nk){nk=pick(FUN_NAMES);$("nickIn").value=nk} // no name typed: pick a fun one
     if(cd.length!==4)return m.textContent="الرمز ٤ حروف إنجليزية، تلقاه على الشاشة الكبيرة.";
     ST.nick=nk;ST.code=cd;saveST();
     const jb=$("joinBtn");jb.disabled=true;jb.textContent="جاري الاتصال…";
@@ -389,7 +412,7 @@ function saveSnap(){try{sessionStorage.setItem("sahra_snap",JSON.stringify({code
   H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g}}))}catch(e){}}
 const H={game:null,ph:"menu",k:0,order:[],names:{},sc:{},lk:{},end:0,total:1,quip:"",lastView:"",lastKey:"",g:{}};
 const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%8];
-const face=id=>FACES[Math.max(0,H.order.indexOf(id))%8];
+const face=id=>avImg((H.av||{})[id],FACES[Math.max(0,H.order.indexOf(id))%8]);
 const nm=id=>H.names[id]||"لاعب";
 const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
 const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
@@ -408,7 +431,7 @@ function hostTick(){
   const ps=peers(),now=Date.now();
   H.seen=H.seen||{};
   ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;H.seen[p.peer]=now;
-    H.names[p.peer]=clip(pr.nm,14)||"لاعب";
+    H.names[p.peer]=clip(pr.nm,14)||"لاعب";(H.av=H.av||{})[p.peer]=okAv(pr.av)?pr.av:"";
     if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
   // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
@@ -429,7 +452,7 @@ function hostTick(){
 }
 function publish(){
   const v={role:"host",code:ST.code,game:H.game,ph:H.ph,k:H.k,tl:tl(),order:H.order,nm:{}};
-  H.order.forEach(id=>v.nm[id]=nm(id));
+  H.order.forEach(id=>v.nm[id]=nm(id));v.av={};H.order.forEach(id=>{if((H.av||{})[id])v.av[id]=H.av[id]});
   if(H.game&&GAMES[H.game].view)GAMES[H.game].view(v);
   if(H.game&&GAMES[H.game].themeName)v.theme=GAMES[H.game].themeName()||null;
   if(H.ph==="topic"){v.topic=H.g.topic;v.picker=H.g.pickedBy}
@@ -498,6 +521,10 @@ function boardHTML(){
   const ids=[...H.order].sort((a,b)=>(H.sc[b]||0)-(H.sc[a]||0)),max=Math.max(1,...ids.map(id=>H.sc[id]||0));
   return`<div class="board">${ids.map((id,i)=>`<div class="brow ${i===0&&(H.sc[id]||0)>0?"top":""}" style="--i:${i};--w:${Math.round((H.sc[id]||0)/max*100)}%"><span class="bar"></span><span class="rk">${fmt(i+1)}</span><div class="av sm" style="--c:${col(id)}">${face(id)}</div><span class="nm">${esc(nm(id))}</span><span class="sc">${fmt(H.sc[id])}</span></div>`).join("")}</div>`;
 }
+// QR code that opens the site with the room code already filled in
+function joinLink(){return location.origin+location.pathname.replace(/index\.html$/,"")+"?code="+ST.code}
+function qrHTML(){if(typeof qrcode!=="function")return"";try{const q=qrcode(0,"M");q.addData(joinLink());q.make();
+  return`<div class="qr"><div class="qrbox">${q.createSvgTag({cellSize:5,margin:2,scalable:true})}</div><p class="note">صوّر الكود بكاميرا الجوال 📷</p></div>`}catch(e){return""}}
 function joinPanel(){
   const url=location.host?location.host+location.pathname.replace(/index\.html$/,""):"";
   return`<div class="card center" style="justify-content:center;gap:12px">
@@ -505,6 +532,7 @@ function joinPanel(){
     ${url?`<span class="url">${esc(url)}</span>`:""}
     <p class="note" style="font-size:19px">بالرمز:</p>
     <div class="code">${ST.code}</div>
+    ${qrHTML()}
     <div id="dyn" class="still" style="min-height:96px;display:flex;align-items:center;justify-content:center">${rosterHTML()}</div>
   </div>`;
 }
@@ -868,7 +896,7 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
   sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code,
-  commercial:CFG.edition==="commercial",opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
+  commercial:CFG.edition==="commercial",avImg,opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
 (window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={more:true,...g}}catch(e){console.error("sahra beta",e)}});
@@ -878,7 +906,9 @@ addEventListener("resize",()=>{if(role==="host"&&H.game==="arsimha"&&$("art"))pa
 const ME={n:0,myLie:"",lastKey:"",ch:null,lk:new Set()};
 function startPlayer(){
   role="player";
-  room.presence({role:"player",code:ST.code,nm:ST.nick,act:null}).catch(()=>{});
+  const myAv=ST.av&&ST.av.startsWith("p:")?ST.av:"";
+  room.presence({role:"player",code:ST.code,nm:ST.nick,av:myAv,act:null}).catch(()=>{});
+  if(ST.av==="s"&&ST.selfie)api("POST","/rooms/"+ST.code+"/avatars",{image:ST.selfie}).then(r=>room.presence({av:"u:"+r.id})).catch(()=>{});
   room.onPeers(()=>renderPlayer());
   onFound=()=>{if(ME.lost){ME.lost=false;ME.lastKey="";renderPlayer()}};
   onLost=()=>{ME.lost=true;root.innerHTML=`<div class="emoji">🔌</div><p class="big">انقطع الاتصال</p><p class="note center">الشاشة الكبيرة انقفلت أو النت فصل.<br>إذا رجعت بنرجعك تلقائياً 🔄</p><button class="btn wide" id="rj">ادخل من جديد</button>`;$("rj").onclick=()=>location.reload()};
@@ -895,7 +925,7 @@ function renderPlayer(){
   const v=hostView();root.className="wrap narrow";
   setThemeBg(v?(v.ph==="topic"?v.topic:v.theme):null);
   const idx=v&&Array.isArray(v.order)?v.order.indexOf(myPeer):-1;
-  const c=idx>=0?COLORS[idx%8]:"#a99bd9",f=idx>=0?FACES[idx%8]:"🙂";
+  const c=idx>=0?COLORS[idx%8]:"#a99bd9",f=avImg(v&&v.av&&v.av[myPeer],idx>=0?FACES[idx%8]:"🙂");
   const head=`<div class="phead"><span class="me"><div class="av sm" style="--c:${c}">${f}</div><span>${esc(ST.nick)}</span></span><span class="pill" style="direction:ltr">${esc(ST.code)}</span></div>`;
   if(!v){if(ME.lastKey!=="none"){ME.lastKey="none";root.innerHTML=head+`<div class="emoji">📡</div><p class="big">بانتظار الشاشة الكبيرة…</p>`}return}
   const key=[v.game,v.ph,v.k,v.rvI,idx>=0].join("|");
@@ -965,7 +995,7 @@ function salPlayer(v,head,f){
     if(!(v.pl||[]).includes(myPeer)){root.innerHTML=head+`<div class="emoji">🍿</div><p class="big">تفرّج هالجولة</p>`;return}
     const others=(v.pl||[]).filter(id=>id!==myPeer);
     root.innerHTML=head+`<h2 style="font-size:30px">مين برا السالفة؟ 🕵️</h2><p class="note">⏱ باقي <b id="ptl">${v.tl}</b> ثانية</p>
-      <div class="col" id="vts">${others.map((id,i)=>{const j=(v.order||[]).indexOf(id);return`<button class="pbtn" data-v="${esc(id)}" style="--o:${COLORS[j%8]}">${FACES[j%8]} ${esc(v.nm?.[id]||"لاعب")}</button>`}).join("")}</div>`;
+      <div class="col" id="vts">${others.map((id,i)=>{const j=(v.order||[]).indexOf(id);return`<button class="pbtn" data-v="${esc(id)}" style="--o:${COLORS[j%8]}">${avImg(v.av&&v.av[id],FACES[j%8]).replace('class="avimg"','class="avimg inl"')} ${esc(v.nm?.[id]||"لاعب")}</button>`}).join("")}</div>`;
     root.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,vote:b.dataset.v});$("vts").innerHTML=`<div class="emoji">🗳️</div><p class="big" style="font-size:28px">صوّتت على ${esc(v.nm?.[b.dataset.v]||"")}</p><p class="note center">${isOut?"خلك طبيعي 😏":"ننتظر الباقين…"}</p>`});
     return}
   if(v.ph==="guess"){
