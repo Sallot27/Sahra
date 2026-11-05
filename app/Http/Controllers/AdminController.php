@@ -88,6 +88,7 @@ class AdminController extends Controller
         $data = $request->validate([
             'category' => ['required', 'string', 'max:60'],
             'topic' => ['required', Rule::in(Question::TOPICS)],
+            'lang' => ['nullable', Rule::in(['ar', 'en'])],
             'text' => ['required', 'string', 'max:400', function ($attr, $value, $fail) {
                 if (substr_count($value, '_____') !== 1) {
                     $fail('السؤال لازم يحتوي على فراغ واحد مكتوب هكذا: _____');
@@ -108,6 +109,7 @@ class AdminController extends Controller
         $question->fill([
             'category' => $data['category'],
             'topic' => $data['topic'],
+            'lang' => $data['lang'] ?? 'ar',
             'text' => $data['text'],
             'answer' => $data['answer'],
             'alternates' => $this->lines($data['alternates'] ?? ''),

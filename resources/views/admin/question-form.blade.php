@@ -15,6 +15,12 @@
         @endforeach
       </select>
     </label>
+    <label>لغة السؤال
+      <select name="lang" style="font-family:var(--body);font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--ink);color:var(--text)">
+        <option value="ar" @selected(old('lang', $question->lang ?? 'ar') === 'ar')>عربي</option>
+        <option value="en" @selected(old('lang', $question->lang) === 'en')>English (يطلع بس في وضع «عربي + English»)</option>
+      </select>
+    </label>
     <label>عنوان طريف للسؤال (يظهر فوقه)
       <input type="text" name="category" id="category" maxlength="60" required value="{{ old('category', $question->category) }}" placeholder="مثلاً: حرب غريبة">
     </label>

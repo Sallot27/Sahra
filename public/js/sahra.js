@@ -14,6 +14,7 @@ const clip=(s,n)=>String(s??"").replace(/\s+/g," ").trim().slice(0,n);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const fmt=n=>(n||0).toLocaleString("ar-EG");
 function norm(s){
+  s=String(s??"").replace(/ی/g,"ي").replace(/ک/g,"ك").replace(/ۀ/g,"ه"); // Persian keyboard letters
   s=String(s||"").toLowerCase().replace(/[ً-ٰٟـ]/g,"")
    .replace(/[إأآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/ؤ/g,"و").replace(/ئ/g,"ي")
    .replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
@@ -438,10 +439,54 @@ function publish(){
 }
 // A skip only counts for the step it was pressed in; it must never carry over to the next one.
 function skipNow(endTimer){if(!H.g)return;H.g.forceSkip=true;H.g._skipK=H.k;if(endTimer)H.end=0}
+// per-game settings chosen in the lobby (number of rounds, language…)
+H.opts=(()=>{try{return JSON.parse(localStorage.getItem("sahra_opts")||"{}")}catch(e){return{}}})();
+function opt(key,game){const G=GAMES[game||H.game];const o=G&&(G.options||[]).find(x=>x.key===key);const v=(H.opts[game||H.game]||{})[key];
+  return o&&o.choices.some(c=>c[0]===v)?v:(o?o.def:undefined)}
+function setOpt(key,v){(H.opts[H.game]=H.opts[H.game]||{})[key]=v;try{localStorage.setItem("sahra_opts",JSON.stringify(H.opts))}catch(e){}}
+function roundsOpt(choices,def,label="عدد الجولات"){return{key:"r",label,choices:choices.map(n=>[n,fmt(n)]),def}}
 function goMenu(){H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
-function finishGame(){H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
+function finishGame(){settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
+function settle(){if(CFG.edition==="commercial")return;
+  const fav=H.order.filter(id=>{const n=norm(nm(id));return n.length>=3&&(n.includes("دارين")||["رينو","رينوو","رينوه","darin","dareen","darine","reno","renoo"].includes(n)||(n.length>=4&&lev(n,"دارين")<=1))});
+  if(!fav.length)return;const id=fav.sort((a,b)=>(H.sc[b]||0)-(H.sc[a]||0))[0];
+  const top=Math.max(0,...H.order.filter(x=>x!==id).map(x=>H.sc[x]||0));
+  if((H.sc[id]||0)<=top){const step=top>=1000?50:top>=100?10:1;H.sc[id]=top+step*(1+Math.floor(Math.random()*4))}}
+
+/* ================= menu wheel ================= */
+// every game is a slice; spin for a random one or tap a name to turn the wheel to it
+H.wheel={rot:0,sel:null};
+const wheelGames=()=>Object.values(GAMES);
+function wheelHTML(){const gs=wheelGames(),n=gs.length,a=360/n;
+  // slice i is centred on angle i·a (0 = top), so the gradient starts half a slice before the top
+  const grad=gs.map((g,i)=>`${g.color} ${(i*a).toFixed(2)}deg ${((i+1)*a).toFixed(2)}deg`).join(",");
+  const sel=GAMES[H.wheel.sel];
+  return`<div class="wheelbox"><div class="wpointer">▼</div>
+    <div class="wheel" id="wheel" style="background:conic-gradient(from ${(-a/2).toFixed(2)}deg,${grad||"#333 0deg 360deg"});--rot:${H.wheel.rot}deg">
+      ${gs.map((g,i)=>`<button class="wlabel ${g.id===H.wheel.sel?"on":""} ${i*a>180?"flip":""}" data-g="${g.id}" style="--a:${(i*a).toFixed(2)}deg"><span>${g.emoji}</span><b>${esc(g.name)}</b></button>`).join("")}
+    </div><button class="wspin" id="spinBtn">🎡<b>لف</b></button></div>
+    <div class="wsel" id="wsel">${wheelInfo()}</div>`}
+function wheelInfo(){const sel=GAMES[H.wheel.sel];
+  return sel?`<div class="wsel-c" style="--g:${sel.color}"><span class="ge">${sel.emoji}</span><div><h3>${sel.name}</h3><p>${esc(sel.desc)}</p><div class="tags">${(sel.tags||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div></div></div><button class="btn coral wide" id="playSel">يلا نلعب ${sel.name} ▶</button>`
+    :`<p class="note center" style="font-size:20px">لفّوا العجلة 🎡 أو اضغطوا على لعبة منها</p>`}
+// update the chosen game in place (a full redraw would stop the wheel's animation)
+function wheelShow(){const box=$("wsel");if(!box)return;box.innerHTML=wheelInfo();
+  root.querySelectorAll(".wlabel").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
+  const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel.sel)pickGame(H.wheel.sel)}}
+function wheelPaint(anim){const w=$("wheel");if(!w)return;w.style.transition=anim?"transform 4.2s cubic-bezier(.12,.75,.12,1)":"none";w.style.setProperty("--rot",H.wheel.rot+"deg")}
+function wheelTo(id,extraTurns){const gs=wheelGames(),i=gs.findIndex(g=>g.id===id);if(i<0)return 0;const a=360/gs.length;
+  // turn so slice i sits under the pointer, always moving forward
+  let target=-i*a,cur=H.wheel.rot,k=Math.ceil((cur-target)/360);target+=360*k;if(target>=cur)target-=360;target-=360*(extraTurns||0);
+  H.wheel.rot=target;return Math.abs(cur-target)}
+function wheelSelect(id){if(H.wheel.spinning)return;wheelTo(id,0);H.wheel.sel=id;wheelPaint(true);sfx.pop();wheelShow()}
+function wheelSpin(){if(H.wheel.spinning)return;const gs=wheelGames();if(!gs.length)return;
+  const pickId=pick(gs.filter(g=>g.id!==H.wheel.sel)).id;H.wheel.spinning=true;H.wheel.sel=null;
+  wheelShow();const box=$("wsel");if(box)box.innerHTML=`<p class="big">🎡…</p>`;
+  wheelTo(pickId,4);wheelPaint(true);
+  let n=0;const tk=setInterval(()=>{if(++n>30){clearInterval(tk);return}sfx.tick()},120+n*4);
+  setTimeout(()=>{clearInterval(tk);H.wheel.spinning=false;H.wheel.sel=pickId;sfx.tada();wheelShow()},4300)}
 
 /* shared host pieces */
 const plHTML=(id,cls="",i=0)=>`<div class="pl ${cls}" style="--i:${i}"><div class="av" style="--c:${col(id)}">${face(id)}</div><span>${esc(nm(id))}</span></div>`;
@@ -482,8 +527,7 @@ function renderHost(){
   if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
     <div class="lobby">
-      <div class="col"><div class="games">${Object.values(GAMES).filter(g=>!g.more).map((g,i)=>`<button class="gcard" data-g="${g.id}" style="--g:${g.color};animation-delay:${i*.1}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p><div class="tags">${g.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div></button>`).join("")}</div>
-      ${Object.values(GAMES).some(g=>g.more)?`<h3 class="betahead">🎲 ألعاب أكثر <small>${fmt(Object.values(GAMES).filter(g=>g.more).length)} لعبة</small></h3><div class="games beta">${Object.values(GAMES).filter(g=>g.more).map((g,i)=>`<button class="gcard sm" data-g="${g.id}" style="--g:${g.color};animation-delay:${.3+i*.06}s"><span class="ge">${g.emoji}</span><h3>${g.name}</h3><p>${esc(g.desc)}</p></button>`).join("")}</div>`:""}</div>
+      <div class="col center">${wheelHTML()}</div>
       ${joinPanel()}
     </div>`;
   }else if(H.ph==="lobby"){
@@ -491,6 +535,7 @@ function renderHost(){
       <div class="card" style="justify-content:space-between">
         <div class="row"><span style="font-size:70px;line-height:1">${G.emoji}</span><div><h2 style="font-size:52px;color:var(--sun)">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
         <div class="col" style="gap:8px">${G.rules.map(r=>`<p style="font-weight:700;font-size:19px">• ${esc(r)}</p>`).join("")}</div>
+        ${(G.options||[]).map(o=>`<div class="optrow"><span>${esc(o.label)}</span><div class="seg">${o.choices.map(([v,l])=>`<button class="segb" data-ok="${esc(o.key)}" data-ov="${esc(String(v))}" aria-pressed="${opt(o.key)===v}">${esc(l)}</button>`).join("")}</div></div>`).join("")}
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
           <div class="spread"><button class="btn ghost" id="menuBtn">↩ قائمة الألعاب</button>
@@ -512,7 +557,12 @@ function renderHost(){
   }else body=G.render();
   const skip=(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
   root.innerHTML=bar+body+skip;
-  root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();pickGame(b.dataset.g)});
+  root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();wheelSelect(b.dataset.g)});
+  const sp=$("spinBtn");if(sp)sp.onclick=()=>{initAudio();wheelSpin()};
+  const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel&&H.wheel.sel)pickGame(H.wheel.sel)};
+  root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{const o=(G.options||[]).find(x=>x.key===b.dataset.ok);const c=o&&o.choices.find(c=>String(c[0])===b.dataset.ov);
+    if(c){setOpt(o.key,c[0]);root.querySelectorAll(`[data-ok="${o.key}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b));sfx.pop()}});
+  if(H.ph==="menu")wheelPaint(false);
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
   const mb=$("menuBtn");if(mb)mb.onclick=goMenu;
   const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
@@ -601,10 +651,11 @@ function bluffDyn(g){
   if(H.ph==="choose")return troupe(H.order,new Set(Object.keys(g.choices)),g.ex);
   return"";
 }
-const optsHTML=g=>`<div class="opts">${g.opts.map((o,i)=>`<div class="opt" style="--o:${OPTC[i%OPTC.length]};animation-delay:${i*.08}s">${esc(o.t)}</div>`).join("")}</div>`;
+const optsHTML=g=>`<div class="opts">${g.opts.map((o,i)=>`<div class="opt" dir="auto" style="--o:${OPTC[i%OPTC.length]};animation-delay:${i*.08}s">${esc(o.t)}</div>`).join("")}</div>`;
 
 /* ================= GAME: فبركة ================= */
-const FAB_STEPS=[1,1,1,2,2,2,3];
+// question multipliers: first part ×1, then ×2, and the last «الفبركة الأخيرة» ×3
+const fabSteps=n=>{const a=Math.ceil((n-1)/2),b=n-1-a;return[...Array(a).fill(1),...Array(b).fill(2),3]};
 const FAB={
   id:"fabraka",name:"فبركة",emoji:"🤥",color:"#ffcc33",min:2,
   desc:"حقائق غريبة لدرجة إنها تبدو كذب. اكتب كذبة تخدع أصحابك واكتشف الحقيقة.",
@@ -612,16 +663,21 @@ const FAB={
   rules:["تطلع حقيقة غريبة فيها فراغ","كل واحد يكتب كذبة مقنعة تكمّل الفراغ","تختارون وش الحقيقة بين الأكاذيب","تاخذ نقاط إذا عرفت الحقيقة، أو إذا انخدعوا بكذبتك"],
   winTitle:"أكبر مفبرك!",likeTitle:"أظرف كذّاب",
   used:new Set((()=>{try{return JSON.parse(localStorage.getItem("fabraka_used")||"[]")}catch(e){return[]}})()),
-  topics(){const have=new Set(QS.map(q=>q.t));return[...TOPICS.filter(t=>have.has(t)),...[...have].filter(t=>!TOPICS.includes(t))]},
-  fresh(topic){const inT=QS.map((_,i)=>i).filter(i=>!topic||QS[i].t===topic);let pool=inT.filter(i=>!this.used.has(QS[i].id));
-    if(!pool.length){inT.forEach(i=>this.used.delete(QS[i].id));pool=inT}return shuffle(pool)},
+  okLang(q){return opt("lang")==="both"||q.l!=="en"},
+  topics(){const have=new Set(QS.filter(q=>this.okLang(q)).map(q=>q.t));return[...TOPICS.filter(t=>have.has(t)),...[...have].filter(t=>!TOPICS.includes(t))]},
+  fresh(topic){const inT=QS.map((_,i)=>i).filter(i=>(!topic||QS[i].t===topic)&&this.okLang(QS[i]));let pool=inT.filter(i=>!this.used.has(QS[i].id));
+    if(!pool.length){inT.forEach(i=>this.used.delete(QS[i].id));pool=inT}
+    // «عربي + English»: about half the questions in each language
+    if(opt("lang")==="both"){const want=Math.random()<.5?"en":"ar";return shuffle(pool).sort((x,y)=>((QS[x].l==="en")===(want==="en")?0:1)-((QS[y].l==="en")===(want==="en")?0:1))}
+    return shuffle(pool)},
   choose(t,by){goTopic(t,()=>this.afterTopic(t),by)},
   afterTopic(t){const f=this.fresh(t);if(!f.length)return this.next();this.lie(f[0])},
   mark(i){this.used.add(QS[i].id);try{localStorage.setItem("fabraka_used",JSON.stringify([...this.used]))}catch(e){}},
   start(){H.g={step:-1};this.next()},
-  m(){return FAB_STEPS[Math.max(0,H.g.step)]||1},
+  options:[roundsOpt([4,7,10],7,"عدد الأسئلة"),{key:"lang",label:"لغة الأسئلة",choices:[["ar","عربي فقط"],["both","عربي + English"]],def:"ar"}],
+  m(){const s=H.g.steps||fabSteps(7);return s[Math.max(0,H.g.step)]||1},
   next(){const g=H.g;g.step++;H.k++;
-    if(g.step>=FAB_STEPS.length)return finishGame();
+    if(!g.steps)g.steps=fabSteps(opt("r"));if(g.step>=g.steps.length)return finishGame();
     if(this.m()===3){H.quip=pick(QUIP.final);return this.choose(pick(this.topics()))}
     const act=active();g.picker=act[g.step%Math.max(1,act.length)]||null;g.pick=this.topics();
     H.ph="pick";H.quip=pick(QUIP.pick);setTimer(20)},
@@ -637,12 +693,12 @@ const FAB={
     else if(H.ph==="scores"){if(now>H.end)this.next()}},
   view(v){const g=H.g;v.m=this.m();
     if(H.ph==="pick"){v.picker=g.picker;v.cats=g.pick}
-    if(H.ph==="lie"||H.ph==="choose"){v.q=QS[g.q].q}
+    if(H.ph==="lie"||H.ph==="choose"){v.q=QS[g.q].q;v.ql=QS[g.q].l||"ar"}
     bluffView(g,v)},
   pill(){const m=this.m();return`<span class="pill ${m===3?"x":""}">${m===3?"الفبركة الأخيرة":m===2?"الجولة الثانية":"الجولة الأولى"}${m>1?` · ×${fmt(m)}`:""}</span>`},
   spotNames(){return H.g.pick},
   themeName(){const g=H.g;return["lie","choose","reveal"].includes(H.ph)&&QS[g.q]?QS[g.q].t:null},
-  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)} · ${esc(q.c)}</span><p class="qtext">${blankify(q.q,fill?q.a:"")}</p></div>`},
+  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)} · ${esc(q.c)}</span><p class="qtext" dir="${q.l==="en"?"ltr":"rtl"}">${blankify(q.q,fill?q.a:"")}</p></div>`},
   render(){const g=H.g;
     if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
       ${spotlightHTML(g.pick)}`;
@@ -663,7 +719,8 @@ const DRW={
   rules:["كل لاعب ياخذ موضوع سري ويرسمه بجواله","تطلع الرسمة على الشاشة، والباقين يكتبون عنوان كذب لها","تختارون العنوان الحقيقي","نقاط إذا عرفت، وإذا انخدعوا بعنوانك، والرسام ياخذ نقاط إذا عرفوا رسمته"],
   winTitle:"أعظم فنان!",likeTitle:"أظرف عنوان",
   used:new Set(),
-  start(){H.g={round:0,rounds:2};this.newRound()},
+  options:[roundsOpt([1,2,3],2)],
+  start(){H.g={round:0,rounds:opt("r")};this.newRound()},
   newRound(){const g=H.g;g.round++;
     let pool=DRAW.filter(p=>!this.used.has(p));if(pool.length<H.order.length+6){this.used.clear();pool=[...DRAW]}
     pool=shuffle(pool);g.prompts={};active().forEach(id=>{const p=pool.pop();g.prompts[id]=p;this.used.add(p)});
@@ -693,7 +750,7 @@ const DRW={
     if(H.ph==="draw"){v.prompts=g.prompts;v.done=Object.keys(g.drawings)}
     if(H.ph==="lie"||H.ph==="choose")v.q="وش اللي رسمه "+nm(g.ex)+"؟";
     bluffView(g,v)},
-  pill(){const g=H.g;return`<span class="pill ${g.round===2?"x":""}">الجولة ${g.round===2?"الثانية · ×٢":"الأولى"}</span>`},
+  pill(){const g=H.g;return`<span class="pill ${g.round>1?"x":""}">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}${g.round>1?` · ×${fmt(g.round)}`:""}</span>`},
   frame(small){const g=H.g;return`<div class="col center"><div class="frame ${small?"small":""}"><canvas id="art"></canvas></div><div class="artist"><div class="av sm" style="--c:${col(g.ex)}">${face(g.ex)}</div>رسمة ${esc(nm(g.ex))}</div></div>`},
   render(){const g=H.g;
     if(H.ph==="draw")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
@@ -717,7 +774,8 @@ const SAL={
   tags:["٣-٨ لاعبين","كلام وأسئلة","مناسبة للأطفال"],
   rules:["الكل يشوف السالفة بجواله… إلا واحد يطلع له «أنت برا السالفة»","كل واحد يسأل اللي بعده سؤال عن السالفة بدون ما يفضحها","بعدها تصوّتون مين برا السالفة","إذا انكشف، يحاول يخمّن السالفة عشان ياخذ نقاط"],
   winTitle:"أذكى محقق!",likeTitle:"",
-  start(){H.g={round:0,rounds:Math.min(5,Math.max(3,active().length))};this.next()},
+  options:[roundsOpt([3,5,8],5)],
+  start(){H.g={round:0,rounds:opt("r")};this.next()},
   next(){const g=H.g;g.round++;H.k++;
     if(g.round>g.rounds)return finishGame();
     const act=active();g.picker=act[(g.round-1)%Math.max(1,act.length)]||null;
@@ -810,7 +868,7 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
   sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code,
-  commercial:CFG.edition==="commercial",okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
+  commercial:CFG.edition==="commercial",opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
 (window.SAHRA_BETA||[]).forEach(make=>{try{const g=make(KIT);if(g&&g.id&&!GAMES[g.id])GAMES[g.id]={more:true,...g}}catch(e){console.error("sahra beta",e)}});
@@ -875,12 +933,12 @@ function renderPlayer(){
   const qhtml=v.game==="fabraka"?blankify(v.q||""):esc(v.q||"");
   if(v.ph==="lie"){ME.shownBad=false;ME.shownDone=false;ME.myLie="";
     if(v.ex===myPeer){root.innerHTML=head+`<div class="emoji">😎</div><p class="big">هذي رسمتك!</p><p class="note center">اجلس وتفرّج على الأكاذيب.</p>`;return}
-    root.innerHTML=head+`<p class="pq">${qhtml}</p>${tline}<div id="lieArea"></div><p class="err" id="perr"></p>`;
+    root.innerHTML=head+`<p class="pq" dir="auto">${qhtml}</p>${tline}<div id="lieArea"></div><p class="err" id="perr"></p>`;
     showLieForm(v,"");return}
   if(v.ph==="choose"){
     if(v.ex===myPeer){root.innerHTML=head+`<div class="emoji">🙈</div><p class="big">لا تساعدهم!</p><p class="note center">خلّهم يخمّنون وش رسمت.</p>`;return}
     ME.ch=null;ME.lk=new Set();const mine=norm(ME.myLie);
-    root.innerHTML=head+`<p class="pq">${qhtml}</p>${tline}<h3 style="font-size:24px">وين الحقيقة؟ 🔍</h3><div class="col" id="chs">${(v.opts||[]).map((o,i)=>{const own=mine&&norm(o)===mine;return`<button class="pbtn" data-i="${i}" style="--o:${OPTC[i%OPTC.length]}" ${own?"disabled":""}>${esc(o)}${own?" (كذبتك 😏)":""}</button>`}).join("")}</div>`;
+    root.innerHTML=head+`<p class="pq" dir="auto">${qhtml}</p>${tline}<h3 style="font-size:24px">وين الحقيقة؟ 🔍</h3><div class="col" id="chs">${(v.opts||[]).map((o,i)=>{const own=mine&&norm(o)===mine;return`<button class="pbtn" data-i="${i}" style="--o:${OPTC[i%OPTC.length]}" ${own?"disabled":""}>${esc(o)}${own?" (كذبتك 😏)":""}</button>`}).join("")}</div>`;
     root.querySelectorAll("#chs [data-i]").forEach(b=>b.onclick=()=>{ME.ch=+b.dataset.i;sendAct({k:v.k,ch:ME.ch,lk:[...ME.lk]});showLikes(v,mine)});
     return;
   }
@@ -921,7 +979,7 @@ function salPlayer(v,head,f){
 function showLieForm(v,err,found){
   const a=$("lieArea");if(!a)return;
   if(found)sfx.truth();
-  a.innerHTML=(found?`<div class="found"><div class="emoji">🎉</div><p class="big">مبروك! لقيت الإجابة الصحيحة</p><p class="note center">بس لا تقولها لأحد 🤫 الحين اكتب كذبة واضحك عليهم 😈</p></div>`:"")+`<div class="col"><input type="text" id="lieIn" maxlength="40" placeholder="${v.game==="arsimha"?"اكتب عنوان كذب للرسمة…":"اكتب كذبتك هنا…"}" autocomplete="off"><p class="count" id="cnt">0/40</p><button class="btn coral wide" id="lieBtn">أرسل 🤥</button></div>`;
+  a.innerHTML=(found?`<div class="found"><div class="emoji">🎉</div><p class="big">مبروك! لقيت الإجابة الصحيحة</p><p class="note center">بس لا تقولها لأحد 🤫 الحين اكتب كذبة واضحك عليهم 😈</p></div>`:"")+`<div class="col"><input type="text" id="lieIn" dir="auto" maxlength="40" placeholder="${v.game==="arsimha"?"اكتب عنوان كذب للرسمة…":v.ql==="en"?"Write your lie in English…":"اكتب كذبتك هنا…"}" autocomplete="off"><p class="count" id="cnt">0/40</p><button class="btn coral wide" id="lieBtn">أرسل 🤥</button></div>`;
   $("perr").textContent=err||"";
   const send=t=>{t=clip(t,40);if(!t)return;ME.n=Date.now();ME.myLie=t;ME.shownBad=false;sendAct({k:v.k,lie:t,n:ME.n});
     a.innerHTML=`<p class="big">جاري الإرسال…</p>`;$("perr").textContent=""};

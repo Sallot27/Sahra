@@ -25,7 +25,7 @@ class Question extends Model
             : self::TOPICS;
     }
 
-    protected $fillable = ['category', 'topic', 'text', 'answer', 'alternates', 'decoys', 'active'];
+    protected $fillable = ['category', 'topic', 'lang', 'text', 'answer', 'alternates', 'decoys', 'active'];
 
     protected function casts(): array
     {
@@ -48,6 +48,7 @@ class Question extends Model
             'id' => $this->id,
             'c' => $this->category,
             't' => $this->topic ?: 'منوعات',
+            'l' => $this->lang ?: 'ar',
             'q' => $this->text,
             'a' => $this->answer,
             'alt' => array_values($this->alternates ?? []),

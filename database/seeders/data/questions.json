@@ -2492,7 +2492,7 @@
  },
  {
   "category": "عضو يتجدد",
-  "text": "الكبد هو العضو الوحيد في الجسم اللي يقدر _____.",
+  "text": "الكبد يقدر _____ حتى لو انشال جزء كبير منه.",
   "answer": "يجدد نفسه",
   "alternates": [
    "يتجدد",
@@ -2703,7 +2703,7 @@
  },
  {
   "category": "ضربة فضائية",
-  "text": "الجولف هي الرياضة الوحيدة اللي انلعبت على _____.",
+  "text": "في عام 1971، ضرب رائد فضاء كرتين جولف على سطح _____.",
   "answer": "القمر",
   "alternates": [
    "قمر",
@@ -5272,5 +5272,1291 @@
    "1"
   ],
   "topic": "رياضة وألعاب"
+ },
+ {
+  "category": "Spelling Joke",
+  "text": "'OK' began in 1839 as a jokey abbreviation of the misspelled phrase 'oll _____'.",
+  "answer": "korrect",
+  "alternates": [
+   "korekt",
+   "oll korrect"
+  ],
+  "decoys": [
+   "kay",
+   "klear",
+   "kool"
+  ],
+  "topic": "تاريخ غريب",
+  "lang": "en"
+ },
+ {
+  "category": "Baby Bird Name",
+  "text": "A baby puffin is officially called a _____.",
+  "answer": "puffling",
+  "alternates": [
+   "pufflings"
+  ],
+  "decoys": [
+   "puffkin",
+   "puffette",
+   "puffball"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Wobbly Crowd",
+  "text": "A group of jellyfish can be called a _____.",
+  "answer": "smack",
+  "alternates": [
+   "bloom",
+   "a smack"
+  ],
+  "decoys": [
+   "wobble",
+   "jiggle",
+   "splat"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Letter Number 27",
+  "text": "In the 1800s, kids recited the _____ as the 27th letter of the English alphabet.",
+  "answer": "ampersand",
+  "alternates": [
+   "&",
+   "and sign"
+  ],
+  "decoys": [
+   "question mark",
+   "hashtag",
+   "apostrophe"
+  ],
+  "topic": "تاريخ غريب",
+  "lang": "en"
+ },
+ {
+  "category": "Not a Pine",
+  "text": "In early English, the word 'pineapple' actually meant a _____.",
+  "answer": "pine cone",
+  "alternates": [
+   "pinecone",
+   "pine cones"
+  ],
+  "decoys": [
+   "coconut",
+   "apple pie",
+   "Christmas tree"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Tummy Talk",
+  "text": "The rumbling noise your stomach makes is called _____.",
+  "answer": "borborygmus",
+  "alternates": [
+   "borborygmi"
+  ],
+  "decoys": [
+   "gastrophony",
+   "grumblation",
+   "tummulus"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Moon on Your Hand",
+  "text": "The white half-moon at the base of your fingernail is called the _____.",
+  "answer": "lunula",
+  "alternates": [
+   "lunule"
+  ],
+  "decoys": [
+   "moonlet",
+   "cuticlette",
+   "nailrise"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Famous Face Fuzz",
+  "text": "Sideburns are named after an American general called Ambrose _____.",
+  "answer": "Burnside",
+  "alternates": [
+   "burnside"
+  ],
+  "decoys": [
+   "Whiskerton",
+   "Sidewell",
+   "Chopsworth"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Squeaky Muscles",
+  "text": "The word 'muscle' comes from the Latin for 'little _____'.",
+  "answer": "mouse",
+  "alternates": [
+   "mice"
+  ],
+  "decoys": [
+   "rope",
+   "lion",
+   "worm"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Sleepy Sister Cities",
+  "text": "The town of Boring in Oregon is twinned with a Scottish village called _____.",
+  "answer": "Dull",
+  "alternates": [
+   "dull"
+  ],
+  "decoys": [
+   "Yawn",
+   "Snooze",
+   "Bland"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "TV Town",
+  "text": "In 1950, a New Mexico town renamed itself 'Truth or Consequences' after a radio _____.",
+  "answer": "game show",
+  "alternates": [
+   "quiz show",
+   "show"
+  ],
+  "decoys": [
+   "weather report",
+   "song",
+   "detective drama"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Secret Code",
+  "text": "The famous distress signal 'SOS' actually stands for _____.",
+  "answer": "nothing",
+  "alternates": [
+   "nothing at all"
+  ],
+  "decoys": [
+   "Save Our Ship",
+   "Save Our Souls",
+   "Send Our Sailors"
+  ],
+  "topic": "عادات وقوانين",
+  "lang": "en"
+ },
+ {
+  "category": "Sliding Letter",
+  "text": "An 'apron' was originally 'a _____', until people heard it as 'an apron'.",
+  "answer": "napron",
+  "alternates": [
+   "napperon"
+  ],
+  "decoys": [
+   "papron",
+   "capron",
+   "hapron"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Magic Bookstore",
+  "text": "Before it was called Amazon, the company was briefly named _____.",
+  "answer": "Cadabra",
+  "alternates": [
+   "cadabra",
+   "Cadabra Inc"
+  ],
+  "decoys": [
+   "Rainforest",
+   "Bookstream",
+   "Shopsy"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Favorite Letter",
+  "text": "George Eastman made up the name 'Kodak' because he loved the letter _____.",
+  "answer": "K",
+  "alternates": [
+   "k"
+  ],
+  "decoys": [
+   "D",
+   "O",
+   "Z"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Who's the Referee",
+  "text": "An 'umpire' was originally 'a _____', until the N slid over to the 'a'.",
+  "answer": "noumpere",
+  "alternates": [
+   "noumper",
+   "nompere"
+  ],
+  "decoys": [
+   "numpire",
+   "nimpire",
+   "numbpier"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Cue the Rookie",
+  "text": "'Snooker' was originally army slang for a first-year _____.",
+  "answer": "cadet",
+  "alternates": [
+   "military cadet",
+   "cadets"
+  ],
+  "decoys": [
+   "cook",
+   "drummer",
+   "horse"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Hashtag Name",
+  "text": "One official name for the # symbol is the _____.",
+  "answer": "octothorpe",
+  "alternates": [
+   "octothorp"
+  ],
+  "decoys": [
+   "gridlet",
+   "tic-tac-tock",
+   "crosshatchet"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Ye Olde Mistake",
+  "text": "In old signs like 'Ye Olde Shoppe', the word 'Ye' was really pronounced '_____'.",
+  "answer": "the",
+  "alternates": [
+   "thee"
+  ],
+  "decoys": [
+   "yay",
+   "you",
+   "yes"
+  ],
+  "topic": "تاريخ غريب",
+  "lang": "en"
+ },
+ {
+  "category": "Punctuated Town",
+  "text": "The English village of Westward Ho! is famous because its name includes an _____.",
+  "answer": "exclamation mark",
+  "alternates": [
+   "exclamation point",
+   "!"
+  ],
+  "decoys": [
+   "emoji",
+   "apostrophe",
+   "number"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Rude Birds",
+  "text": "A group of ravens is traditionally called an _____.",
+  "answer": "unkindness",
+  "alternates": [
+   "an unkindness"
+  ],
+  "decoys": [
+   "inkwell",
+   "omen",
+   "eclipse"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Joyful Flock",
+  "text": "A group of larks is traditionally called an _____.",
+  "answer": "exaltation",
+  "alternates": [
+   "an exaltation"
+  ],
+  "decoys": [
+   "orchestra",
+   "awakening",
+   "encore"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Silent Letter Bird",
+  "text": "The silent P in the bird name '_____' was added by mistake in the 1600s.",
+  "answer": "ptarmigan",
+  "alternates": [
+   "ptarmigans"
+  ],
+  "decoys": [
+   "pterodactyl",
+   "psittacine",
+   "pelican"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Not So Nice",
+  "text": "In the 1300s, calling someone 'nice' meant they were _____.",
+  "answer": "foolish",
+  "alternates": [
+   "silly",
+   "ignorant",
+   "stupid"
+  ],
+  "decoys": [
+   "very rich",
+   "extremely tall",
+   "a good cook"
+  ],
+  "topic": "تاريخ غريب",
+  "lang": "en"
+ },
+ {
+  "category": "Clueless Origins",
+  "text": "The word 'clue' comes from 'clew', which meant a ball of _____.",
+  "answer": "thread",
+  "alternates": [
+   "yarn",
+   "string",
+   "twine"
+  ],
+  "decoys": [
+   "dough",
+   "mud",
+   "wax"
+  ],
+  "topic": "تاريخ غريب",
+  "lang": "en"
+ },
+ {
+  "category": "Jam Session",
+  "text": "The word 'marmalade' comes from the Portuguese word for _____.",
+  "answer": "quince",
+  "alternates": [
+   "quinces",
+   "marmelo"
+  ],
+  "decoys": [
+   "orange peel",
+   "honey",
+   "sunshine"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Fruit Passport",
+  "text": "The word 'peach' comes from Latin words meaning '_____ apple'.",
+  "answer": "Persian",
+  "alternates": [
+   "persian"
+  ],
+  "decoys": [
+   "fuzzy",
+   "golden",
+   "royal"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Snack Inventor",
+  "text": "Nachos were invented in 1943 by a waiter whose real first name was _____.",
+  "answer": "Ignacio",
+  "alternates": [
+   "ignacio"
+  ],
+  "decoys": [
+   "Nathaniel",
+   "Ignatius",
+   "Nacho"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Citrus City",
+  "text": "Tangerines are named after the city of _____.",
+  "answer": "Tangier",
+  "alternates": [
+   "Tangiers",
+   "Tanger"
+  ],
+  "decoys": [
+   "Tangerang",
+   "Tampa",
+   "Tanga"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Morning Ritual",
+  "text": "Stretching and yawning at the same time is officially called _____.",
+  "answer": "pandiculation",
+  "alternates": [
+   "pandiculating"
+  ],
+  "decoys": [
+   "yawnstretch",
+   "oscitation",
+   "elongation"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Kid Mathematician",
+  "text": "The word 'googol' was invented by a mathematician's 9-year-old _____.",
+  "answer": "nephew",
+  "alternates": [
+   "nephew Milton"
+  ],
+  "decoys": [
+   "daughter",
+   "neighbor",
+   "pet parrot's owner"
+  ],
+  "topic": "علوم وفضاء",
+  "lang": "en"
+ },
+ {
+  "category": "Bookish Physics",
+  "text": "The particle name 'quark' was taken from James Joyce's novel _____.",
+  "answer": "Finnegans Wake",
+  "alternates": [
+   "Finnegan's Wake"
+  ],
+  "decoys": [
+   "Ulysses",
+   "Dubliners",
+   "The Dead"
+  ],
+  "topic": "علوم وفضاء",
+  "lang": "en"
+ },
+ {
+  "category": "Mischief Metal",
+  "text": "The element cobalt is named after a German word for a mischievous _____.",
+  "answer": "goblin",
+  "alternates": [
+   "kobold",
+   "sprite",
+   "imp"
+  ],
+  "decoys": [
+   "miner",
+   "raccoon",
+   "dwarf king"
+  ],
+  "topic": "علوم وفضاء",
+  "lang": "en"
+ },
+ {
+  "category": "Busy Little Village",
+  "text": "_____, one tiny Swedish village, gave its name to four chemical elements.",
+  "answer": "Ytterby",
+  "alternates": [
+   "ytterby"
+  ],
+  "decoys": [
+   "Ikea",
+   "Smaland",
+   "Bjornholm"
+  ],
+  "topic": "علوم وفضاء",
+  "lang": "en"
+ },
+ {
+  "category": "Planet Namer",
+  "text": "Pluto was named in 1930 by an 11-year-old schoolgirl from _____.",
+  "answer": "Oxford",
+  "alternates": [
+   "Oxford England",
+   "England"
+  ],
+  "decoys": [
+   "Arizona",
+   "Paris",
+   "Glasgow"
+  ],
+  "topic": "علوم وفضاء",
+  "lang": "en"
+ },
+ {
+  "category": "Superhero City",
+  "text": "There is a real city in southeastern Turkey called _____.",
+  "answer": "Batman",
+  "alternates": [
+   "batman"
+  ],
+  "decoys": [
+   "Superman",
+   "Hulk",
+   "Spiderman"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Oops Town",
+  "text": "There is a real town in Maryland, USA, named _____.",
+  "answer": "Accident",
+  "alternates": [
+   "accident"
+  ],
+  "decoys": [
+   "Oopsie",
+   "Mistake",
+   "Whoops"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Bedtime Rule",
+  "text": "The word 'curfew' comes from French words meaning 'cover the _____'.",
+  "answer": "fire",
+  "alternates": [
+   "fires",
+   "hearth"
+  ],
+  "decoys": [
+   "windows",
+   "children",
+   "candles"
+  ],
+  "topic": "عادات وقوانين",
+  "lang": "en"
+ },
+ {
+  "category": "Big Idea",
+  "text": "The phrase 'by and large' was originally a _____ term.",
+  "answer": "sailing",
+  "alternates": [
+   "nautical",
+   "sailor's",
+   "ship"
+  ],
+  "decoys": [
+   "cooking",
+   "chess",
+   "farming"
+  ],
+  "topic": "عادات وقوانين",
+  "lang": "en"
+ },
+ {
+  "category": "Phone Greeting",
+  "text": "'Hello' became the standard telephone greeting thanks to _____.",
+  "answer": "Thomas Edison",
+  "alternates": [
+   "Edison"
+  ],
+  "decoys": [
+   "Queen Victoria",
+   "Charles Dickens",
+   "Albert Einstein"
+  ],
+  "topic": "عادات وقوانين",
+  "lang": "en"
+ },
+ {
+  "category": "Hired Hands",
+  "text": "Sir Walter Scott coined the word 'freelance' to describe hired medieval _____.",
+  "answer": "knights",
+  "alternates": [
+   "soldiers",
+   "mercenaries",
+   "lancers"
+  ],
+  "decoys": [
+   "painters",
+   "cooks",
+   "scribes"
+  ],
+  "topic": "عادات وقوانين",
+  "lang": "en"
+ },
+ {
+  "category": "Sneaky S",
+  "text": "The silent S in '_____' was added by mistake in the 1500s.",
+  "answer": "island",
+  "alternates": [
+   "isle"
+  ],
+  "decoys": [
+   "aisle",
+   "listen",
+   "whistle"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Know-It-All Word",
+  "text": "Someone who gives opinions on things they know nothing about is an _____.",
+  "answer": "ultracrepidarian",
+  "alternates": [
+   "ultracrepidarians"
+  ],
+  "decoys": [
+   "omniblatherer",
+   "opinionaut",
+   "knowsmith"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Tongue Twisted",
+  "text": "Saying 'a blushing crow' instead of 'a crushing blow' is called a _____.",
+  "answer": "spoonerism",
+  "alternates": [
+   "spoonerisms"
+  ],
+  "decoys": [
+   "malaprop",
+   "forkism",
+   "twistword"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Tummy Soda",
+  "text": "Pepsi's name is linked to the word '_____', meaning indigestion.",
+  "answer": "dyspepsia",
+  "alternates": [
+   "pepsin"
+  ],
+  "decoys": [
+   "peptonia",
+   "fizzitis",
+   "pepsalgia"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Quick Encyclopedia",
+  "text": "The 'wiki' in Wikipedia comes from the Hawaiian word for '_____'.",
+  "answer": "quick",
+  "alternates": [
+   "fast",
+   "quick quick"
+  ],
+  "decoys": [
+   "knowledge",
+   "wave",
+   "together"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Coffee Captain",
+  "text": "Starbucks is named after a character in the novel _____.",
+  "answer": "Moby-Dick",
+  "alternates": [
+   "Moby Dick"
+  ],
+  "decoys": [
+   "Treasure Island",
+   "Robinson Crusoe",
+   "Peter Pan"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Flying Fashion",
+  "text": "The leotard is named after Jules Léotard, a famous French _____.",
+  "answer": "trapeze artist",
+  "alternates": [
+   "acrobat",
+   "trapeze performer"
+  ],
+  "decoys": [
+   "ballet teacher",
+   "fashion designer",
+   "fencing champion"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Riding Pants",
+  "text": "The horse-riding trousers called jodhpurs are named after a city in _____.",
+  "answer": "India",
+  "alternates": [
+   "Jodhpur India"
+  ],
+  "decoys": [
+   "Egypt",
+   "Mongolia",
+   "Argentina"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Word Game Names",
+  "text": "Before it was called Scrabble, the game was named Lexiko and then _____.",
+  "answer": "Criss-Crosswords",
+  "alternates": [
+   "Criss Crosswords",
+   "Criss-Cross Words"
+  ],
+  "decoys": [
+   "Word Tiles",
+   "Spellbound",
+   "Lettermania"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Stripy Gang",
+  "text": "A group of zebras is called a _____.",
+  "answer": "dazzle",
+  "alternates": [
+   "a dazzle"
+  ],
+  "decoys": [
+   "barcode",
+   "checker",
+   "flash"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "River Chunks",
+  "text": "A group of hippos is called a _____.",
+  "answer": "bloat",
+  "alternates": [
+   "a bloat"
+  ],
+  "decoys": [
+   "puddle",
+   "chunk",
+   "splash"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Ferret Office",
+  "text": "A group of ferrets is called a _____.",
+  "answer": "business",
+  "alternates": [
+   "a business"
+  ],
+  "decoys": [
+   "wiggle",
+   "sneak",
+   "office"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Sneaky Primates",
+  "text": "A group of lemurs is called a _____.",
+  "answer": "conspiracy",
+  "alternates": [
+   "a conspiracy"
+  ],
+  "decoys": [
+   "whisper",
+   "riddle",
+   "gossip"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Cat Committee",
+  "text": "A group of cats is called a _____.",
+  "answer": "clowder",
+  "alternates": [
+   "a clowder"
+  ],
+  "decoys": [
+   "purrade",
+   "whiskery",
+   "mewsic"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Fluffy Bunch",
+  "text": "A group of kittens is called a _____.",
+  "answer": "kindle",
+  "alternates": [
+   "a kindle"
+  ],
+  "decoys": [
+   "mitten",
+   "giggle",
+   "fluff"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Spiky Baby",
+  "text": "A baby echidna is officially called a _____.",
+  "answer": "puggle",
+  "alternates": [],
+  "decoys": [
+   "spikelet",
+   "quilly",
+   "echidnette"
+  ],
+  "topic": "حيوانات",
+  "lang": "en"
+ },
+ {
+  "category": "Unibrow Zone",
+  "text": "The smooth patch of skin between your eyebrows is called the _____.",
+  "answer": "glabella",
+  "alternates": [],
+  "decoys": [
+   "frontella",
+   "browspan",
+   "nasion"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Throat Dangler",
+  "text": "'Uvula', the thing dangling at the back of your throat, comes from Latin for 'little _____'.",
+  "answer": "grape",
+  "alternates": [
+   "grapes"
+  ],
+  "decoys": [
+   "bell",
+   "drop",
+   "tongue"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Eye See You",
+  "text": "The 'pupil' of your eye comes from Latin for 'little _____', after the tiny reflection you see in it.",
+  "answer": "doll",
+  "alternates": [
+   "puppet"
+  ],
+  "decoys": [
+   "window",
+   "student",
+   "mirror"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Bless You Science",
+  "text": "The official medical word for sneezing is _____.",
+  "answer": "sternutation",
+  "alternates": [],
+  "decoys": [
+   "nasalation",
+   "rhinospasm",
+   "sniffulation"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Ear Flap",
+  "text": "The small bump of cartilage in front of your ear hole is called the _____.",
+  "answer": "tragus",
+  "alternates": [],
+  "decoys": [
+   "earlet",
+   "cartulum",
+   "aurette"
+  ],
+  "topic": "جسم الإنسان",
+  "lang": "en"
+ },
+ {
+  "category": "Pasta Surprise",
+  "text": "The pasta name 'vermicelli' means 'little _____' in Italian.",
+  "answer": "worms",
+  "alternates": [
+   "worm"
+  ],
+  "decoys": [
+   "strings",
+   "ropes",
+   "hairs"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Fruit Rebrand",
+  "text": "Before 1959, the kiwifruit was usually called the Chinese _____.",
+  "answer": "gooseberry",
+  "alternates": [
+   "gooseberries"
+  ],
+  "decoys": [
+   "potato",
+   "plum",
+   "egg fruit"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Singing Dessert",
+  "text": "The dessert Peach Melba is named after Nellie Melba, a famous Australian _____.",
+  "answer": "opera singer",
+  "alternates": [
+   "singer",
+   "soprano"
+  ],
+  "decoys": [
+   "swimmer",
+   "pilot",
+   "peach farmer"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Fancy Nuts",
+  "text": "Pralines are named after a 17th-century French _____ whose cook created them.",
+  "answer": "diplomat",
+  "alternates": [
+   "count",
+   "nobleman"
+  ],
+  "decoys": [
+   "painter",
+   "astronomer",
+   "dentist"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Order In The Garden",
+  "text": "The loganberry is named after James Logan, an American _____ who grew it by accident.",
+  "answer": "judge",
+  "alternates": [
+   "lawyer"
+  ],
+  "decoys": [
+   "sheriff",
+   "dentist",
+   "train driver"
+  ],
+  "topic": "أكل وشرب",
+  "lang": "en"
+ },
+ {
+  "category": "Bird Islands",
+  "text": "The Canary Islands were named after _____, not birds.",
+  "answer": "dogs",
+  "alternates": [
+   "dog"
+  ],
+  "decoys": [
+   "volcanoes",
+   "bananas",
+   "a sailor"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Laughing Town",
+  "text": "A real town in Quebec, Canada is officially named Saint-Louis-du-_____.",
+  "answer": "Ha! Ha!",
+  "alternates": [
+   "Ha Ha",
+   "Ha! Ha",
+   "HaHa"
+  ],
+  "decoys": [
+   "Oops!",
+   "Hoo-Hoo",
+   "Wow!"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Why Not",
+  "text": "The town of Why, Arizona is named after a road junction shaped like the letter _____.",
+  "answer": "Y",
+  "alternates": [
+   "the letter Y"
+  ],
+  "decoys": [
+   "X",
+   "T",
+   "W"
+  ],
+  "topic": "دول ومدن",
+  "lang": "en"
+ },
+ {
+  "category": "Big Bird Score",
+  "text": "In golf, finishing a hole four strokes under par is called a _____.",
+  "answer": "condor",
+  "alternates": [
+   "a condor"
+  ],
+  "decoys": [
+   "phoenix",
+   "pelican",
+   "golden eagle"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Posh Shuttlecock",
+  "text": "The sport of badminton is named after an English _____ where it was played.",
+  "answer": "country house",
+  "alternates": [
+   "mansion",
+   "estate",
+   "house"
+  ],
+  "decoys": [
+   "school",
+   "army camp",
+   "village bakery"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Serve It Up",
+  "text": "'Tennis' likely comes from the French 'tenez', which servers called out to mean '_____'.",
+  "answer": "take this",
+  "alternates": [
+   "receive",
+   "hold",
+   "take it"
+  ],
+  "decoys": [
+   "watch out",
+   "ready",
+   "my turn"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Board Game Ancestor",
+  "text": "Monopoly is based on a 1904 game by Lizzie Magie called 'The _____ Game'.",
+  "answer": "Landlord's",
+  "alternates": [
+   "Landlords",
+   "Landlord"
+  ],
+  "decoys": [
+   "Banker's",
+   "Property",
+   "Rich Uncle's"
+  ],
+  "topic": "رياضة وألعاب",
+  "lang": "en"
+ },
+ {
+  "category": "Royal Wireless",
+  "text": "Bluetooth technology is named after a 10th-century _____.",
+  "answer": "Danish king",
+  "alternates": [
+   "Viking king",
+   "king"
+  ],
+  "decoys": [
+   "blue whale",
+   "Swedish dentist",
+   "pirate ship"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Fake Danish",
+  "text": "Häagen-Dazs sounds Scandinavian, but the made-up name was created in _____.",
+  "answer": "the Bronx",
+  "alternates": [
+   "Bronx",
+   "New York"
+  ],
+  "decoys": [
+   "Copenhagen",
+   "Paris",
+   "London"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Zip It",
+  "text": "'Zipper' was first a 1920s brand name for a kind of rubber _____.",
+  "answer": "boots",
+  "alternates": [
+   "boot",
+   "galoshes"
+  ],
+  "decoys": [
+   "gloves",
+   "raincoats",
+   "tires"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Bubbly Beginnings",
+  "text": "Before hot tubs, the Jacuzzi brothers' company made aircraft _____.",
+  "answer": "propellers",
+  "alternates": [
+   "propeller"
+  ],
+  "decoys": [
+   "seats",
+   "windows",
+   "tires"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Free Gift Gum",
+  "text": "Wrigley's chewing gum began as a free gift handed out with packets of _____.",
+  "answer": "baking powder",
+  "alternates": [
+   "baking soda"
+  ],
+  "decoys": [
+   "tea",
+   "pencils",
+   "birdseed"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Candy Code",
+  "text": "The name PEZ comes from the German word for _____.",
+  "answer": "peppermint",
+  "alternates": [
+   "pfefferminz",
+   "mint"
+  ],
+  "decoys": [
+   "pocket",
+   "sweets",
+   "little bite"
+  ],
+  "topic": "شركات واختراعات",
+  "lang": "en"
+ },
+ {
+  "category": "Vowel Parade",
+  "text": "'Facetious' and '_____' both contain all five vowels exactly once, in alphabetical order.",
+  "answer": "abstemious",
+  "alternates": [],
+  "decoys": [
+   "sequoia",
+   "education",
+   "courageous"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Knock Knock",
+  "text": "'_____', James Joyce's word for a knock at the door, is the longest palindrome in the Oxford English Dictionary.",
+  "answer": "tattarrattat",
+  "alternates": [],
+  "decoys": [
+   "knockonkonk",
+   "rattattattar",
+   "tappattappat"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Ghost Word",
+  "text": "A 1934 Webster's dictionary accidentally printed the fake word '_____', meaning 'density'.",
+  "answer": "dord",
+  "alternates": [],
+  "decoys": [
+   "dens",
+   "thikk",
+   "denz"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
+ },
+ {
+  "category": "Nerd Origins",
+  "text": "The earliest known printed use of the word 'nerd' is in a 1950 book by _____.",
+  "answer": "Dr. Seuss",
+  "alternates": [
+   "Dr Seuss",
+   "Seuss"
+  ],
+  "decoys": [
+   "Roald Dahl",
+   "Albert Einstein",
+   "J.R.R. Tolkien"
+  ],
+  "topic": "كلمات وأصلها",
+  "lang": "en"
  }
 ]
