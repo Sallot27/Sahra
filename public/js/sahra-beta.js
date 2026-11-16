@@ -190,10 +190,10 @@ B.push(K=>{
         ${it.t==="w"?`<div class="mk-text">${esc(it.x)}</div>`:it.id?`<div class="mk-frame"><canvas data-dr="${esc(it.id)}" data-by="${esc(it.by)}"></canvas></div>`:`<div class="mk-text muted">(ما رسم شي 🫥)</div>`}</div>`).join(`<span class="mk-arrow">←</span>`)}</div>`},
     render(){const g=H.g;
       if(["write0","sketch","guessd"].includes(H.ph)){const big=H.ph==="write0"?"✍️":H.ph==="sketch"?"🖍️":"🤔";
-        return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">${big}</span><h2 style="font-size:clamp(32px,4.6vw,52px)">${H.ph==="write0"?"كل واحد يكتب جملة غريبة":H.ph==="sketch"?"ارسموا الجملة اللي وصلتكم":"وش هذي الرسمة؟ اكتبوا تخمينكم"}</h2><p class="note" style="font-size:19px">لا أحد يطل على جوال الثاني! 🙈</p></div><div id="dyn" class="still">${this.dyn()}</div>`}
-      if(H.ph==="show"){const ch=g.chains[g.ci];return`<h2 style="font-size:clamp(28px,3.6vw,44px);text-align:center">سلسلة ${esc(nm(g.pl[g.ci]))} 📜</h2>${this.chainHTML(ch,true)}`}
+        return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">${big}</span><h2 style="font-size:clamp(32px,calc(var(--sw)*0.046),52px)">${H.ph==="write0"?"كل واحد يكتب جملة غريبة":H.ph==="sketch"?"ارسموا الجملة اللي وصلتكم":"وش هذي الرسمة؟ اكتبوا تخمينكم"}</h2><p class="note" style="font-size:19px">لا أحد يطل على جوال الثاني! 🙈</p></div><div id="dyn" class="still">${this.dyn()}</div>`}
+      if(H.ph==="show"){const ch=g.chains[g.ci];return`<h2 style="font-size:clamp(28px,calc(var(--sw)*0.036),44px);text-align:center">سلسلة ${esc(nm(g.pl[g.ci]))} 📜</h2>${this.chainHTML(ch,true)}`}
       if(H.ph==="rate")return C.head(H.quip)+`<div class="opts">${g.chains.map((ch,c)=>`<div class="opt" style="--o:${K.OPTC[c%K.OPTC.length]}">«${esc((ch[0]&&ch[0].x)||"…")}» ← «${esc(((ch.filter(x=>x.t==="w").pop())||{}).x||"…")}»</div>`).join("")}</div><div id="dyn" class="still">${this.dyn()}</div>`;
-      if(H.ph==="rated"){const ch=g.chains[g.best];return`<div class="col center" style="gap:10px"><h2 style="font-size:clamp(28px,3.6vw,44px)">😂 أضحك سلسلة: سلسلة ${esc(nm(g.pl[g.best]))}</h2><p class="note" style="font-size:20px">${fmt(g.count[g.best])} صوت · كل اللي شاركوا فيها +٣٠٠ لكل صوت</p></div>${this.chainHTML(ch,false)}`}
+      if(H.ph==="rated"){const ch=g.chains[g.best];return`<div class="col center" style="gap:10px"><h2 style="font-size:clamp(28px,calc(var(--sw)*0.036),44px)">😂 أضحك سلسلة: سلسلة ${esc(nm(g.pl[g.best]))}</h2><p class="note" style="font-size:20px">${fmt(g.count[g.best])} صوت · كل اللي شاركوا فيها +٣٠٠ لكل صوت</p></div>${this.chainHTML(ch,false)}`}
       return""},
     after(){const g=H.g,anim=H.ph==="show";document.querySelectorAll("canvas[data-dr]").forEach(cv=>{const s=g.strokes[cv.dataset.dr];if(!s||cv.dataset.ok)return;cv.dataset.ok=1;
       const it=cv.closest(".mk-item"),d=anim&&it?parseFloat(it.style.getPropertyValue("--d"))||0:0;
@@ -210,7 +210,7 @@ B.push(K=>{
           C.textForm(document.getElementById("mkBox"),{ph:"مثلاً: بطريق يبيع آيسكريم في الصحراء",max:60,dice:()=>pick(STARTERS),onSend:t=>{K.sendAct({k:v.k,text:t});C.sent(document.getElementById("mkBox"),"📨","وصلت!","ننتظر الباقين…")}});return}
         if(v.ph==="sketch"){root.insertAdjacentHTML("beforeend",`<div class="drawwhat">ارسم: <b>${esc(task&&task.t==="w"?task.x:"أي شي يعجبك 😅")}</b></div>${tline}<div id="drawArea"></div>`);
           K.drawPad(document.getElementById("drawArea"),v,idx);return}
-        root.insertAdjacentHTML("beforeend",`<h2 style="font-size:26px">وش هذي الرسمة؟ 🤔</h2>${tline}${task&&task.t==="d"?`<div class="frame" style="margin:14px auto;width:min(70vw,320px)"><canvas id="mkCv"></canvas></div>`:`<div class="pq">${esc(task?task.x:"…")}</div><p class="note">ما وصلت رسمة، اكتب الجملة بأسلوبك 😅</p>`}<div id="mkBox"></div>`);
+        root.insertAdjacentHTML("beforeend",`<h2 style="font-size:26px">وش هذي الرسمة؟ 🤔</h2>${tline}${task&&task.t==="d"?`<div class="frame" style="margin:14px auto;width:min(calc(var(--sw)*0.7),320px)"><canvas id="mkCv"></canvas></div>`:`<div class="pq">${esc(task?task.x:"…")}</div><p class="note">ما وصلت رسمة، اكتب الجملة بأسلوبك 😅</p>`}<div id="mkBox"></div>`);
         if(task&&task.t==="d")api("GET","/drawings/"+encodeURIComponent(task.id)).then(r=>{const j=(v.order||[]).indexOf(task.by);paint(document.getElementById("mkCv"),cleanStrokes(r.strokes),null,false,c=>c===2?"#fff":c===1?INK[Math.max(0,j)%8]:"#1a1033")}).catch(()=>{});
         C.textForm(document.getElementById("mkBox"),{ph:"اكتب وش فهمت من الرسمة…",max:60,onSend:t=>{K.sendAct({k:v.k,text:t});C.sent(document.getElementById("mkBox"),"📨","وصل تخمينك!","")}});return}
       if(v.ph==="rate"){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:28px">أضحك سلسلة؟ 😂</h2>${tline}<div id="mkBox"></div>`);
@@ -279,7 +279,7 @@ B.push(K=>{
         ${(args.length?args:["(سكت ولا قال شي 🤐)"]).map((x,i)=>`<p class="dv-arg" style="${delay===null?"animation:none":`animation-delay:${delay+i*4}s`}">«${esc(x)}»</p>`).join("")}
         ${d.va!==undefined?`<div class="dv-votes">${fmt(X==="A"?d.va:d.vb)} صوت</div>`:""}</div>`},
     render(){const g=H.g;
-      if(H.ph==="argue")return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">⚖️</span><h2 style="font-size:clamp(32px,4.6vw,52px)">المحامين يكتبون حججهم…</h2></div>
+      if(H.ph==="argue")return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">⚖️</span><h2 style="font-size:clamp(32px,calc(var(--sw)*0.046),52px)">المحامين يكتبون حججهم…</h2></div>
         <div class="dv-list">${g.debates.map(d=>`<div class="dv-mini"><b>${esc(d.t.q)}</b><span>${esc(nm(d.A))}: ${esc(d.t.a)}</span><span>ضد</span><span>${esc(nm(d.B))}: ${esc(d.t.b)}</span></div>`).join("")}</div>
         <div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="judge"||H.ph==="verdict"){const d=g.debates[g.di],v=H.ph==="verdict";
@@ -351,7 +351,7 @@ B.push(K=>{
       if(H.ph==="write"){const tail=g.story.slice(-2);return C.head(H.quip)+`<div class="ticket qs-story">${g.story.length>2?"<span class=\"note\">…</span> ":""}${tail.map(s=>`<span class="qs-line">${esc(s.x)}</span>`).join(" ")} <span class="blank">&nbsp;</span></div><div id="dyn" class="still">${this.dyn()}</div>`}
       if(H.ph==="pickv")return C.head(H.quip)+`<div class="ticket qs-story"><span class="qs-line">${esc(g.story[g.story.length-1].x)}</span> <span class="blank">&nbsp;</span></div><div class="opts">${g.opts.map((o,i)=>`<div class="opt" style="--o:${K.OPTC[i%K.OPTC.length]};animation-delay:${i*.08}s">${esc(o.x)}</div>`).join("")}</div><div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="added")return`<h2 style="font-size:40px;text-align:center">✨ دخل القصة:</h2><div class="reveal"><div class="answer">${esc(g.win.x)}</div><div class="who">${C.avatar(g.win.by)}<span>${esc(nm(g.win.by))}</span><span class="pts">+٥٠٠</span></div></div>`;
-      if(H.ph==="story")return`<h2 style="font-size:clamp(30px,4vw,48px);text-align:center">📖 قصتنا الكاملة</h2>${this.storyHTML(true)}`;
+      if(H.ph==="story")return`<h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),48px);text-align:center">📖 قصتنا الكاملة</h2>${this.storyHTML(true)}`;
       return""},
     dyn(){const g=H.g;const m=this.doneMap();return m?K.troupe(active(),new Set(Object.keys(m))):""},
     phone(v,{root,tline}){const me=K.me();C.fresh(v);
@@ -393,10 +393,10 @@ B.push(K=>{
     view(v){const g=H.g;if(H.ph==="spot"){v.cur=g.cur;v.show=g.show}if(H.ph==="facts")v.done=Object.keys(g.subs);if(H.ph==="unmask")v.sc=H.sc},
     pill(){const g=H.g;return H.ph==="facts"?"":`<span class="pill">${(n=>n===0?"آخر لاعب":n===1?"باقي لاعب واحد":n===2?"باقي لاعبين":n<=10?`باقي ${fmt(n)} لاعبين`:`باقي ${fmt(n)} لاعب`)((g.queue||[]).length)}</span>`},
     render(){const g=H.g;
-      if(H.ph==="facts")return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">🎭</span><h2 style="font-size:clamp(32px,4.6vw,52px)">٢ صح… و١ كذب</h2><p class="note" style="font-size:19px">مثال: «عمري ما ركبت طيارة» · «أخاف من البط» · «أحب الباذنجان»</p></div><div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="facts")return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">🎭</span><h2 style="font-size:clamp(32px,calc(var(--sw)*0.046),52px)">٢ صح… و١ كذب</h2><p class="note" style="font-size:19px">مثال: «عمري ما ركبت طيارة» · «أخاف من البط» · «أحب الباذنجان»</p></div><div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="spot"||H.ph==="unmask"){const u=H.ph==="unmask";
         const cnt=i=>Object.values(g.picks).filter(p=>p===i).length;
-        return(u?"":C.head(H.quip))+`<div class="row" style="justify-content:center">${C.avatar(g.cur,"lg")}<h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.cur))} يقول:</h2></div>
+        return(u?"":C.head(H.quip))+`<div class="row" style="justify-content:center">${C.avatar(g.cur,"lg")}<h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.cur))} يقول:</h2></div>
         <div class="col tk-list">${g.show.map((x,i)=>`<div class="opt tk-st ${u?(i===g.lieAt?"lie":"ok"):""}" style="--o:${K.OPTC[i]};animation-delay:${i*.15}s"><span>${esc(x)}</span>${u?`<b class="tk-tag">${i===g.lieAt?"كذبة! 🤥":"صح ✅"}</b><small>${fmt(cnt(i))} 👆</small>`:""}</div>`).join("")}</div>
         ${u?`<div class="who" style="justify-content:center">${g.fooled?`<span>انخدع ${fmt(g.fooled)}</span><span class="pts">+${fmt(g.fooled*300)}</span>`:"<span>ما خدع أحد 😅</span>"}</div>`:`<div id="dyn" class="still">${this.dyn()}</div>`}`}
       return""},
@@ -538,7 +538,7 @@ B.push(K=>{
     pill(){const g=H.g;return`<span class="pill">اللغز ${fmt(Math.min(g.i+1,g.list.length))} من ${fmt(g.list.length)}</span>`},
     render(){const g=H.g;
       if(H.ph==="solve")return C.head(H.quip)+`<div class="ticket" style="text-align:center"><span class="cat">${esc(g.p.c)}</span><div class="em-big">${g.p.e}</div><div id="dyn" class="still">${this.dyn()}</div></div>`;
-      if(H.ph==="answer")return`<div class="reveal" style="padding-top:20px"><div class="em-big" style="font-size:clamp(60px,9vw,110px)">${g.p.e}</div><div class="answer">${esc(g.p.a)}</div>
+      if(H.ph==="answer")return`<div class="reveal" style="padding-top:20px"><div class="em-big" style="font-size:clamp(60px,calc(var(--sw)*0.09),110px)">${g.p.e}</div><div class="answer">${esc(g.p.a)}</div>
         <div class="who">${g.solved.length?g.solved.map((id,i)=>`${C.avatar(id)}<span>${esc(nm(id))}</span><span class="pts">+${fmt(Math.max(400,1000-200*i))}</span>`).join(""):"<span>ولا أحد عرفها! 😅</span>"}</div></div>`;
       if(H.ph==="scores")return C.scoresHTML();
       return""},
@@ -669,7 +669,7 @@ B.push(K=>{
         const tag=!e.t?"ما كتب شي":e.bad?`ما يبدأ بـ «${esc(g.L)}»`:pts&&e.out?`رفضوه ❌ ${fmt(e.r)}`:"";
         return`<div class="ih-card ${cls}" style="animation-delay:${i*.08}s">${C.avatar(e.id)}<div class="ih-t"><small>${esc(nm(e.id))}</small><b>${esc(e.t||"—")}</b>${tag?`<em>${tag}</em>`:""}${!tag&&same.length?`<em class="same">🔁 نفس جواب ${same.map(x=>esc(nm(x))).join("، ")}</em>`:""}</div>${pts?`<span class="ih-p">+${fmt(e.p)}</span>`:(c.rej&&!e.bad&&e.t?`<span class="ih-r" data-x="${esc(e.id)}"></span>`:"")}</div>`}).join("")}</div>`},
     render(){const g=H.g;
-      if(H.ph==="letter")return`<div class="col center" style="gap:10px;margin-top:6vh"><p class="note" style="font-size:24px">الحرف هو…</p><div class="ih-big" id="ihL">${esc(g.L)}</div></div>`;
+      if(H.ph==="letter")return`<div class="col center" style="gap:10px;margin-top:calc(var(--sh)*0.06)"><p class="note" style="font-size:24px">الحرف هو…</p><div class="ih-big" id="ihL">${esc(g.L)}</div></div>`;
       if(H.ph==="fill")return C.head(H.quip)+`<div class="ih-top"><div class="ih-big sm">${esc(g.L)}</div><div class="ih-chips">${CATS.map(c=>`<span>${c.e} ${c.n}</span>`).join("")}</div></div>
         ${g.stopBy?`<div class="ih-stop">✋ ستوب! ${esc(nm(g.stopBy))} خلّص</div>`:""}<div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="check"||H.ph==="catpts"){const c=this.cat(),ct=CATS[g.ci];
@@ -1040,11 +1040,11 @@ B.push(K=>{
       if(H.ph==="accuse")v.done=Object.keys(g.votes);if(H.ph==="unmask")v.sc=H.sc},
     pill(){const g=H.g;return`<span class="pill">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}</span>`},
     render(){const g=H.g;
-      if(H.ph==="read")return C.head(H.quip)+`<div class="col center" style="gap:12px"><span style="font-size:96px;line-height:1">📱</span><h2 style="font-size:clamp(34px,5vw,58px)">${esc(g.task.k)}</h2><p class="note" style="font-size:22px">المهمة مكتوبة في جوالاتكم… وفيه واحد ما يدري وش هي 😏</p></div>`;
-      if(H.ph==="act")return`<div class="col center" style="gap:10px;margin-top:4vh"><div class="mm-count" id="mmC">٣</div><h2 style="font-size:clamp(30px,4.4vw,52px)">${esc(g.task.k)}!</h2><p class="note" style="font-size:22px">ثبّتوا على حركتكم… وناظروا بعض 👀</p></div>`;
-      if(H.ph==="accuse")return C.head(H.quip)+`<div class="col center"><span style="font-size:90px;line-height:1">🕵️</span><h2 style="font-size:clamp(34px,5vw,56px)">مين كان يمثّل؟</h2></div><div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="read")return C.head(H.quip)+`<div class="col center" style="gap:12px"><span style="font-size:96px;line-height:1">📱</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),58px)">${esc(g.task.k)}</h2><p class="note" style="font-size:22px">المهمة مكتوبة في جوالاتكم… وفيه واحد ما يدري وش هي 😏</p></div>`;
+      if(H.ph==="act")return`<div class="col center" style="gap:10px;margin-top:calc(var(--sh)*0.04)"><div class="mm-count" id="mmC">٣</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.044),52px)">${esc(g.task.k)}!</h2><p class="note" style="font-size:22px">ثبّتوا على حركتكم… وناظروا بعض 👀</p></div>`;
+      if(H.ph==="accuse")return C.head(H.quip)+`<div class="col center"><span style="font-size:90px;line-height:1">🕵️</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),56px)">مين كان يمثّل؟</h2></div><div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="unmask"){const tro=g.pl.map((id,i)=>`<div class="pl" style="--i:${i};position:relative"><div class="av lg" style="--c:${K.col(id)}">${K.face(id)}${g.cnt[id]?`<span class="vote-n">${fmt(g.cnt[id])}</span>`:""}</div><span>${esc(nm(id))}</span></div>`).join("");
-        return`<h2 style="font-size:36px;text-align:center">المهمة كانت: «${esc(g.task.t)}»</h2><div class="troupe">${tro}</div><div class="reveal"><div class="row" style="justify-content:center;animation:fade .3s 1.2s both">${C.avatar(g.faker,"lg")}<span style="font-family:var(--display);font-size:clamp(30px,4vw,46px)">${esc(nm(g.faker))} كان يمثّل!</span></div>
+        return`<h2 style="font-size:36px;text-align:center">المهمة كانت: «${esc(g.task.t)}»</h2><div class="troupe">${tro}</div><div class="reveal"><div class="row" style="justify-content:center;animation:fade .3s 1.2s both">${C.avatar(g.faker,"lg")}<span style="font-family:var(--display);font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.faker))} كان يمثّل!</span></div>
           <div class="stamp ${g.caught?"truth":"lie"}">${g.caught?"انكشف! 😂":"ضحك عليكم! 🎭"}</div><div class="who">${g.caught?"<span>اللي صوّتوا صح</span><span class=\"pts\">+٣٠٠</span>":`<span>${esc(nm(g.faker))}</span><span class="pts">+٨٠٠</span>`}</div></div>`}
       return""},
     after(){if(H.ph!=="act")return;const el=document.getElementById("mmC");if(!el)return;const t0=Date.now();

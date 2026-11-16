@@ -442,8 +442,17 @@ const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
 const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
 const active=()=>{const here=new Set(peers().map(p=>p.peer)),out=new Set(H.kicked||[]);return H.order.filter(id=>here.has(id)&&!out.has(id))};
 let actOf=()=>null;
+/* the big screen is laid out at one design size and scaled to fill any display:
+   1366×820 for wide screens, 820×1180 when the screen stands up (portrait) */
+let STAGE_Z=1;
+function fitStage(){const w=innerWidth,h=innerHeight,portrait=h>w*1.05;
+  const z=Math.max(.5,Math.min(3.2,portrait?Math.min(w/820,h/1180):Math.min(w/1366,h/820)));STAGE_Z=z;
+  const app=document.getElementById("app");if(app)app.style.zoom=z;
+  const r=document.documentElement.style;r.setProperty("--sh",h/z+"px");r.setProperty("--sw",w/z+"px");
+  document.body.classList.toggle("portrait",portrait);document.body.classList.add("bigscreen")}
 function startHost(snap){
   role="host";if(CFG.debug)window.__H=H;
+  fitStage();addEventListener("resize",()=>{fitStage();if(H.ph==="menu"&&H.wheel.dark&&H.wheel.sel)spotOn(H.wheel.sel,0)});
   if(snap&&snap.H){Object.assign(H,snap.H,{lastView:"",lastKey:""});H.k++; // new step number: stale phone actions are ignored
     if(H.ph==="topic"){const G=GAMES[H.game],t=H.g.topic;H.g.afterTopic=G&&G.afterTopic?()=>G.afterTopic(t):null;if(!H.g.afterTopic)goMenu()}
     if(H.game&&!GAMES[H.game])goMenu();H.end=Math.max(H.end,Date.now()+8000);
@@ -544,7 +553,9 @@ function wheelShow(){const box=$("wsel");if(!box)return;box.innerHTML=wheelInfo(
 // aim the stage light (and its beam from the lamp) at a book
 function spotOn(id,secs){const box=$("shelf"),el=box&&box.querySelector(`.book[data-g="${id}"]`);if(!el)return;
   const B=box.getBoundingClientRect(),R=el.getBoundingClientRect(),sp=$("spot"),bm=$("beam");
-  const w=R.width*2.3,h=R.height*1.3,cx=R.left-B.left+R.width/2,cy=R.top-B.top+R.height/2,lx=B.width/2,ly=8;
+  // rectangles are in screen pixels; the stage is zoomed, so convert back to stage pixels
+  const z=(B.width/(box.offsetWidth||B.width))||1;
+  const w=R.width/z*2.3,h=R.height/z*1.3,cx=(R.left-B.left+R.width/2)/z,cy=(R.top-B.top+R.height/2)/z,lx=box.offsetWidth/2,ly=8;
   const t=`${secs}s cubic-bezier(.3,.7,.3,1)`;
   sp.style.transition=bm.style.transition=`left ${t},top ${t},width ${t},height ${t},transform ${t}`;
   Object.assign(sp.style,{left:cx-w/2+"px",top:cy-h/2+"px",width:w+"px",height:h+"px"});
@@ -793,7 +804,7 @@ const FAB={
   themeName(){const g=H.g;return["lie","choose","reveal"].includes(H.ph)&&QS[g.q]?QS[g.q].t:null},
   ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)} · ${esc(q.c)}</span><p class="qtext" dir="${q.l==="en"?"ltr":"rtl"}">${blankify(q.q,fill?q.a:"")}</p></div>`},
   render(){const g=H.g;
-    if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
+    if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
       ${spotlightHTML(g.pick)}`;
     if(H.ph==="lie")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>${this.ticket()}
       <h3 style="font-size:26px;text-align:center">✍️ اكتبوا كذبة مقنعة من جوالاتكم</h3><div id="dyn" class="still">${bluffDyn(g)}</div>`;
@@ -847,10 +858,10 @@ const DRW={
   frame(small){const g=H.g;return`<div class="col center"><div class="frame ${small?"small":""}"><canvas id="art"></canvas></div><div class="artist"><div class="av sm" style="--c:${col(g.ex)}">${face(g.ex)}</div>رسمة ${esc(nm(g.ex))}</div></div>`},
   render(){const g=H.g;
     if(H.ph==="draw")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
-      <div class="col center" style="gap:18px"><span style="font-size:110px;line-height:1">🖍️</span><h2 style="font-size:clamp(34px,5vw,56px)">كل واحد يرسم موضوعه السري بجواله</h2><p class="note" style="font-size:19px">لا تخلون أحد يشوف جوالكم!</p></div>
+      <div class="col center" style="gap:18px"><span style="font-size:110px;line-height:1">🖍️</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),56px)">كل واحد يرسم موضوعه السري بجواله</h2><p class="note" style="font-size:19px">لا تخلون أحد يشوف جوالكم!</p></div>
       <div id="dyn" class="still">${troupe(H.order,new Set(Object.keys(g.drawings)))}</div>`;
     if(H.ph==="lie")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
-      <div class="easel">${this.frame()}<div class="col" style="justify-content:center;gap:18px"><h2 style="font-size:clamp(30px,4vw,48px)">وش هذي الرسمة؟ 🤔</h2><p style="font-weight:700;font-size:20px">اكتبوا عنوان يقنع الكل إنه هو اللي كان يرسمه ${esc(nm(g.ex))}.</p><div id="dyn" class="still">${bluffDyn(g)}</div></div></div>`;
+      <div class="easel">${this.frame()}<div class="col" style="justify-content:center;gap:18px"><h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),48px)">وش هذي الرسمة؟ 🤔</h2><p style="font-weight:700;font-size:20px">اكتبوا عنوان يقنع الكل إنه هو اللي كان يرسمه ${esc(nm(g.ex))}.</p><div id="dyn" class="still">${bluffDyn(g)}</div></div></div>`;
     if(H.ph==="choose")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
       <div class="easel">${this.frame()}<div class="col" style="justify-content:center"><h2 style="font-size:34px">وش كان يرسم ${esc(nm(g.ex))}؟</h2>${optsHTML(g)}<div id="dyn" class="still">${bluffDyn(g)}</div></div></div>`;
     if(H.ph==="reveal")return bluffRevealHTML(g,()=>this.frame(true));
@@ -922,7 +933,7 @@ const SAL={
   spotNames(){return H.g.cats},
   themeName(){return["ask","vote","tally","guess","result"].includes(H.ph)?H.g.cat:null},
   render(){const g=H.g;
-    if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
+    if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
       ${spotlightHTML(g.cats)}`;
     if(H.ph==="ask"){const [a,b]=g.pairs[g.rvI]||[];
       return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
@@ -933,16 +944,16 @@ const SAL={
       <div class="row" style="justify-content:center"><button class="btn ghost" id="nextQ">السؤال التالي ⏭</button><button class="btn coral" id="toVote">خلّصنا، يلا نصوّت 🗳️</button></div>
       <div id="dyn" class="still">${this.dyn()}</div>`}
     if(H.ph==="vote")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
-      <div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">🗳️</span><h2 style="font-size:clamp(34px,5vw,56px)">مين برا السالفة؟</h2></div>
+      <div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">🗳️</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),56px)">مين برا السالفة؟</h2></div>
       <div id="dyn" class="still">${this.dyn()}</div>`;
     if(H.ph==="tally"){
       const tro=g.players.map((id,i)=>`<div class="pl" style="--i:${i};position:relative"><div class="av lg" style="--c:${col(id)}">${face(id)}${g.count[id]?`<span class="vote-n">${fmt(g.count[id])}</span>`:""}</div><span>${esc(nm(id))}</span></div>`).join("");
       return`<h2 style="font-size:40px;text-align:center">نتيجة التصويت</h2><div class="troupe">${tro}</div>
-      <div class="reveal"><div class="row" style="justify-content:center;animation:fade .3s 1.2s both"><div class="av lg" style="--c:${col(g.out)}">${face(g.out)}</div><span style="font-family:var(--display);font-size:clamp(30px,4vw,48px)">${esc(nm(g.out))} كان برا السالفة!</span></div>
+      <div class="reveal"><div class="row" style="justify-content:center;animation:fade .3s 1.2s both"><div class="av lg" style="--c:${col(g.out)}">${face(g.out)}</div><span style="font-family:var(--display);font-size:clamp(30px,calc(var(--sw)*0.04),48px)">${esc(nm(g.out))} كان برا السالفة!</span></div>
       <div class="stamp ${g.caught?"truth":"lie"}">${g.caught?"انكشف!":"هرب منكم!"}</div>
       <div class="who">${g.caught?"<span>اللي صوّتوا صح</span><span class=\"pts\">+٥٠٠</span>":`<span>${esc(nm(g.out))}</span><span class="pts">+١٬٥٠٠</span>`}</div></div>`}
     if(H.ph==="guess")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
-      <div class="row" style="justify-content:center"><div class="av lg" style="--c:${col(g.out)}">${face(g.out)}</div><h2 style="font-size:clamp(30px,4vw,46px)">${esc(nm(g.out))} يحاول يخمّن السالفة…</h2></div>
+      <div class="row" style="justify-content:center"><div class="av lg" style="--c:${col(g.out)}">${face(g.out)}</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.out))} يحاول يخمّن السالفة…</h2></div>
       <div class="opts">${g.opts.map((o,i)=>`<div class="opt" style="--o:${OPTC[i%OPTC.length]};animation-delay:${i*.06}s">${esc(o)}</div>`).join("")}</div>`;
     if(H.ph==="result")return`<div class="reveal" style="padding-top:20px"><p class="note" style="font-size:22px">السالفة كانت:</p><div class="answer">${esc(g.word)}</div>
       ${g.caught?`<div class="stamp ${g.right?"truth":"lie"}">${g.right?"عرفها!":"ما عرفها"}</div><div class="who"><div class="av sm" style="--c:${col(g.out)}">${face(g.out)}</div><span>${esc(nm(g.out))} ${g.guessed?`خمّن «${esc(g.guessed)}»`:"ما لحق يخمّن"}</span>${g.right?'<span class="pts">+١٬٠٠٠</span>':""}</div>`:`<div class="quip" style="animation-delay:.6s">🎤 ${esc(nm(g.out))} ضحك عليكم كلكم 😂</div>`}</div>`;
@@ -1019,7 +1030,7 @@ function renderPlayer(){
     return;
   }
 
-  if(v.ph==="topic"){root.innerHTML=head+`<div class="landing" style="margin-top:6vh"><p class="lbl">الموضوع</p>${topicCardHTML(v.topic,"land")}${v.picker?`<p class="note center">اختاره ${esc(v.nm?.[v.picker]||"")}</p>`:""}</div>`;return}
+  if(v.ph==="topic"){root.innerHTML=head+`<div class="landing" style="margin-top:calc(var(--sh)*0.06)"><p class="lbl">الموضوع</p>${topicCardHTML(v.topic,"land")}${v.picker?`<p class="note center">اختاره ${esc(v.nm?.[v.picker]||"")}</p>`:""}</div>`;return}
   if(v.game==="sawalif"&&["ask","vote","tally","guess","result"].includes(v.ph)){salPlayer(v,head,f);return}
   {const Gp=GAMES[v.game];if(Gp&&Gp.phone&&v.ph!=="end"){root.innerHTML=head;Gp.phone(v,{root,head,tline,idx,me:myPeer});return}}
   if(v.ph==="draw"){
@@ -1136,8 +1147,8 @@ function fetchDrawing(g,id,drawId){
     .catch(()=>{if(g.fetching)delete g.fetching[id]});
 }
 async function boot(){
-  root.innerHTML=`<div class="emoji" style="margin-top:20vh">🎉</div><p class="big">لحظة…</p>`;
-  const fail=(t,d)=>{root.innerHTML=`<div class="emoji" style="margin-top:20vh">😵</div><p class="big">${esc(t)}</p><p class="note center">${esc(d)}</p>`};
+  root.innerHTML=`<div class="emoji" style="margin-top:calc(var(--sh)*0.2)">🎉</div><p class="big">لحظة…</p>`;
+  const fail=(t,d)=>{root.innerHTML=`<div class="emoji" style="margin-top:calc(var(--sh)*0.2)">😵</div><p class="big">${esc(t)}</p><p class="note center">${esc(d)}</p>`};
   try{const c=await api("GET","/content");QS=c.questions||[];DRAW=c.prompts||[];WORDS=c.words||{};TOPICS=c.topics||[]}
   catch(e){return fail("ما قدرنا نحمّل الألعاب",e.status?"خطأ من السيرفر ("+e.status+"). افتح /api/status لمعرفة السبب.":"تأكد من الإنترنت وحدّث الصفحة.")}
   if(!QS.length)return fail("ما فيه أسئلة في قاعدة البيانات","شغّل الأمر: php artisan db:seed --force");
