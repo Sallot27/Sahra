@@ -1067,11 +1067,15 @@ B.push(K=>{
 B.push(K=>{
   const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti}=K;
   const C=common(K);
-  const SCN=window.SHAKLI_SCENARIOS||["طلبت من المطعم وجاني الطلب غلط"],CHATS=(window.SHAKLI_CHATS||[]).filter(c=>c&&c.f&&c.m),COUNT=window.SHAKLI_MEME_COUNT||38,HAND=3;
+  const SCN=window.SHAKLI_SCENARIOS||["طلبت من المطعم وجاني الطلب غلط"],CHATS=(window.SHAKLI_CHATS||[]).filter(c=>c&&c.f&&c.m),COUNT=window.SHAKLI_MEME_COUNT||38,HAND=5;
   // cards 1..COUNT are the drawn ones; 1001+ are the owner's own pictures (not in the commercial edition)
   const EXTRA=K.commercial?[]:(window.SHAKLI_EXTRA||[]).filter(f=>/^[\w.-]+\.(gif|png|jpe?g|webp|svg)$/i.test(f));
-  const ALL=[...Array(COUNT).keys()].map(i=>i+1).concat(EXTRA.map((_,i)=>1001+i));
-  const src=id=>{id=Number(id)||1;return id>1000&&EXTRA[id-1001]?"/img/memes/extra/"+EXTRA[id-1001]:"/img/memes/"+Math.min(Math.max(1,id),COUNT)+".svg"};
+  // 2001+ are well-known memes loaded straight from imgflip (private edition only)
+  const WEB=K.commercial?[]:(window.SHAKLI_WEB||[]).filter(u=>/^https:\/\/i\.imgflip\.com\/\w+\.(jpg|png)$/.test(u));
+  const PICS=EXTRA.map((_,i)=>1001+i).concat(WEB.map((_,i)=>2001+i));
+  // with real pictures available the drawn cards are left out
+  const ALL=PICS.length>=12?PICS:[...Array(COUNT).keys()].map(i=>i+1).concat(PICS);
+  const src=id=>{id=Number(id)||1;return id>2000&&WEB[id-2001]?WEB[id-2001]:id>1000&&EXTRA[id-1001]?"/img/memes/extra/"+EXTRA[id-1001]:"/img/memes/"+Math.min(Math.max(1,id),COUNT)+".svg"};
   const img=(id,cls="")=>`<img class="sk-img ${cls}" src="${src(id)}" alt="">`;
   return{
     id:"shakli",name:"شكلي إذا",emoji:"🤳",color:"#ff7fd0",min:2,noScore:true,
