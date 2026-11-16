@@ -23,6 +23,7 @@ class GameController extends Controller
                 'api' => '/api',
                 'edition' => config('sahra.edition'),
                 'hostCode' => config('sahra.host_codes') !== [],
+                'badWords' => ['any' => config('profanity.anywhere', []), 'whole' => config('profanity.whole', [])],
             ],
         ]);
     }

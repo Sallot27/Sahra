@@ -99,4 +99,49 @@ class GameApiTest extends TestCase
         $this->post('/admin/login', ['password' => 'secret'])->assertRedirect('/admin/questions');
         $this->get('/admin/questions')->assertOk();
     }
+
+    public function test_kicked_player_cannot_rejoin_and_only_host_can_kick(): void
+    {
+        $room = $this->postJson('/api/rooms')->assertCreated()->json();
+        $channel = 'presence-room.'.$room['code'];
+        $join = fn (string $uid) => $this->postJson('/api/rooms/auth', [
+            'socket_id' => '123.456', 'channel_name' => $channel, 'uid' => $uid, 'name' => 'سعود',
+        ]);
+
+        $join('kick12345')->assertOk();
+        $this->postJson("/api/rooms/{$room['code']}/kick", ['host_token' => 'wrong', 'uid' => 'kick12345'])->assertForbidden();
+        $this->postJson("/api/rooms/{$room['code']}/kick", ['host_token' => $room['host_token'], 'uid' => 'kick12345'])->assertOk();
+
+        $join('kick12345')->assertForbidden();
+        $join('other1234')->assertOk();
+    }
+
+    public function test_rude_nicknames_are_refused(): void
+    {
+        $room = $this->postJson('/api/rooms')->assertCreated()->json();
+        $auth = fn (string $name) => $this->postJson('/api/rooms/auth', [
+            'socket_id' => '123.456', 'channel_name' => 'presence-room.'.$room['code'], 'uid' => 'name1234', 'name' => $name,
+        ]);
+
+        $auth('ش ر م و ط')->assertStatus(422);
+        $auth('f u c k')->assertStatus(422);
+        $auth('عبدالله')->assertOk();
+        $auth('زبدة')->assertOk();
+    }
+
+    public function test_host_keeps_room_alive(): void
+    {
+        $room = $this->postJson('/api/rooms')->assertCreated()->json();
+
+        $this->postJson("/api/rooms/{$room['code']}/alive", ['host_token' => $room['host_token']])->assertOk();
+        $this->postJson("/api/rooms/{$room['code']}/alive", ['host_token' => 'nope'])->assertForbidden();
+    }
+
+    public function test_privacy_page_and_security_headers(): void
+    {
+        $this->get('/privacy')->assertOk()->assertSee('سياسة الخصوصية')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->get('/no-such-page')->assertNotFound()->assertSee('العودة للصفحة الرئيسية');
+    }
 }

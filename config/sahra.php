@@ -17,4 +17,9 @@ return [
         fn ($c) => strtoupper(trim($c)),
         explode(',', (string) env('SAHRA_HOST_CODES', ''))
     ))),
+
+    /*
+    | Email shown on the privacy page for questions and reports (optional).
+    */
+    'contact' => env('SAHRA_CONTACT_EMAIL'),
 ];

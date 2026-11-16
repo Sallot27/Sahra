@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
+use App\Support\Profanity;
 use App\Support\Reverb;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,42 @@ class RoomController extends Controller
         return response()->json(['code' => $room->code]);
     }
 
+    /** The big screen removes a player; that player cannot join this room again. */
+    public function kick(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate([
+            'host_token' => ['required', 'string', 'max:64'],
+            'uid' => ['required', 'string', 'regex:/^[a-z0-9]{6,24}$/'],
+        ]);
+        $room = Room::where('code', strtoupper($code))->first();
+
+        if (! $room || ! $room->checkHostToken($data['host_token'])) {
+            return response()->json(['message' => 'forbidden'], 403);
+        }
+
+        $kicked = $room->kicked ?? [];
+        if (! in_array($data['uid'], $kicked, true) && count($kicked) < 100) {
+            $kicked[] = $data['uid'];
+        }
+        $room->forceFill(['kicked' => $kicked])->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** The big screen keeps its room from expiring during a long evening. */
+    public function alive(Request $request, string $code): JsonResponse
+    {
+        $room = Room::where('code', strtoupper($code))->first();
+
+        if (! $room || ! $room->checkHostToken((string) $request->input('host_token', ''))) {
+            return response()->json(['message' => 'forbidden'], 403);
+        }
+
+        $room->forceFill(['last_active_at' => now()])->touch();
+
+        return response()->json(['ok' => true]);
+    }
+
     /**
      * Authorizes joining the room's presence channel. Only the holder of the
      * host token may join as the host; everyone else joins as a player.
@@ -91,6 +128,13 @@ class RoomController extends Controller
         }
 
         $isHost = $room->checkHostToken($data['host_token'] ?? null);
+
+        if (! $isHost && $room->isKicked($data['uid'])) {
+            return response()->json(['message' => 'kicked'], 403);
+        }
+        if (! $isHost && Profanity::contains((string) ($data['name'] ?? ''))) {
+            return response()->json(['message' => 'bad_name'], 422);
+        }
         $room->forceFill(['last_active_at' => now()])->touch();
 
         $member = [

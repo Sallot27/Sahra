@@ -2,5 +2,6 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-// Remove old rooms and drawings once a day (needs the scheduler enabled on Laravel Cloud).
-Schedule::command('model:prune')->daily();
+// Remove rooms, drawings and selfies older than 6 hours, as the privacy page promises.
+// Runs every hour; needs the scheduler enabled on Laravel Cloud.
+Schedule::command('model:prune')->hourly();

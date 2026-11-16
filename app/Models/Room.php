@@ -10,13 +10,13 @@ class Room extends Model
 {
     use Prunable;
 
-    protected $fillable = ['code', 'host_token_hash', 'last_active_at'];
+    protected $fillable = ['code', 'host_token_hash', 'last_active_at', 'kicked'];
 
     protected $hidden = ['host_token_hash'];
 
     protected function casts(): array
     {
-        return ['last_active_at' => 'datetime'];
+        return ['last_active_at' => 'datetime', 'kicked' => 'array'];
     }
 
     public function checkHostToken(?string $token): bool
@@ -25,9 +25,14 @@ class Room extends Model
             && hash_equals($this->host_token_hash, hash('sha256', $token));
     }
 
-    /** Rooms nobody touched for a day are removed by `model:prune`. */
+    public function isKicked(string $uid): bool
+    {
+        return in_array($uid, $this->kicked ?? [], true);
+    }
+
+    /** Rooms nobody touched for 6 hours are removed by `model:prune` (hourly). */
     public function prunable(): Builder
     {
-        return static::where('updated_at', '<', now()->subDay());
+        return static::where('updated_at', '<', now()->subHours(6));
     }
 }

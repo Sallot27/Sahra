@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trusting it makes Laravel build https:// links instead of http:// ones.
         $middleware->trustProxies(at: '*');
 
+        // nosniff, frame and referrer protections, HTTPS-only once on https
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);

@@ -391,7 +391,7 @@ B.push(K=>{
       H.ph="unmask";H.k++;setTimer(8);playSting("sting_reveal",sfx.drum);setTimeout(()=>{sfx.lie();if(Object.values(g.picks).some(p=>p===g.lieAt))confetti(80)},1500)},
     doneMap(){const g=H.g;return H.ph==="facts"?g.subs:H.ph==="spot"?g.picks:null},
     view(v){const g=H.g;if(H.ph==="spot"){v.cur=g.cur;v.show=g.show}if(H.ph==="facts")v.done=Object.keys(g.subs);if(H.ph==="unmask")v.sc=H.sc},
-    pill(){const g=H.g;return H.ph==="facts"?"":`<span class="pill">باقي ${fmt((g.queue||[]).length)} لاعبين</span>`},
+    pill(){const g=H.g;return H.ph==="facts"?"":`<span class="pill">${(n=>n===0?"آخر لاعب":n===1?"باقي لاعب واحد":n===2?"باقي لاعبين":n<=10?`باقي ${fmt(n)} لاعبين`:`باقي ${fmt(n)} لاعب`)((g.queue||[]).length)}</span>`},
     render(){const g=H.g;
       if(H.ph==="facts")return C.head(H.quip)+`<div class="col center" style="gap:14px"><span style="font-size:100px;line-height:1">🎭</span><h2 style="font-size:clamp(32px,4.6vw,52px)">٢ صح… و١ كذب</h2><p class="note" style="font-size:19px">مثال: «عمري ما ركبت طيارة» · «أخاف من البط» · «أحب الباذنجان»</p></div><div id="dyn" class="still">${this.dyn()}</div>`;
       if(H.ph==="spot"||H.ph==="unmask"){const u=H.ph==="unmask";

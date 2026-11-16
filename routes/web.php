@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Route;
 // The game: the same page is the big screen and the phone controller.
 Route::get('/', [GameController::class, 'index'])->name('game');
 
+// Privacy policy and terms of use (Arabic).
+Route::view('/privacy', 'privacy', [
+    'updated' => 'نوفمبر ٢٠٢٦',
+    'contact' => config('sahra.contact'),
+])->name('privacy');
+
 // Content panel at /admin (enabled when ADMIN_PASSWORD is set).
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/login', [AdminController::class, 'login'])->name('login');

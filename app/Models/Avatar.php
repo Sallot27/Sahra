@@ -16,6 +16,6 @@ class Avatar extends Model
     /** Selfies are deleted after 12 hours. */
     public function prunable(): Builder
     {
-        return static::where('created_at', '<', now()->subHours(12));
+        return static::where('created_at', '<', now()->subHours(6));
     }
 }

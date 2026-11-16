@@ -14,6 +14,22 @@ const clip=(s,n)=>String(s??"").replace(/\s+/g," ").trim().slice(0,n);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const AV_COUNT=10;
 // "p:3" = picture 3, "u:<id>" = uploaded selfie
+/* word filter: bad nicknames are refused, bad words in typed answers become ★★★ */
+const BW=CFG.badWords||{any:[],whole:[]};
+const normT=t=>String(t??"").toLowerCase().replace(/[\u064B-\u065F\u0670\u0640\u200B-\u200F]/g,"").replace(/[أإآٱ]/g,"ا")
+  .replace(/[ةىؤئگڤپچ]/g,c=>({"ة":"ه","ى":"ي","ؤ":"و","ئ":"ي","گ":"ك","ڤ":"ف","پ":"ب","چ":"ج"}[c]))
+  .replace(/[013457@$!]/g,c=>({"0":"o","1":"i","3":"e","4":"a","5":"s","7":"t","@":"a","$":"s","!":"i"}[c])).replace(/(.)\1{2,}/gu,"$1");
+const BW_ANY=(BW.any||[]).map(normT).filter(Boolean),BW_WHOLE=new Set((BW.whole||[]).map(normT));
+function hasBad(t){const out=[];let run="";
+  for(const tok of normT(t).split(/[^\p{L}]+/u).filter(Boolean)){if([...tok].length===1){run+=tok;continue}if(run.length>1)out.push(run);run="";out.push(tok)}
+  if(run.length>1)out.push(run);
+  return out.some(k=>BW_ANY.some(w=>k.includes(w))||BW_WHOLE.has(k)||BW_WHOLE.has(k.replace(/^(وال|ال|يا|و)/u,"")))}
+const _fc=new Map();
+function filterText(t){if(typeof t!=="string"||t.length<2||/^[\w:.\-]{10,}$/.test(t))return t;if(_fc.has(t))return _fc.get(t);
+  let r=t.split(/(\s+)/).map(w=>/\S/.test(w)&&hasBad(w)?"★★★":w).join("");if(hasBad(r))r="★★★";
+  if(_fc.size>2000)_fc.clear();_fc.set(t,r);return r}
+const cleanAct=a=>a==null?a:typeof a==="string"?filterText(a):Array.isArray(a)?a.map(cleanAct):typeof a==="object"?Object.fromEntries(Object.entries(a).map(([k,v])=>[k,cleanAct(v)])):a;
+if(CFG.debug)window.__F={hasBad,filterText};
 const okAv=a=>typeof a==="string"&&(/^p:([1-9]|10)$/.test(a)||/^u:[0-9A-Za-z]{10,40}$/.test(a));
 const avSrc=a=>a.startsWith("p:")?"/img/av/"+a.slice(2)+".svg":(CFG.api||"/api")+"/avatars/"+a.slice(2);
 const avImg=(a,fallback)=>okAv(a)?`<img class="avimg" src="${avSrc(a)}" alt="">`:fallback;
@@ -377,7 +393,8 @@ function landing(msg,hostMsg){
     ${resumeInfo()?`<button class="btn coral wide" id="resumeBtn">↩️ كمّل السهرة (${esc(resumeInfo().code)})</button>`:""}
     <button class="btn wide" id="hostBtn">افتح سهرة جديدة</button>
     <p class="err" id="hmsg">${hostMsg?esc(hostMsg):""}</p>
-  </div>`;
+  </div>
+  <footer class="homefoot note center"><span>👨‍👩‍👧 محتوى عائلي، ويُفضَّل إشراف الكبار على الأطفال دون ١٣ سنة.</span><a href="/privacy">سياسة الخصوصية وشروط الاستخدام</a></footer>`;
   $("hostBtn").onclick=async e=>{initAudio();if(CFG.hostCode){ST.hcode=clip($("hcodeIn").value,40).toUpperCase();if(!ST.hcode){$("hmsg").textContent="اكتب رمز الشراء أول.";return}saveST()}e.target.disabled=true;e.target.textContent="جاري التجهيز…";
     try{sessionStorage.removeItem("sahra_host");sessionStorage.removeItem("sahra_snap")}catch(_){}
     const err=await connect(true);if(err)return landing("",err);saveST();startHost()};
@@ -398,6 +415,8 @@ function landing(msg,hostMsg){
     let nk=clip($("nickIn").value,14);const cd=$("codeIn").value.toUpperCase(),m=$("msg");
     if(!nk){nk=pick(FUN_NAMES);$("nickIn").value=nk} // no name typed: pick a fun one
     if(cd.length!==4)return m.textContent="الرمز ٤ حروف إنجليزية، تلقاه على الشاشة الكبيرة.";
+    if(hasBad(nk))return m.textContent="هذا الاسم غير مناسب 🙏 اختر اسم ثاني أو اضغط 🎲";
+    if(wasKicked(cd))return m.textContent="المضيف أخرجك من هذي الغرفة، فما تقدر تدخلها مرة ثانية.";
     ST.nick=nk;ST.code=cd;saveST();
     const jb=$("joinBtn");jb.disabled=true;jb.textContent="جاري الاتصال…";
     const err=await connect(false);if(err)return landing(err);
@@ -405,38 +424,51 @@ function landing(msg,hostMsg){
   };
 }
 
+// a player removed by the big screen remembers it, so a new tab can't sneak back into that room
+const wasKicked=code=>{try{return(JSON.parse(localStorage.getItem("sahra_kicked")||"[]")).includes(code)}catch(e){return false}};
+function rememberKick(code){try{const a=JSON.parse(localStorage.getItem("sahra_kicked")||"[]").filter(c=>c!==code).slice(-20);a.push(code);localStorage.setItem("sahra_kicked",JSON.stringify(a))}catch(e){}}
+
 /* ================= HOST core ================= */
 // a snapshot of the evening, so refreshing the big screen doesn't end the game for everyone
 function resumeInfo(){try{const s=JSON.parse(sessionStorage.getItem("sahra_snap")||"null"),h=savedHost();
   return s&&h&&s.code===h.code&&Date.now()-s.at<6*3600e3?s:null}catch(e){return null}}
 function saveSnap(){try{sessionStorage.setItem("sahra_snap",JSON.stringify({code:ST.code,at:Date.now(),
-  H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g}}))}catch(e){}}
+  H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g,kicked:H.kicked||[],paused:H.paused,pauseLeft:H.pauseLeft}}))}catch(e){}}
 const H={game:null,ph:"menu",k:0,order:[],names:{},sc:{},lk:{},end:0,total:1,quip:"",lastView:"",lastKey:"",g:{}};
 const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%8];
 const face=id=>avImg((H.av||{})[id],FACES[Math.max(0,H.order.indexOf(id))%8]);
 const nm=id=>H.names[id]||"لاعب";
 const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
 const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
-const active=()=>{const here=new Set(peers().map(p=>p.peer));return H.order.filter(id=>here.has(id))};
+const active=()=>{const here=new Set(peers().map(p=>p.peer)),out=new Set(H.kicked||[]);return H.order.filter(id=>here.has(id)&&!out.has(id))};
 let actOf=()=>null;
 function startHost(snap){
   role="host";if(CFG.debug)window.__H=H;
   if(snap&&snap.H){Object.assign(H,snap.H,{lastView:"",lastKey:""});H.k++; // new step number: stale phone actions are ignored
     if(H.ph==="topic"){const G=GAMES[H.game],t=H.g.topic;H.g.afterTopic=G&&G.afterTopic?()=>G.afterTopic(t):null;if(!H.g.afterTopic)goMenu()}
     if(H.game&&!GAMES[H.game])goMenu();H.end=Math.max(H.end,Date.now()+8000);
-    H.hold=Date.now()+4000} // wait for every phone to report back before judging "everyone answered"H.quip=pick(QUIP.menu);preloadAudio();
+    H.hold=Date.now()+4000} // wait for every phone to report back before judging "everyone answered"
+  else H.quip=pick(QUIP.menu);
+  preloadAudio();
+  root.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-kick]");if(!b)return;
+    if(b.dataset.sure==="1"){kickPlayer(b.dataset.kick);return}
+    b.dataset.sure="1";b.textContent="متأكد؟";b.classList.add("sure");setTimeout(()=>{if(b.isConnected){b.dataset.sure="";b.textContent="✕";b.classList.remove("sure")}},3000)});
   room.presence({role:"host",code:ST.code}).catch(()=>{});
   setInterval(hostTick,250);hostTick();
+  // keep the room alive on the server during a long evening (rooms expire 6 hours after the last activity)
+  setInterval(()=>{let t=null;try{t=JSON.parse(sessionStorage.getItem("sahra_host")||"{}").t}catch(_){}if(t)api("POST","/rooms/"+ST.code+"/alive",{host_token:t}).catch(()=>{})},20*60*1000);
 }
 function hostTick(){
-  const ps=peers(),now=Date.now();
+  const out=new Set(H.kicked||[]),ps=peers().filter(p=>!out.has(p.peer)),now=Date.now();
   H.seen=H.seen||{};
   ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;H.seen[p.peer]=now;
-    H.names[p.peer]=clip(pr.nm,14)||"لاعب";(H.av=H.av||{})[p.peer]=okAv(pr.av)?pr.av:"";
+    H.names[p.peer]=(n=>n&&!hasBad(n)?n:"لاعب")(clip(pr.nm,14));(H.av=H.av||{})[p.peer]=okAv(pr.av)?pr.av:"";
     if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
   // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
-  actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?P(p).act:null};
+  actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
+  // paused: the clock stands still and the game waits
+  if(H.paused){H.end=now+H.pauseLeft;publish();renderHost();return}
   if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
   if(H.game&&H.ph==="topic"){if(now>H.end&&H.g.afterTopic){const f=H.g.afterTopic;H.g.afterTopic=null;f()}}
   else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end"&&!(H.hold&&now<H.hold)){
@@ -453,6 +485,7 @@ function hostTick(){
 }
 function publish(){
   const v={role:"host",code:ST.code,game:H.game,ph:H.ph,k:H.k,tl:tl(),order:H.order,nm:{}};
+  if(H.paused)v.paused=1;if((H.kicked||[]).length)v.kick=H.kicked;
   H.order.forEach(id=>v.nm[id]=nm(id));v.av={};H.order.forEach(id=>{if((H.av||{})[id])v.av[id]=H.av[id]});
   if(H.game&&GAMES[H.game].view)GAMES[H.game].view(v);
   if(H.game&&GAMES[H.game].themeName)v.theme=GAMES[H.game].themeName()||null;
@@ -469,7 +502,15 @@ function opt(key,game){const G=GAMES[game||H.game];const o=G&&(G.options||[]).fi
   return o&&o.choices.some(c=>c[0]===v)?v:(o?o.def:undefined)}
 function setOpt(key,v){(H.opts[H.game]=H.opts[H.game]||{})[key]=v;try{localStorage.setItem("sahra_opts",JSON.stringify(H.opts))}catch(e){}}
 function roundsOpt(choices,def,label="عدد الجولات"){return{key:"r",label,choices:choices.map(n=>[n,fmt(n)]),def}}
-function goMenu(){H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
+function goMenu(){H.paused=false;H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
+// host controls: pause the clock, remove a player (they can't come back to this room)
+const inPlay=()=>!!H.game&&!["menu","lobby","end"].includes(H.ph);
+function setPaused(on){if(!inPlay()&&on)return;if(on){H.pauseLeft=Math.max(0,H.end-Date.now());H.paused=true}else{H.paused=false;H.end=Date.now()+(H.pauseLeft||0)}sfx.pop()}
+function kickPlayer(id){if(!id||(H.kicked||[]).includes(id))return;(H.kicked=H.kicked||[]).push(id);
+  if(H.ph==="menu"||H.ph==="lobby")H.order=H.order.filter(x=>x!==id);
+  let t=null;try{t=JSON.parse(sessionStorage.getItem("sahra_host")||"{}").t}catch(_){}
+  if(t&&/^p-/.test(id))api("POST","/rooms/"+ST.code+"/kick",{host_token:t,uid:id.slice(2)}).catch(()=>{});
+  H.lastKey="";sfx.pop()}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
 function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
@@ -547,23 +588,30 @@ function joinPanel(){
     <div id="dyn" class="still" style="min-height:96px;display:flex;align-items:center;justify-content:center">${rosterHTML()}</div>
   </div>`;
 }
-const rosterHTML=()=>H.order.length?troupe(H.order):`<p class="note center">ولا أحد دخل للحين… وين الشباب؟</p>`;
+const kickRow=ids=>`<div class="troupe">${ids.map((id,i)=>`<div class="kickwrap">${plHTML(id,"",i)}<button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`).join("")}</div>`;
+const rosterHTML=()=>H.order.length?kickRow(H.order):`<p class="note center">ولا أحد دخل للحين… وين الشباب؟</p>`;
 function renderHost(){
-  const key=[H.game,H.ph,H.k,H.g.rvI].join("|");
+  const key=[H.game,H.ph,H.k,H.g.rvI,H.paused?1:0,(H.kicked||[]).length].join("|");
   if(key===H.lastKey){
     const r=$("ring");
     if(r){const t=tl(),c=2*Math.PI*42;$("ringT").textContent=t;const arc=$("ringArc");arc.setAttribute("stroke-dashoffset",c*(1-t/Math.max(1,H.total)));arc.setAttribute("stroke",t<=10?"#ff4f6d":"#ffcc33");r.classList.toggle("low",t<=10)}
     const dyn=$("dyn");
-    if(dyn){const html=(H.ph==="menu"||H.ph==="lobby")?rosterHTML():H.game&&GAMES[H.game].dyn?GAMES[H.game].dyn():"";
+    if(dyn){const html=H.paused&&inPlay()?kickRow(active()):(H.ph==="menu"||H.ph==="lobby")?rosterHTML():H.game&&GAMES[H.game].dyn?GAMES[H.game].dyn():"";
       if(html&&dyn.dataset.h!==html){dyn.dataset.h=html;dyn.innerHTML=html}}
     const sb=$("startBtn");if(sb)sb.disabled=H.order.length<GAMES[H.game].min;
     return;
   }
   H.lastKey=key;root.className="wrap";
   const G=H.game?GAMES[H.game]:null;
-  const bar=`<div class="hbar"><span class="mini-logo">${G?G.emoji+" "+G.name:"🎉 سهرة"}</span><div class="row"><button class="snd" id="voBtn" aria-pressed="${ST.vo}" title="صوت المقدّم">🎤</button><button class="snd" id="musBtn" aria-pressed="${ST.mus}" title="الموسيقى">🎵</button>${G&&G.pill&&!["lobby","end"].includes(H.ph)?G.pill():""}<span class="pill" style="direction:ltr">${ST.code}</span></div></div>`;
+  const bar=`<div class="hbar"><span class="mini-logo">${G?G.emoji+" "+G.name:"🎉 سهرة"}</span><div class="row"><button class="snd" id="voBtn" aria-pressed="${ST.vo}" title="صوت المقدّم">🎤</button><button class="snd" id="musBtn" aria-pressed="${ST.mus}" title="الموسيقى">🎵</button>${G&&G.pill&&!["lobby","end"].includes(H.ph)?G.pill():""}${inPlay()?`<button class="snd" id="pauseBtn" title="${H.paused?"كمّل":"وقّف مؤقتاً"}">${H.paused?"▶️":"⏸️"}</button>`:""}<span class="pill" style="direction:ltr">${ST.code}</span></div></div>`;
   let body="";
-  if(H.ph==="menu"){
+  if(H.paused&&inPlay()){
+    body=`<div class="pausebox card center"><div style="font-size:90px;line-height:1">⏸️</div><h2 style="font-size:54px;color:var(--sun)">اللعبة متوقفة</h2>
+      <p class="note" style="font-size:19px">الوقت واقف، وكل شي بيكمل من نفس المكان.</p>
+      <button class="btn coral" id="resumeGame" style="font-size:26px">▶ كمّلوا اللعب</button>
+      <div class="col center" style="margin-top:10px"><p class="note">تبي تُخرج أحد؟ اضغط ✕ مرتين:</p><div id="dyn" class="still">${kickRow(active())}</div></div>
+      <button class="btn ghost" id="menuBtn">↩ أنهِ اللعبة وارجع للقائمة</button></div>`;
+  }else if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
     <div class="lobby">
       <div class="col center">${wheelHTML()}</div>
@@ -597,7 +645,7 @@ function renderHost(){
   }else if(H.ph==="topic"){
     body=`<div class="landing"><p class="lbl">الموضوع</p>${topicCardHTML(H.g.topic,"land")}${H.g.pickedBy?`<p class="note" style="font-size:20px">اختاره ${esc(nm(H.g.pickedBy))}</p>`:""}</div>`;
   }else body=G.render();
-  const skip=(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
+  const skip=!H.paused&&(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
   root.innerHTML=bar+body+skip;
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();wheelSelect(b.dataset.g)});
   const sp=$("spinBtn");if(sp)sp.onclick=()=>{initAudio();wheelSpin()};
@@ -607,6 +655,8 @@ function renderHost(){
   if(H.ph==="menu")wheelPaint();
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
   const mb=$("menuBtn");if(mb)mb.onclick=goMenu;
+  const pb=$("pauseBtn");if(pb)pb.onclick=()=>setPaused(!H.paused);
+  const rg=$("resumeGame");if(rg)rg.onclick=()=>setPaused(false);
   const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
   const mu=$("musBtn");if(mu)mu.onclick=()=>{setMusicOn(!ST.mus);mu.setAttribute("aria-pressed",ST.mus)};
   const ab=$("againBtn");if(ab)ab.onclick=()=>pickGame(H.game);
@@ -942,6 +992,9 @@ function renderPlayer(){
   const c=idx>=0?COLORS[idx%8]:"#a99bd9",f=avImg(v&&v.av&&v.av[myPeer],idx>=0?FACES[idx%8]:"🙂");
   const head=`<div class="phead"><span class="me"><div class="av sm" style="--c:${c}">${f}</div><span>${esc(ST.nick)}</span></span><span class="pill" style="direction:ltr">${esc(ST.code)}</span></div>`;
   if(!v){if(ME.lastKey!=="none"){ME.lastKey="none";root.innerHTML=head+`<div class="emoji">📡</div><p class="big">بانتظار الشاشة الكبيرة…</p>`}return}
+  if(myPeer&&Array.isArray(v.kick)&&v.kick.includes(myPeer)){ME.lost=true;rememberKick(ST.code);try{pusher&&pusher.disconnect()}catch(_){}
+    root.innerHTML=`<div class="emoji">🚪</div><p class="big">تم إخراجك من الغرفة</p><p class="note center">المضيف أخرجك من هذي السهرة.</p><a class="btn wide" href="/" style="text-align:center;text-decoration:none">الصفحة الرئيسية</a>`;return}
+  if(v.paused){if(ME.lastKey!=="paused"){ME.lastKey="paused";root.innerHTML=head+`<div class="emoji">⏸️</div><p class="big">اللعبة متوقفة</p><p class="note center">استريحوا شوي… بنكمل من نفس المكان 😌</p>`}return}
   const key=[v.game,v.ph,v.k,v.rvI,idx>=0].join("|");
   if(key===ME.lastKey){
     if(v.ph==="lie"&&$("perr")){const bad=v.bad&&v.bad[myPeer]===ME.n&&ME.n>0;const done=(v.done||[]).includes(myPeer);
