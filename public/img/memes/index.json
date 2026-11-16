@@ -1,0 +1,192 @@
+[
+ {
+  "id": 1,
+  "key": "cry_cat",
+  "label": "قطوة تبكي"
+ },
+ {
+  "id": 2,
+  "key": "judge_cat",
+  "label": "قطوة تحكم عليك"
+ },
+ {
+  "id": 3,
+  "key": "shock_cat",
+  "label": "قطوة مصدومة"
+ },
+ {
+  "id": 4,
+  "key": "confused_dog",
+  "label": "كلب مستغرب"
+ },
+ {
+  "id": 5,
+  "key": "happy_dog",
+  "label": "كلب مبسوط"
+ },
+ {
+  "id": 6,
+  "key": "stare_frog",
+  "label": "ضفدع يطالع بصمت"
+ },
+ {
+  "id": 7,
+  "key": "cry_frog",
+  "label": "ضفدع يبكي"
+ },
+ {
+  "id": 8,
+  "key": "penguin_fall",
+  "label": "بطريق يتزحلق"
+ },
+ {
+  "id": 9,
+  "key": "sob",
+  "label": "يبكي بحرقة"
+ },
+ {
+  "id": 10,
+  "key": "shocked",
+  "label": "مصدوم"
+ },
+ {
+  "id": 11,
+  "key": "side_eye",
+  "label": "نظرة جانبية"
+ },
+ {
+  "id": 12,
+  "key": "angry",
+  "label": "معصب وطالع منه بخار"
+ },
+ {
+  "id": 13,
+  "key": "sweat",
+  "label": "متوتر ويعرق"
+ },
+ {
+  "id": 14,
+  "key": "laugh",
+  "label": "يموت من الضحك"
+ },
+ {
+  "id": 15,
+  "key": "sleepy",
+  "label": "نعسان"
+ },
+ {
+  "id": 16,
+  "key": "mind_blown",
+  "label": "مخه انفجر"
+ },
+ {
+  "id": 17,
+  "key": "facepalm",
+  "label": "يحط يده على وجهه"
+ },
+ {
+  "id": 18,
+  "key": "cool",
+  "label": "رايق بالنظارة"
+ },
+ {
+  "id": 19,
+  "key": "dizzy",
+  "label": "دايخ"
+ },
+ {
+  "id": 20,
+  "key": "freezing",
+  "label": "متجمد من البرد"
+ },
+ {
+  "id": 21,
+  "key": "melting",
+  "label": "ذايب من الحر"
+ },
+ {
+  "id": 22,
+  "key": "ghost",
+  "label": "روحه طلعت"
+ },
+ {
+  "id": 23,
+  "key": "clown",
+  "label": "مهرج"
+ },
+ {
+  "id": 24,
+  "key": "nerd",
+  "label": "شاطر وفاهم"
+ },
+ {
+  "id": 25,
+  "key": "zip",
+  "label": "ساكت ما عنده تعليق"
+ },
+ {
+  "id": 26,
+  "key": "eyeroll",
+  "label": "يقلب عيونه"
+ },
+ {
+  "id": 27,
+  "key": "plead",
+  "label": "يترجى بعيونه"
+ },
+ {
+  "id": 28,
+  "key": "panic_run",
+  "label": "يهرب بسرعة"
+ },
+ {
+  "id": 29,
+  "key": "party",
+  "label": "يحتفل"
+ },
+ {
+  "id": 30,
+  "key": "thinking",
+  "label": "يفكر بعمق"
+ },
+ {
+  "id": 31,
+  "key": "bored",
+  "label": "طفشان"
+ },
+ {
+  "id": 32,
+  "key": "shy",
+  "label": "مستحي"
+ },
+ {
+  "id": 33,
+  "key": "money",
+  "label": "عيونه على الفلوس"
+ },
+ {
+  "id": 34,
+  "key": "villain",
+  "label": "عنده خطة شريرة"
+ },
+ {
+  "id": 35,
+  "key": "drool",
+  "label": "جوعان يسيل لعابه"
+ },
+ {
+  "id": 36,
+  "key": "dead",
+  "label": "مات من الضحك"
+ },
+ {
+  "id": 37,
+  "key": "upside",
+  "label": "مقلوب ومبتسم"
+ },
+ {
+  "id": 38,
+  "key": "love_food",
+  "label": "عاشق الأكل"
+ }
+]

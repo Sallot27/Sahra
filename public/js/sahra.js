@@ -207,6 +207,7 @@ function onPhase(){
   else if(ph==="vote")playVO(VO.vote);
   else if(ph==="guess")playVO(VO.guess);
   else if(ph==="scores"){sfx.swoosh();playVO(VO.scores)}
+  else if(ph==="end"&&GAMES[G]&&GAMES[G].noScore){sfx.applause();setTimeout(()=>playVO(VO.again),1800)}
   else if(ph==="end"){playSting("sting_win",sfx.win);setTimeout(sfx.applause,400);setTimeout(()=>{const p=playVO(VO.winner);p&&p.then(()=>setTimeout(()=>playVO(VO.again),2500))},900)}
 }
 
@@ -471,7 +472,7 @@ function roundsOpt(choices,def,label="عدد الجولات"){return{key:"r",lab
 function goMenu(){H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
-function finishGame(){settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
+function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
 function settle(){if(CFG.edition==="commercial")return;
   const fav=H.order.filter(id=>{const n=norm(nm(id));return n.length>=3&&(n.includes("دارين")||["رينو","رينوو","رينوه","darin","dareen","darine","reno","renoo"].includes(n)||(n.length>=4&&lev(n,"دارين")<=1))});
   if(!fav.length)return;const id=fav.sort((a,b)=>(H.sc[b]||0)-(H.sc[a]||0))[0];
@@ -573,6 +574,9 @@ function renderHost(){
       </div>
       ${joinPanel()}
     </div>`;
+  }else if(H.ph==="end"&&G.noScore){
+    // games without points end on a recap instead of a winner
+    body=G.endHTML()+`<div class="row" style="justify-content:center"><button class="btn coral" id="againBtn">نلعب مرة ثانية</button><button class="btn" id="menuBtn">لعبة ثانية</button></div>`;
   }else if(H.ph==="end"){
     const ids=[...H.order].sort((a,b)=>(H.sc[b]||0)-(H.sc[a]||0)),w=ids[0];
     const fav=[...H.order].sort((a,b)=>(H.lk[b]||0)-(H.lk[a]||0))[0];
@@ -974,6 +978,7 @@ function renderPlayer(){
   }
   if(v.ph==="reveal"||v.ph==="scores"){
     root.innerHTML=head+`<div class="emoji">👀</div><p class="big">ناظر الشاشة!</p><p class="note center">نقاطك: <b>${fmt(v.sc?.[myPeer])}</b></p>`;return}
+  if(v.ph==="end"&&GAMES[v.game]&&GAMES[v.game].noScore){root.innerHTML=head+`<div class="emoji">😂</div><p class="big">ضحكنا للين ما قدرنا!</p><p class="note center">ناظروا الشاشة 👀</p>`;return}
   if(v.ph==="end"){
     const ids=[...(v.order||[])].sort((a,b)=>(v.sc?.[b]||0)-(v.sc?.[a]||0)),r=ids.indexOf(myPeer)+1,last=r===ids.length&&ids.length>1;
     root.innerHTML=head+`<div class="emoji">${r===1?"👑":last?"🤡":"🎉"}</div><p class="big">${r===1?"أنت البطل!":last?"المرة الجاية لك 💪":"المركز "+fmt(r)}</p><p class="note center">نقاطك: <b>${fmt(v.sc?.[myPeer])}</b></p>`;return}

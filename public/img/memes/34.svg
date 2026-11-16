@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><style>
+.a{transform-box:fill-box;transform-origin:center}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes drip{0%{transform:translateY(0);opacity:1}100%{transform:translateY(40px);opacity:0}}
+@keyframes puff{0%{transform:translateY(0) scale(.6);opacity:.9}100%{transform:translateY(-28px) scale(1.4);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes look{0%,40%{transform:translateX(0)}50%,90%{transform:translateX(7px)}100%{transform:translateX(0)}}
+@keyframes up{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes float{0%{transform:translate(0,0);opacity:0}20%{opacity:1}100%{transform:translate(10px,-34px);opacity:0}}
+@keyframes rise{0%{transform:translateY(10px);opacity:0}30%{opacity:.9}100%{transform:translateY(-30px);opacity:0}}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes boom{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.6);opacity:0}}
+@keyframes shiver{0%,100%{transform:translate(0,0)}20%{transform:translate(-2px,1px)}40%{transform:translate(2px,-1px)}60%{transform:translate(-1px,-1px)}80%{transform:translate(1px,1px)}}
+@keyframes melt{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.9)}}
+@keyframes glint{0%,70%,100%{opacity:0}80%{opacity:1}}
+@keyframes run{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(20deg)}}
+@keyframes tilt{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+@keyframes flip{0%,100%{transform:rotate(180deg)}50%{transform:rotate(170deg)}}
+@keyframes fall{0%{transform:translateY(-10px)}100%{transform:translateY(60px)}}
+@keyframes blink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+</style><rect width="120" height="120" rx="18" fill="#3b2a8f"/><circle cx="60" cy="64" r="38" fill="#b98cff" /><ellipse cx="48" cy="46" rx="10" ry="6" fill="#fff" opacity=".35"/><path d="M38 44 L54 51 M82 44 L66 51" stroke="#1a1033" stroke-width="4" stroke-linecap="round"/><path d="M40 58 Q47 62 54 58 M66 58 Q73 62 80 58" stroke="#1a1033" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M50 78 Q62 82 72 72" stroke="#1a1033" stroke-width="4" fill="none" stroke-linecap="round"/><g class="a" style="animation:shake 0.6s ease-in-out 0s infinite"><g transform="translate(50 100)"><ellipse cx="0" cy="0" rx="10" ry="8" fill="#b98cff" stroke="#1a1033" stroke-width="2.5"/></g><g transform="translate(70 100)"><ellipse cx="0" cy="0" rx="10" ry="8" fill="#b98cff" stroke="#1a1033" stroke-width="2.5"/></g></g></svg>

@@ -1061,4 +1061,72 @@ B.push(K=>{
       C.watch(root,v);},
   };
 });
+/* =====================================================================
+   13) شكلي إذا: a situation, everyone answers with a reaction picture. No points, just laughs.
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti}=K;
+  const C=common(K);
+  const SCN=window.SHAKLI_SCENARIOS||["طلبت من المطعم وجاني الطلب غلط"],COUNT=window.SHAKLI_MEME_COUNT||38,HAND=3;
+  // cards 1..COUNT are the drawn ones; 1001+ are the owner's own pictures (not in the commercial edition)
+  const EXTRA=K.commercial?[]:(window.SHAKLI_EXTRA||[]).filter(f=>/^[\w.-]+\.(gif|png|jpe?g|webp|svg)$/i.test(f));
+  const ALL=[...Array(COUNT).keys()].map(i=>i+1).concat(EXTRA.map((_,i)=>1001+i));
+  const src=id=>{id=Number(id)||1;return id>1000&&EXTRA[id-1001]?"/img/memes/extra/"+EXTRA[id-1001]:"/img/memes/"+Math.min(Math.max(1,id),COUNT)+".svg"};
+  const img=(id,cls="")=>`<img class="sk-img ${cls}" src="${src(id)}" alt="">`;
+  return{
+    id:"shakli",name:"شكلي إذا",emoji:"🤳",color:"#ff7fd0",min:2,noScore:true,
+    desc:"يطلع موقف، وكل واحد يرد عليه بصورة من بطاقاته… بدون نقاط، بس ضحك 😂",
+    tags:["٢-٨ لاعبين","بدون نقاط","ضحك"],
+    rules:["كل واحد معه ٣ بطاقات صور مضحكة في جواله","يطلع موقف مثل: «شكلي إذا طلبت من المطعم وجاني الطلب غلط»","كل واحد يختار الصورة اللي توصف شكله","تطلع الصور على الشاشة وحدة وحدة… واضحكوا!"],
+    winTitle:"",likeTitle:"",
+    timed:["spick","sturn"],
+    options:[K.roundsOpt([5,8,12],8,"عدد المواقف"),{key:"mode",label:"طريقة الاختيار",choices:[["all","الكل مع بعض"],["turns","بالدور"]],def:"all"}],
+    start(){const pl=shuffle([...H.order]),g=H.g={pl,rounds:K.opt("r"),mode:K.opt("mode"),round:0,deck:[],hands:{},scn:shuffle(SCN.map((_,i)=>i)),history:[]};
+      pl.forEach(id=>{g.hands[id]=[];for(let i=0;i<HAND;i++)g.hands[id].push(this.draw(g.hands[id]))});this.next()},
+    // next card from a shuffled deck, never one already in the hand
+    draw(hand){const g=H.g;for(let t=0;t<ALL.length*2;t++){if(!g.deck.length)g.deck=shuffle([...ALL]);const c=g.deck.pop();if(!hand.includes(c))return c}return 1},
+    next(){const g=H.g;g.round++;if(g.round>g.rounds)return K.finishGame();
+      g.s=SCN[g.scn[(g.round-1)%g.scn.length]];g.picks={};g.shown=[];g.ti=0;
+      if(g.mode==="turns"){g.turnOrder=g.pl.filter(id=>active().includes(id));this.turn()}
+      else{H.ph="spick";H.k++;setTimer(30);sfx.tada();H.quip=pick(["اختاروا الصورة اللي تمثلكم 😂","وش يكون شكلك؟","فكروا… بس لا تطولون"])}},
+    turn(){const g=H.g;g.cur=g.turnOrder[g.ti];if(!g.cur)return this.gallery();H.ph="sturn";H.k++;setTimer(20);sfx.pop();H.quip=""},
+    tick(now){const g=H.g;
+      const take=id=>{const a=K.act(id);if(!a||!Number.isInteger(a.card)||g.picks[id])return;const hand=g.hands[id]||[];if(!hand.includes(a.card))return;
+        g.picks[id]=a.card;hand.splice(hand.indexOf(a.card),1,this.draw(hand));sfx.submit()};
+      if(H.ph==="spick"){g.pl.forEach(take);const live=g.pl.filter(id=>active().includes(id));
+        if(now>H.end||g.forceSkip||(live.length&&live.every(id=>g.picks[id]))){g.forceSkip=false;g.order=g.pl.filter(id=>g.picks[id]);g.ri=-1;this.reveal()}}
+      else if(H.ph==="sshow"){if(now>H.end)this.reveal()}
+      else if(H.ph==="sturn"){take(g.cur);if(g.picks[g.cur]||now>H.end||g.forceSkip||!active().includes(g.cur)){g.forceSkip=false;
+          if(g.picks[g.cur]){H.ph="sturnshow";H.k++;setTimer(4);sfx.swoosh()}else{g.ti++;this.turn()}}}
+      else if(H.ph==="sturnshow"){if(now>H.end){g.shown.push(g.cur);g.ti++;this.turn()}}
+      else if(H.ph==="sall"){if(now>H.end)this.next()}},
+    reveal(){const g=H.g;g.ri++;if(g.ri>=g.order.length)return this.gallery();g.cur=g.order[g.ri];H.ph="sshow";H.k++;setTimer(4);sfx.swoosh();sfx.pop()},
+    gallery(){const g=H.g;g.history.push({s:g.s,picks:{...g.picks}});H.ph="sall";H.k++;setTimer(Object.keys(g.picks).length?7:3);if(Object.keys(g.picks).length)confetti(50)},
+    doneMap(){const g=H.g;return H.ph==="spick"?g.picks:null},
+    view(v){const g=H.g;if(!g.hands)return;v.s=g.s;v.hands=g.hands;v.pl=g.pl;v.cur=g.cur;v.done=Object.keys(g.picks||{});v.r=g.round;v.rr=g.rounds},
+    pill(){const g=H.g;return`<span class="pill">الموقف ${fmt(Math.min(g.round,g.rounds))} من ${fmt(g.rounds)}</span>`},
+    scnHTML(small){return`<div class="sk-scn ${small?"sm":""}"><span>شكلي إذا…</span><b>${esc(H.g.s)}</b></div>`},
+    slots(showPics){const g=H.g;return`<div class="sk-slots">${g.pl.map(id=>{const c=g.picks[id],open=showPics==="all"?!!c:showPics&&showPics.includes(id);
+      return`<div class="sk-slot ${c?"in":""} ${g.cur===id&&H.ph!=="sall"?"cur":""}">${open?img(c):`<div class="sk-back">${c?"✅":"🤔"}</div>`}<div class="sk-who">${C.avatar(id)}<span>${esc(nm(id))}</span></div></div>`}).join("")}</div>`},
+    render(){const g=H.g;
+      if(H.ph==="spick")return this.scnHTML()+`<div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="sshow"||H.ph==="sturnshow"){const id=g.cur;return this.scnHTML(true)+`<div class="sk-stage"><div class="sk-big" style="--c:${K.col(id)}">${img(g.picks[id],"big")}</div><div class="sk-name">${C.avatar(id,"lg")}<span>${esc(nm(id))}</span></div></div>`}
+      if(H.ph==="sturn")return this.scnHTML()+`<div class="sk-turn">${C.avatar(g.cur,"lg")}<h2>دور ${esc(nm(g.cur))} يختار… 🤔</h2></div>${this.slots(g.shown)}`;
+      if(H.ph==="sall")return this.scnHTML(true)+(Object.keys(g.picks).length?this.slots("all"):`<p class="big center">ما أحد اختار شي 😴</p>`);
+      return""},
+    dyn(){const g=H.g;return H.ph==="spick"?this.slots(false):""},
+    endHTML(){const g=H.g,h=g.history||[];const best=h.slice(-4);
+      return`<div class="col center" style="gap:6px"><span style="font-size:80px;line-height:1">😂</span><div class="winner">ضحكنا للين ما قدرنا!</div><p class="note" style="font-size:20px">${fmt(h.length)} مواقف، وكل واحد بيّن شكله</p></div>
+        <div class="sk-recap">${best.map(r=>`<div class="sk-rc"><p>شكلي إذا… <b>${esc(r.s)}</b></p><div class="sk-rcp">${Object.entries(r.picks).map(([id,c])=>`<div>${img(c)}<span>${esc(nm(id))}</span></div>`).join("")}</div></div>`).join("")}</div>`},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);const hand=(v.hands||{})[me];
+      if(!hand){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
+      const scn=`<div class="pq"><small>شكلي إذا…</small><br><b>${esc(v.s)}</b></div>`;
+      const cards=()=>{root.insertAdjacentHTML("beforeend",`${scn}${tline}<p class="note center">اختار الصورة اللي تمثّلك 👇</p><div class="sk-hand" id="skHand">${hand.map(c=>`<button class="sk-card" data-c="${Number(c)}">${img(c)}</button>`).join("")}</div>`);
+        root.querySelectorAll(".sk-card").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,card:+b.dataset.c});root.querySelectorAll(".sk-card").forEach(x=>{x.disabled=true;x.classList.toggle("on",x===b)});sfx.pop();
+          const n=document.createElement("p");n.className="big";n.textContent="✅ تم! ناظر الشاشة";root.appendChild(n)})};
+      if(v.ph==="spick"){if((v.done||[]).includes(me)){root.insertAdjacentHTML("beforeend",scn);C.watch(root,v,"✅","اخترت! ناظر الشاشة","");return}cards();return}
+      if(v.ph==="sturn"){if(v.cur===me){cards();return}root.insertAdjacentHTML("beforeend",scn);C.watch(root,v,"⏳",`دور ${(v.nm&&v.nm[v.cur])||""} يختار…`,"");return}
+      root.insertAdjacentHTML("beforeend",scn);C.watch(root,v,"😂","ناظر الشاشة!","");},
+  };
+});
 })();
