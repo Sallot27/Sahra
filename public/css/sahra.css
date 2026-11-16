@@ -416,7 +416,7 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .sk-scn span{display:block;font-weight:800;font-size:clamp(18px,2.2vw,26px);color:#7a3fd6}
 .sk-scn b{font-family:var(--display);font-weight:400;font-size:clamp(30px,4.4vw,56px);line-height:1.25}
 .sk-scn.sm b{font-size:clamp(22px,2.8vw,34px)}.sk-scn.sm{padding:8px 18px}
-.sk-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:18px}
+.sk-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,210px));justify-content:center;gap:14px;margin-top:18px}
 .sk-slot{background:var(--night2);border-radius:20px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;border:3px solid transparent}
 .sk-slot.cur{border-color:var(--sun)}
 .sk-slot .sk-img,.sk-back{width:100%;aspect-ratio:1}
@@ -434,3 +434,13 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .sk-recap{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:10px}
 .sk-rc{background:var(--night2);border-radius:18px;padding:10px 12px}.sk-rc p{font-weight:700;margin-bottom:6px}
 .sk-rcp{display:flex;flex-wrap:wrap;gap:8px}.sk-rcp>div{width:72px;text-align:center;font-size:12px;font-weight:800}.sk-rcp .sk-img{width:72px;height:72px}
+
+/* شكلي إذا: phone message */
+.sk-chat{max-width:760px;margin:0 auto;background:#efe7dc;background-image:radial-gradient(rgba(0,0,0,.05) 1px,transparent 1px);background-size:14px 14px;border-radius:24px;padding:14px 18px 16px;color:#1a1033;box-shadow:0 8px 0 rgba(0,0,0,.3);animation:pop .45s ease-out both}
+.sk-chat-top{font-weight:800;font-size:clamp(16px,2vw,22px);background:#0f8a6c;color:#fff;margin:-14px -18px 14px;padding:10px 18px;border-radius:24px 24px 0 0}
+.sk-bubble{position:relative;background:#fff;border-radius:6px 18px 18px 18px;padding:12px 16px 20px;font-weight:800;font-size:clamp(24px,3.4vw,44px);line-height:1.35;width:fit-content;max-width:92%;box-shadow:0 2px 0 rgba(0,0,0,.12);animation:pop .4s .25s ease-out both}
+.sk-bubble small{position:absolute;bottom:4px;left:10px;font-size:13px;color:#4cc2ff}
+.sk-note{margin-top:8px;font-weight:700;color:#6b5c96;font-size:clamp(14px,1.8vw,20px)}
+.sk-ask{margin-top:10px;text-align:center;font-family:var(--display);font-size:clamp(22px,2.8vw,34px);color:#7a3fd6}
+.sk-chat.sm{padding:10px 14px 12px}.sk-chat.sm .sk-chat-top{margin:-10px -14px 10px;padding:8px 14px;font-size:16px}
+.sk-chat.sm .sk-bubble{font-size:clamp(18px,2.4vw,28px)}.sk-chat.sm .sk-ask{display:none}
