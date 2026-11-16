@@ -166,10 +166,45 @@ window.SHAKLI_SCENARIOS=[
 "شفت قائمة الأغراض اللي أمي تبيها من البقالة",
 "المعلم يسألني وأنا أحاول أتذكر الجواب",
 "طلعت من البيت ونزل مطر قوي فجأة",
+"أحد قال: الواجب كان مطلوب اليوم مو بكرة",
+"دخلت المطبخ وشفت أمي ماسكة النعال",
+"أبوي قال: بنروح البر… وأنا أبي أنام",
+"خلصت أول تمرين في النادي",
+"أختي قالت: شوف لبسي الجديد، حلو؟",
+"أحد صوّرني وأنا نايم وفمي مفتوح",
+"المعلم قال: طلّعوا ورقة… اختبار مفاجئ",
+"أول ما وصلت العرس بدأت الدبكة",
+"أخوي الصغير يسوي نفسه بريء بعد ما كسر شي",
+"جدتي قالت: أنا أقوى منكم كلكم",
+"طلبت من أخوي يعطيني من الآيسكريم ورفض",
+"الكل يرقص في الحفلة إلا أنا",
+"أحد قال لي: شفنا صورتك القديمة في الألبوم",
+"صاحبي قال: عندي لك سالفة… بس لا تعصب",
+"شفت أمي فتحت شنطتي المدرسية",
+"قالوا: بنلعب لعبة… واللي يخسر يغسل الصحون",
+"خلص الشحن وأنا في نص المباراة",
+"ضيوف دخلوا وأنا لابس بيجامة سبونج بوب",
+"صاحبي يحكي سالفة طويلة وأنا ما فهمت شي",
+"أحد قال: أنت تشبه الموناليزا",
+"قاعد أفكر في مسألة الرياضيات من ساعة",
+"اكتشفت إن الضيوف جايين بعد خمس دقايق",
+"جاني مدح من المعلم قدام الفصل",
+"أحد سألني: وين الريموت؟",
+"شفت آخر قطعة بيتزا راحت لغيري",
+"جيت أسلّم على أحد وهو ما شافني",
+"اختي قالت: خلنا نتصور سيلفي",
+"أمي صحتني الساعة ستة الصبح يوم الجمعة",
+"وصلني ردّ «أوكي» بعد ما كتبت رسالة طويلة",
 ];
 
 // «رسالة جاتك…»: a message from someone, and your face when you read it
 window.SHAKLI_CHATS=[
+{f:"أختي",m:"شفت صورتك وأنت نايم؟ 📸😂"},
+{f:"أمي",m:"اليوم عشانا عند جدتك، البس زين"},
+{f:"صاحبي",m:"أوكي"},
+{f:"أبوي",m:"مين خلّص النت كله؟"},
+{f:"أخوي",m:"لا تقول لأمي… بس صار شي في السيارة"},
+{f:"خالتي",m:"وش أخبار الدراسة؟ كم جبت؟"},
 {f:"أبوي",m:"تعال بسرعة… لا تسأل"},
 {f:"أمي",m:"مين أكل الكيكة اللي في الثلاجة؟ 🧐"},
 {f:"أمي",m:"افتح الباب، أنا برا من ساعة"},
@@ -214,4 +249,4 @@ window.SHAKLI_CHATS=[
 // number of reaction cards in public/img/memes (made by tools/make_memes.py)
 window.SHAKLI_MEME_COUNT=38;
 // extra pictures/GIFs added by the owner: files in public/img/memes/extra/ (private edition only)
-window.SHAKLI_EXTRA=["bean_frown.webp", "cat_bow_smile.webp", "cat_lashes.webp", "cat_scream_point.webp", "cat_tongue.webp", "catman_bw.webp", "catman_white.webp", "dachshund_side_eye.webp", "disappointed_fan.webp", "disgusted_face.webp", "dog_question.webp", "dog_sun_proud.webp", "girl_side_eye.webp", "green_wazowski.webp", "horse_laugh.webp", "hotdog_dog.webp", "kid_smile.webp", "man_look_up.webp", "me_pointing.webp", "monalisa_muscles.webp", "mouse_thumbs_up.webp", "ogre_smirk.webp", "orange_cat_smug.webp", "pink_hood_face.webp", "pixel_cat.webp", "rainbow_blob.webp", "shocked_hands_head.webp", "sponge_scroll.webp", "squint_face.webp", "wet_cat.webp"];
+window.SHAKLI_EXTRA=["anya_cry.webp", "baby_cry.webp", "bean_doc.webp", "bean_frown.webp", "bean_monalisa.webp", "black_dog_nervous.webp", "cat_bow_smile.webp", "cat_hands_head.webp", "cat_lashes.webp", "cat_look_up.webp", "cat_scream_point.webp", "cat_squint.webp", "cat_tongue.webp", "cat_yawn.webp", "catman_bw.webp", "catman_white.webp", "chihuahua_squint.webp", "dachshund_side_eye.webp", "disappointed_fan.webp", "disgusted_face.webp", "dog_human_face.webp", "dog_question.webp", "dog_sun_proud.webp", "doll_eyeroll.webp", "donkey_close.webp", "door_toon.webp", "dora_mustache.webp", "girl_side_eye.webp", "granny_muscles.webp", "green_wazowski.webp", "hand_mouth_toon.webp", "horse_laugh.webp", "hotdog_dog.webp", "husky_point.webp", "kid_side_eye.webp", "kid_smile.webp", "lion_hips.webp", "man_cry_mouth.webp", "man_look_up.webp", "marmots.webp", "masha_glasses.webp", "math_cat.webp", "me_pointing.webp", "men_dancing.webp", "monalisa_laugh.webp", "monalisa_muscles.webp", "monkey_hearts.webp", "monster_house.webp", "mouse_thumbs_up.webp", "ogre_side_eye.webp", "ogre_smirk.webp", "okay_man.webp", "orange_cat_smug.webp", "pink_hood_face.webp", "pitbull_stand.webp", "pixel_cat.webp", "puppet_side_eye.webp", "rainbow_blob.webp", "rock_dora.webp", "rock_monalisa.webp", "shocked_hands_head.webp", "sponge_rage_smile.webp", "sponge_scared.webp", "sponge_scroll.webp", "squint_face.webp", "tiger_squat.webp", "wazowski_stare.webp", "wet_cat.webp", "woody_selfie.webp"];
