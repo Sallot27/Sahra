@@ -524,18 +524,19 @@ function settle(){if(CFG.edition==="commercial")return;
 // every game is a book on the shelf; tap one to pull it out, or let the stage light pick one
 H.wheel={sel:null,dark:false};
 const wheelGames=()=>Object.values(GAMES);
-const bookSize=i=>{const r=((i*73+29)%97)/97;return{h:72+Math.round(r*22),w:54+((i*37)%5)*5}};
-function wheelHTML(){const gs=wheelGames(),per=Math.ceil(gs.length/Math.max(1,Math.ceil(gs.length/7))),rows=[];
+const bookSize=i=>{const r=((i*73+29)%97)/97;return{h:84+Math.round(r*16),w:60+((i*37)%5)*4}};
+function wheelHTML(){const gs=wheelGames(),nRows=Math.max(1,Math.ceil(gs.length/7)),per=Math.ceil(gs.length/nRows),rows=[];
   for(let i=0;i<gs.length;i+=per)rows.push(gs.slice(i,i+per));
+  const DECO=["🪴","🏆","🧸","🕰️"];
   return`<div class="shelfbox ${H.wheel.dark?"dark":""}" id="shelf">
     <div class="lamp" aria-hidden="true"></div><div class="beam" id="beam" aria-hidden="true"></div><div class="spot" id="spot" aria-hidden="true"></div>
     ${rows.map((r,ri)=>`<div class="shelf">${r.map((g,j)=>{const i=ri*per+j,z=bookSize(i);
-      return`<button class="book ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--h:${z.h}%;--w:${z.w}px"><span class="be">${g.emoji}</span><b>${esc(g.name)}</b></button>`}).join("")}</div>`).join("")}
-    </div><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button>
-    <div class="wsel" id="wsel">${wheelInfo()}</div>`}
+      return`<button class="book ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--h:${z.h}%;--w:${z.w}px" title="${esc(g.name)}"><span class="be">${g.emoji}</span><b>${esc(g.name)}</b></button>`}).join("")}<span class="deco" aria-hidden="true">${DECO[ri%DECO.length]}</span></div>`).join("")}
+    </div>
+    <div class="shelfctl"><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button><div class="wsel" id="wsel">${wheelInfo()}</div></div>`}
 function wheelInfo(){const sel=GAMES[H.wheel.sel];
-  return sel?`<div class="wsel-c" style="--g:${sel.color}"><span class="ge">${sel.emoji}</span><div><h3>${sel.name}</h3><p>${esc(sel.desc)}</p><div class="tags">${(sel.tags||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div></div></div><button class="btn coral wide" id="playSel">يلا نلعب ${sel.name} ▶</button>`
-    :`<p class="note center" style="font-size:20px">اختاروا لعبة من الرف 📚 أو خلّوا الضوء يختار 🔦</p>`}
+  return sel?`<div class="wsel-c" style="--g:${sel.color}"><span class="ge">${sel.emoji}</span><div class="wsel-t"><h3>${sel.name}</h3><p>${esc(sel.desc)}</p></div><button class="btn coral" id="playSel">يلا نلعب ▶</button></div>`
+    :`<p class="note wsel-hint">اختاروا لعبة من الرف 📚</p>`}
 // update the chosen game in place (a full redraw would cut the light's animation)
 function wheelShow(){const box=$("wsel");if(!box)return;box.innerHTML=wheelInfo();
   root.querySelectorAll(".book").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
@@ -620,8 +621,8 @@ function renderHost(){
   }else if(H.ph==="lobby"){
     body=`<div class="lobby">
       <div class="card" style="justify-content:space-between">
-        <div class="row"><span style="font-size:70px;line-height:1">${G.emoji}</span><div><h2 style="font-size:52px;color:var(--sun)">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
-        <div class="col" style="gap:8px">${G.rules.map(r=>`<p style="font-weight:700;font-size:19px">• ${esc(r)}</p>`).join("")}</div>
+        <div class="row lobhead"><span class="lobemoji">${G.emoji}</span><div style="flex:1;min-width:0"><h2 class="lobtitle">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
+        <div class="col lobrules">${G.rules.map(r=>`<p>• ${esc(r)}</p>`).join("")}</div>
         ${(G.options||[]).map(o=>`<div class="optrow"><span>${esc(o.label)}</span><div class="seg">${o.choices.map(([v,l])=>`<button class="segb" data-ok="${esc(o.key)}" data-ov="${esc(String(v))}" aria-pressed="${opt(o.key)===v}">${esc(l)}</button>`).join("")}</div></div>`).join("")}
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
