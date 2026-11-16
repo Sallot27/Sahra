@@ -534,7 +534,17 @@ function settle(){if(CFG.edition==="commercial")return;
 H.wheel={sel:null,dark:false};
 const wheelGames=()=>Object.values(GAMES);
 const bookSize=i=>{const r=((i*73+29)%97)/97;return{h:84+Math.round(r*16),w:60+((i*37)%5)*4}};
-function wheelHTML(){const gs=wheelGames(),nRows=Math.max(1,Math.ceil(gs.length/7)),per=Math.ceil(gs.length/nRows),rows=[];
+// two looks for the game menu: game boxes on a table (default) or books on a shelf
+const menuStyle=()=>{try{return localStorage.getItem("sahra_menu")==="shelf"?"shelf":"box"}catch(e){return"box"}};
+function setMenuStyle(v){try{localStorage.setItem("sahra_menu",v)}catch(e){}H.wheel.dark=false;H.lastKey="";sfx.pop()}
+function boxesHTML(){const gs=wheelGames();
+  return`<div class="shelfbox boxtable ${H.wheel.dark?"dark":""}" id="shelf">
+    <div class="lamp" aria-hidden="true"></div><div class="beam" id="beam" aria-hidden="true"></div><div class="spot" id="spot" aria-hidden="true"></div>
+    <div class="boxgrid">${gs.map((g,i)=>`<button class="gbox ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--t:${((i*7)%5-2)*.7}deg">
+      <span class="gb-lid"><span class="gb-art">${g.emoji}</span><b class="gb-name">${esc(g.name)}</b><span class="gb-tag">${esc((g.tags||[])[0]||"")}</span></span></button>`).join("")}</div>
+    </div>
+    <div class="shelfctl"><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button><div class="wsel" id="wsel">${wheelInfo()}</div><button class="snd stylebtn" id="styleBtn" title="غيّر شكل القائمة">📚</button></div>`}
+function wheelHTML(){if(menuStyle()==="box")return boxesHTML();const gs=wheelGames(),nRows=Math.max(1,Math.ceil(gs.length/7)),per=Math.ceil(gs.length/nRows),rows=[];
   for(let i=0;i<gs.length;i+=per)rows.push(gs.slice(i,i+per));
   const DECO=["🪴","🏆","🧸","🕰️"];
   return`<div class="shelfbox ${H.wheel.dark?"dark":""}" id="shelf">
@@ -542,20 +552,20 @@ function wheelHTML(){const gs=wheelGames(),nRows=Math.max(1,Math.ceil(gs.length/
     ${rows.map((r,ri)=>`<div class="shelf">${r.map((g,j)=>{const i=ri*per+j,z=bookSize(i);
       return`<button class="book ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--h:${z.h}%;--w:${z.w}px" title="${esc(g.name)}"><span class="be">${g.emoji}</span><b>${esc(g.name)}</b></button>`}).join("")}<span class="deco" aria-hidden="true">${DECO[ri%DECO.length]}</span></div>`).join("")}
     </div>
-    <div class="shelfctl"><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button><div class="wsel" id="wsel">${wheelInfo()}</div></div>`}
+    <div class="shelfctl"><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button><div class="wsel" id="wsel">${wheelInfo()}</div><button class="snd stylebtn" id="styleBtn" title="غيّر شكل القائمة">📦</button></div>`}
 function wheelInfo(){const sel=GAMES[H.wheel.sel];
   return sel?`<div class="wsel-c" style="--g:${sel.color}"><span class="ge">${sel.emoji}</span><div class="wsel-t"><h3>${sel.name}</h3><p>${esc(sel.desc)}</p></div><button class="btn coral" id="playSel">يلا نلعب ▶</button></div>`
     :`<p class="note wsel-hint">اختاروا لعبة من الرف 📚</p>`}
 // update the chosen game in place (a full redraw would cut the light's animation)
 function wheelShow(){const box=$("wsel");if(!box)return;box.innerHTML=wheelInfo();
-  root.querySelectorAll(".book").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
+  root.querySelectorAll(".book,.gbox").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
   const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel.sel)pickGame(H.wheel.sel)}}
 // aim the stage light (and its beam from the lamp) at a book
-function spotOn(id,secs){const box=$("shelf"),el=box&&box.querySelector(`.book[data-g="${id}"]`);if(!el)return;
+function spotOn(id,secs){const box=$("shelf"),el=box&&box.querySelector(`[data-g="${id}"]`);if(!el)return;
   const B=box.getBoundingClientRect(),R=el.getBoundingClientRect(),sp=$("spot"),bm=$("beam");
   // rectangles are in screen pixels; the stage is zoomed, so convert back to stage pixels
   const z=(B.width/(box.offsetWidth||B.width))||1;
-  const w=R.width/z*2.3,h=R.height/z*1.3,cx=(R.left-B.left+R.width/2)/z,cy=(R.top-B.top+R.height/2)/z,lx=box.offsetWidth/2,ly=8;
+  const box3=el.classList.contains("gbox"),w=R.width/z*(box3?1.45:2.3),h=R.height/z*(box3?1.4:1.3),cx=(R.left-B.left+R.width/2)/z,cy=(R.top-B.top+R.height/2)/z,lx=box.offsetWidth/2,ly=8;
   const t=`${secs}s cubic-bezier(.3,.7,.3,1)`;
   sp.style.transition=bm.style.transition=`left ${t},top ${t},width ${t},height ${t},transform ${t}`;
   Object.assign(sp.style,{left:cx-w/2+"px",top:cy-h/2+"px",width:w+"px",height:h+"px"});
@@ -625,7 +635,7 @@ function renderHost(){
       <button class="btn ghost" id="menuBtn">↩ أنهِ اللعبة وارجع للقائمة</button></div>`;
   }else if(H.ph==="menu"){
     body=`<div class="spread">${sayHTML(H.quip)}</div>
-    <div class="lobby">
+    <div class="lobby ${menuStyle()==="box"?"menu-box":""}">
       <div class="col center">${wheelHTML()}</div>
       ${joinPanel()}
     </div>`;
@@ -661,6 +671,7 @@ function renderHost(){
   root.innerHTML=bar+body+skip;
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();wheelSelect(b.dataset.g)});
   const sp=$("spinBtn");if(sp)sp.onclick=()=>{initAudio();wheelSpin()};
+  const stb=$("styleBtn");if(stb)stb.onclick=()=>{if(!H.wheel.spinning)setMenuStyle(menuStyle()==="box"?"shelf":"box")};
   const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel&&H.wheel.sel)pickGame(H.wheel.sel)};
   root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{const o=(G.options||[]).find(x=>x.key===b.dataset.ok);const c=o&&o.choices.find(c=>String(c[0])===b.dataset.ov);
     if(c){setOpt(o.key,c[0]);root.querySelectorAll(`[data-ok="${o.key}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b));sfx.pop()}});

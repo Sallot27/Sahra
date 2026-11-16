@@ -489,3 +489,25 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .portrait .shelfbox{--row:clamp(100px,calc((var(--sh) - 1010px)/3),180px)}
 .portrait .code{font-size:clamp(56px,calc(var(--sh)*.065),96px)}.portrait .qrbox{width:clamp(110px,calc(var(--sh)*.11),170px)}
 .portrait .lobby .card{gap:8px;padding:16px}.portrait .lobrules p{font-size:16px}
+
+/* menu: game boxes on a table */
+.menu-box{grid-template-columns:minmax(0,1.32fr) minmax(0,.78fr)}
+.menu-box .code{font-size:clamp(52px,min(calc(var(--sw)*.075),calc(var(--sh)*.11)),104px)}
+.boxtable{width:100%;padding:30px 18px 22px;border-radius:22px;
+  background:radial-gradient(120% 90% at 50% 0%,#3d7a5c,#25543e 60%,#173a2b);box-shadow:inset 0 0 0 10px #6e4420,inset 0 0 0 14px #4a2c14,inset 0 0 60px rgba(0,0,0,.55),0 14px 0 rgba(0,0,0,.3)}
+.boxgrid{--gap:clamp(10px,calc(var(--sh)*.018),16px);--per:6;display:flex;flex-wrap:wrap;justify-content:center;gap:var(--gap);position:relative;z-index:1}
+.portrait .boxgrid{--per:4}
+.gbox{position:relative;border:0;padding:0;background:none;cursor:pointer;font-family:var(--body);flex:0 0 calc((100% - (var(--per) - 1)*var(--gap))/var(--per));height:clamp(100px,calc((var(--sh) - 430px)/3),170px);
+  transform:rotate(var(--t));transition:transform .35s cubic-bezier(.2,1.5,.4,1),filter .3s}
+.gb-lid{position:absolute;inset:0 0 10px 0;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 6px;overflow:hidden;
+  background:radial-gradient(120% 80% at 30% 15%,rgba(255,255,255,.45),rgba(255,255,255,0) 55%),repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 10px,rgba(255,255,255,0) 10px 20px),var(--c);
+  box-shadow:0 10px 0 color-mix(in srgb,var(--c) 55%,#000),0 16px 14px rgba(0,0,0,.45),inset 0 0 0 3px rgba(255,255,255,.35);transition:transform .35s cubic-bezier(.2,1.5,.4,1),box-shadow .35s}
+.gb-art{font-size:clamp(28px,calc(var(--sh)*.055),48px);line-height:1;filter:drop-shadow(0 3px 0 rgba(0,0,0,.25))}
+.gb-name{font-family:var(--display);font-weight:400;font-size:clamp(15px,calc(var(--sh)*.026),22px);line-height:1.15;color:#1a1033;text-align:center;text-shadow:0 1px 0 rgba(255,255,255,.5);text-wrap:balance}
+.gb-tag{font-size:11px;font-weight:800;color:#1a1033;background:rgba(255,255,255,.55);border-radius:99px;padding:0 8px;white-space:nowrap}
+.gbox:hover{transform:rotate(0) translateY(-4px)}
+.gbox.on{transform:rotate(0) translateY(-8px) scale(1.06);z-index:2}
+.gbox.on .gb-lid{transform:translateY(-6px) rotate(-3deg);box-shadow:0 16px 0 color-mix(in srgb,var(--c) 55%,#000),0 0 0 3px #fff,0 0 26px 8px rgba(255,220,120,.8)}
+.stylebtn{flex:none;align-self:center}
+@media (max-height:620px){.gb-tag{display:none}}
+.portrait .gbox{height:clamp(100px,calc((var(--sh) - 1000px)/5),160px)}
