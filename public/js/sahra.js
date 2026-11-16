@@ -479,38 +479,48 @@ function settle(){if(CFG.edition==="commercial")return;
   const top=Math.max(0,...H.order.filter(x=>x!==id).map(x=>H.sc[x]||0));
   if((H.sc[id]||0)<=top){const step=top>=1000?50:top>=100?10:1;H.sc[id]=top+step*(1+Math.floor(Math.random()*4))}}
 
-/* ================= menu wheel ================= */
-// every game is a slice; spin for a random one or tap a name to turn the wheel to it
-H.wheel={rot:0,sel:null};
+/* ================= menu bookshelf ================= */
+// every game is a book on the shelf; tap one to pull it out, or let the stage light pick one
+H.wheel={sel:null,dark:false};
 const wheelGames=()=>Object.values(GAMES);
-function wheelHTML(){const gs=wheelGames(),n=gs.length,a=360/n;
-  // slice i is centred on angle i·a (0 = top), so the gradient starts half a slice before the top
-  const grad=gs.map((g,i)=>`${g.color} ${(i*a).toFixed(2)}deg ${((i+1)*a).toFixed(2)}deg`).join(",");
-  const sel=GAMES[H.wheel.sel];
-  return`<div class="wheelbox"><div class="wpointer">▼</div>
-    <div class="wheel" id="wheel" style="background:conic-gradient(from ${(-a/2).toFixed(2)}deg,${grad||"#333 0deg 360deg"});--rot:${H.wheel.rot}deg">
-      ${gs.map((g,i)=>`<button class="wlabel ${g.id===H.wheel.sel?"on":""} ${i*a>180?"flip":""}" data-g="${g.id}" style="--a:${(i*a).toFixed(2)}deg"><span>${g.emoji}</span><b>${esc(g.name)}</b></button>`).join("")}
-    </div><button class="wspin" id="spinBtn">🎡<b>لف</b></button></div>
+const bookSize=i=>{const r=((i*73+29)%97)/97;return{h:72+Math.round(r*22),w:54+((i*37)%5)*5}};
+function wheelHTML(){const gs=wheelGames(),per=Math.ceil(gs.length/Math.max(1,Math.ceil(gs.length/7))),rows=[];
+  for(let i=0;i<gs.length;i+=per)rows.push(gs.slice(i,i+per));
+  return`<div class="shelfbox ${H.wheel.dark?"dark":""}" id="shelf">
+    <div class="lamp" aria-hidden="true"></div><div class="beam" id="beam" aria-hidden="true"></div><div class="spot" id="spot" aria-hidden="true"></div>
+    ${rows.map((r,ri)=>`<div class="shelf">${r.map((g,j)=>{const i=ri*per+j,z=bookSize(i);
+      return`<button class="book ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--h:${z.h}%;--w:${z.w}px"><span class="be">${g.emoji}</span><b>${esc(g.name)}</b></button>`}).join("")}</div>`).join("")}
+    </div><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button>
     <div class="wsel" id="wsel">${wheelInfo()}</div>`}
 function wheelInfo(){const sel=GAMES[H.wheel.sel];
   return sel?`<div class="wsel-c" style="--g:${sel.color}"><span class="ge">${sel.emoji}</span><div><h3>${sel.name}</h3><p>${esc(sel.desc)}</p><div class="tags">${(sel.tags||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div></div></div><button class="btn coral wide" id="playSel">يلا نلعب ${sel.name} ▶</button>`
-    :`<p class="note center" style="font-size:20px">لفّوا العجلة 🎡 أو اضغطوا على لعبة منها</p>`}
-// update the chosen game in place (a full redraw would stop the wheel's animation)
+    :`<p class="note center" style="font-size:20px">اختاروا لعبة من الرف 📚 أو خلّوا الضوء يختار 🔦</p>`}
+// update the chosen game in place (a full redraw would cut the light's animation)
 function wheelShow(){const box=$("wsel");if(!box)return;box.innerHTML=wheelInfo();
-  root.querySelectorAll(".wlabel").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
+  root.querySelectorAll(".book").forEach(x=>x.classList.toggle("on",x.dataset.g===H.wheel.sel));
   const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel.sel)pickGame(H.wheel.sel)}}
-function wheelPaint(anim){const w=$("wheel");if(!w)return;w.style.transition=anim?"transform 4.2s cubic-bezier(.12,.75,.12,1)":"none";w.style.setProperty("--rot",H.wheel.rot+"deg")}
-function wheelTo(id,extraTurns){const gs=wheelGames(),i=gs.findIndex(g=>g.id===id);if(i<0)return 0;const a=360/gs.length;
-  // turn so slice i sits under the pointer, always moving forward
-  let target=-i*a,cur=H.wheel.rot,k=Math.ceil((cur-target)/360);target+=360*k;if(target>=cur)target-=360;target-=360*(extraTurns||0);
-  H.wheel.rot=target;return Math.abs(cur-target)}
-function wheelSelect(id){if(H.wheel.spinning)return;wheelTo(id,0);H.wheel.sel=id;wheelPaint(true);sfx.pop();wheelShow()}
-function wheelSpin(){if(H.wheel.spinning)return;const gs=wheelGames();if(!gs.length)return;
-  const pickId=pick(gs.filter(g=>g.id!==H.wheel.sel)).id;H.wheel.spinning=true;H.wheel.sel=null;
-  wheelShow();const box=$("wsel");if(box)box.innerHTML=`<p class="big">🎡…</p>`;
-  wheelTo(pickId,4);wheelPaint(true);
-  let n=0;const tk=setInterval(()=>{if(++n>30){clearInterval(tk);return}sfx.tick()},120+n*4);
-  setTimeout(()=>{clearInterval(tk);H.wheel.spinning=false;H.wheel.sel=pickId;sfx.tada();wheelShow()},4300)}
+// aim the stage light (and its beam from the lamp) at a book
+function spotOn(id,secs){const box=$("shelf"),el=box&&box.querySelector(`.book[data-g="${id}"]`);if(!el)return;
+  const B=box.getBoundingClientRect(),R=el.getBoundingClientRect(),sp=$("spot"),bm=$("beam");
+  const w=R.width*2.3,h=R.height*1.3,cx=R.left-B.left+R.width/2,cy=R.top-B.top+R.height/2,lx=B.width/2,ly=8;
+  const t=`${secs}s cubic-bezier(.3,.7,.3,1)`;
+  sp.style.transition=bm.style.transition=`left ${t},top ${t},width ${t},height ${t},transform ${t}`;
+  Object.assign(sp.style,{left:cx-w/2+"px",top:cy-h/2+"px",width:w+"px",height:h+"px"});
+  const dx=cx-lx,dy=cy-ly,L=Math.hypot(dx,dy);
+  Object.assign(bm.style,{left:lx-w/2+"px",top:ly+"px",width:w+"px",height:L+"px",transform:`rotate(${Math.atan2(-dx,dy)}rad)`})}
+function wheelPaint(){const box=$("shelf");if(!box)return;box.classList.toggle("dark",!!H.wheel.dark);if(H.wheel.dark&&H.wheel.sel)spotOn(H.wheel.sel,0)}
+function wheelSelect(id){if(H.wheel.spinning)return;H.wheel.sel=id;H.wheel.dark=false;wheelPaint();sfx.pop();wheelShow()}
+function wheelSpin(){if(H.wheel.spinning)return;const gs=wheelGames();if(gs.length<2)return;
+  const pickId=pick(gs.filter(g=>g.id!==H.wheel.sel)).id;H.wheel.spinning=true;H.wheel.sel=null;H.wheel.dark=true;
+  wheelShow();const box=$("wsel");if(box)box.innerHTML=`<p class="big center">🔦…</p>`;
+  const sh=$("shelf");if(sh)sh.classList.add("dark");
+  // the light jumps from book to book, slowing down until it stops on the chosen one
+  const hops=[];let last=null;for(let i=0;i<12;i++){let g;do{g=pick(gs).id}while(g===last||(i===11&&g===pickId));hops.push(last=g)}hops.push(pickId);
+  let i=0,d=90;const step=()=>{if(!$("shelf")){H.wheel.spinning=false;H.wheel.sel=pickId;return}
+    const last=i===hops.length-1;spotOn(hops[i],Math.min(.45,d/1000));
+    if(last){setTimeout(()=>{H.wheel.spinning=false;H.wheel.sel=pickId;sfx.tada();wheelShow()},450);return}
+    sfx.tick();i++;d=Math.round(d*1.19);setTimeout(step,d)};
+  step()}
 
 /* shared host pieces */
 const plHTML=(id,cls="",i=0)=>`<div class="pl ${cls}" style="--i:${i}"><div class="av" style="--c:${col(id)}">${face(id)}</div><span>${esc(nm(id))}</span></div>`;
@@ -594,7 +604,7 @@ function renderHost(){
   const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel&&H.wheel.sel)pickGame(H.wheel.sel)};
   root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{const o=(G.options||[]).find(x=>x.key===b.dataset.ok);const c=o&&o.choices.find(c=>String(c[0])===b.dataset.ov);
     if(c){setOpt(o.key,c[0]);root.querySelectorAll(`[data-ok="${o.key}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b));sfx.pop()}});
-  if(H.ph==="menu")wheelPaint(false);
+  if(H.ph==="menu")wheelPaint();
   const sb=$("startBtn");if(sb)sb.onclick=()=>{initAudio();if(H.order.length>=G.min)startGame()};
   const mb=$("menuBtn");if(mb)mb.onclick=goMenu;
   const vb=$("voBtn");if(vb)vb.onclick=()=>{setVoiceOn(!ST.vo);vb.setAttribute("aria-pressed",ST.vo)};
