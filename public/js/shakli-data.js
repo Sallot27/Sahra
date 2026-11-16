@@ -136,6 +136,36 @@ window.SHAKLI_SCENARIOS=[
 "لقيت ١٠٠ ريال في جيبي ما أدري من وين",
 "عندي خطة آخذ آخر قطعة بيتزا قبل الكل",
 "سمعت صوت غريب في المطبخ نص الليل",
+// مواقف تناسب الميمز المضافة
+"أحد قال لي: الأكل ناقصه ملح… وأنا اللي طابخ",
+"أمي قالت: بنطلب بيتزا الليلة",
+"فتحت الكاميرا الأمامية بالغلط",
+"أخوي طاح من الكرسي قدامي",
+"أحد قال لي: تبي آخر قطعة شوكولاتة؟",
+"صحيت من نومة العصر وما عرفت وش اليوم",
+"صاحبي يقول: ما أكلت شي… وفمه مليان",
+"فريقي ضيّع ضربة جزاء في النهائي",
+"شربت عصير وطلع منتهي من شهر",
+"المعلم شرح الدرس وكأنه يتكلم لغة فضائية",
+"خلصت ترتيب غرفتي قبل لا أحد يطلب",
+"أخوي الكبير قال: أنا بسوق… وهو ما يعرف",
+"سويت حركة قدام الكل وطلعت فاشلة",
+"صاحبي تزحلق وبعدين قال: كنت قاصد",
+"أمي لبّستني بيجامة الشتاء قدام الضيوف",
+"المعلم قال: الدرجات بتنزل الحين",
+"جاني إشعار: تم قبولك",
+"أحد سأل: مين أحلى واحد هنا؟",
+"أول يوم بعد ما سجلت في النادي",
+"قالوا: بكرة طلعة وأنا معزوم",
+"عرفت سر أخوي وصار عندي ورقة ضغط",
+"أحد طلب مني شي وأنا مو فاضي أبداً",
+"أمي قالت: البس جاكيت أختك الوردي، ما فيه غيره",
+"سمعت أحد يناديني باسمي وأنا لحالي في البيت",
+"أول يوم في الإجازة الصيفية",
+"شفت الفاتورة بعد ما طلبت كل شي",
+"شفت قائمة الأغراض اللي أمي تبيها من البقالة",
+"المعلم يسألني وأنا أحاول أتذكر الجواب",
+"طلعت من البيت ونزل مطر قوي فجأة",
 ];
 
 // «رسالة جاتك…»: a message from someone, and your face when you read it
@@ -184,4 +214,4 @@ window.SHAKLI_CHATS=[
 // number of reaction cards in public/img/memes (made by tools/make_memes.py)
 window.SHAKLI_MEME_COUNT=38;
 // extra pictures/GIFs added by the owner: files in public/img/memes/extra/ (private edition only)
-window.SHAKLI_EXTRA=[];
+window.SHAKLI_EXTRA=["bean_frown.webp", "cat_bow_smile.webp", "cat_lashes.webp", "cat_scream_point.webp", "cat_tongue.webp", "catman_bw.webp", "catman_white.webp", "dachshund_side_eye.webp", "disappointed_fan.webp", "disgusted_face.webp", "dog_question.webp", "dog_sun_proud.webp", "girl_side_eye.webp", "green_wazowski.webp", "horse_laugh.webp", "hotdog_dog.webp", "kid_smile.webp", "man_look_up.webp", "me_pointing.webp", "monalisa_muscles.webp", "mouse_thumbs_up.webp", "ogre_smirk.webp", "orange_cat_smug.webp", "pink_hood_face.webp", "pixel_cat.webp", "rainbow_blob.webp", "shocked_hands_head.webp", "sponge_scroll.webp", "squint_face.webp", "wet_cat.webp"];
