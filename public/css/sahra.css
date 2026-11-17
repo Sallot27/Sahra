@@ -540,3 +540,11 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .hx-r small{display:flex;align-items:center;gap:4px;font-weight:800;font-size:13px;flex:none}
 .portrait .hx-rlist{grid-template-columns:repeat(2,minmax(0,1fr))}
 .hx-recap .avimg,.hx-r small .av{width:22px;height:22px}
+.hx-cat{display:flex;flex-direction:column;align-items:center;gap:16px}
+.hx-catcard{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--paper);color:var(--ink);border-radius:26px;padding:18px 40px;box-shadow:0 10px 0 rgba(0,0,0,.3);animation:spinin .7s cubic-bezier(.2,1.4,.4,1) both}
+.hx-catcard i{font-style:normal;font-size:clamp(60px,calc(var(--sh)*.11),96px);line-height:1}
+.hx-catcard b{font-family:var(--display);font-weight:400;font-size:clamp(36px,calc(var(--sh)*.07),60px)}
+@keyframes spinin{from{transform:rotateY(90deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.hx-ctag{display:inline-block;margin:6px 0 2px;background:var(--sky);color:var(--ink);font-weight:800;font-size:17px;border-radius:99px;padding:2px 14px}
+small.hx-ctag{font-size:13px;margin:0;vertical-align:middle}
+.hx-q .hx-ctag{display:table;margin:8px auto 0}
