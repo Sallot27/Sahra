@@ -171,7 +171,7 @@ const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
   truthIntro:["truth_1"],truth:["truth_2"],notruth:["no_truth"],caught:["caught"],escaped:["escaped"],guess:["guess_last"],artist:["artist_win"],
   scores:["scores_1","scores_2"],final:["final_round"],winner:["winner"],again:["play_again"]};
 const AUD={buf:{},voice:null,busyUntil:0,music:null,musicKey:null,musicGain:null,last:{},lastPhase:"",welcomed:false};
-const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win"])];
+const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win","huroof_win"])];
 function loadAudio(key){
   if(!AUD.buf[key])AUD.buf[key]=fetch("/audio/"+key+".mp3").then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()})
     .then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).catch(()=>null);
@@ -190,9 +190,13 @@ async function playVO(list,{queue=true}={}){
   AUD.voice=src;AUD.busyUntil=at+b.duration;duck(at,b.duration);
   return new Promise(r=>src.onended=r);
 }
-function playSting(key,fallback){
+// max (seconds, optional): fade the clip out early, e.g. a short burst of a long song
+function playSting(key,fallback,max){
   if(!ac)return;loadAudio(key).then(b=>{if(!b){fallback&&fallback();return}
-    const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;g.gain.value=.9;src.connect(g).connect(ac.destination);src.start();duck(ac.currentTime,b.duration)});
+    const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime,len=max?Math.min(max,b.duration):b.duration;
+    src.buffer=b;g.gain.value=.9;src.connect(g).connect(ac.destination);src.start();
+    if(len<b.duration){g.gain.setValueAtTime(.9,t+len-1.2);g.gain.linearRampToValueAtTime(0,t+len);src.stop(t+len+.05)}
+    duck(t,len)});
 }
 const MUSIC_LEVEL=.45;
 function duck(at,dur){const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL:0;
@@ -451,7 +455,7 @@ function fitStage(){const w=innerWidth,h=innerHeight,portrait=h>w*1.05;
   const r=document.documentElement.style;r.setProperty("--sh",h/z+"px");r.setProperty("--sw",w/z+"px");
   document.body.classList.toggle("portrait",portrait);document.body.classList.add("bigscreen")}
 function startHost(snap){
-  role="host";if(CFG.debug)window.__H=H;
+  role="host";if(CFG.debug){window.__H=H;window.__G=GAMES}
   fitStage();addEventListener("resize",()=>{fitStage();if(H.ph==="menu"&&H.wheel.dark&&H.wheel.sel)spotOn(H.wheel.sel,0)});
   if(snap&&snap.H){Object.assign(H,snap.H,{lastView:"",lastKey:""});H.k++; // new step number: stale phone actions are ignored
     if(H.ph==="topic"){const G=GAMES[H.game],t=H.g.topic;H.g.afterTopic=G&&G.afterTopic?()=>G.afterTopic(t):null;if(!H.g.afterTopic)goMenu()}

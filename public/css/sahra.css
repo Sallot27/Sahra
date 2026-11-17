@@ -511,3 +511,23 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .stylebtn{flex:none;align-self:center}
 @media (max-height:620px){.gb-tag{display:none}}
 .portrait .gbox{height:clamp(100px,calc((var(--sh) - 1000px)/5),160px)}
+
+/* حروف: third team, triangle board, gems, buzzer */
+.hx.t2{background:var(--p)}.hx-team.t2{background:#b892ff}.hx-b.t2{background:#b892ff}
+.hx-board.tri{background:#2e1f6b;border:6px solid rgba(255,255,255,.18);border-radius:26px;--s:clamp(54px,calc(var(--sh)*0.072),80px)}
+.hx-board.tri.sm{--s:clamp(36px,calc(var(--sh)*0.046),50px)}
+.hx-board.tri .hx-row{justify-content:center;margin-inline-start:0}
+.hx{position:relative}
+.hx.gem i{position:absolute;bottom:14%;font-style:normal;font-size:calc(var(--s)*.26);line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.hx.gem span{transform:translateY(-12%)}
+.hx-pts{float:left;background:rgba(255,255,255,.55);border-radius:99px;padding:0 10px;font-size:20px;direction:ltr}
+.hx-bell{margin-top:12px;font-weight:800;font-size:22px;color:var(--ink);background:var(--sun);display:inline-block;padding:6px 18px;border-radius:99px;animation:wob 1.2s ease-in-out infinite}
+.hx-out{opacity:.8}
+.hx-buzzed{margin-top:12px;display:inline-flex;gap:10px;align-items:center;font-size:26px;color:var(--ink);padding:8px 20px;border-radius:99px;box-shadow:0 6px 0 rgba(0,0,0,.25);animation:pop .4s cubic-bezier(.2,1.6,.4,1) both}
+.hx-gemwin{font-family:var(--display);font-size:clamp(36px,calc(var(--sw)*0.045),58px);color:#7fe9ff;text-shadow:0 0 18px rgba(127,233,255,.8),0 4px 0 rgba(0,0,0,.35);animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+.hx-buzz{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:min(72vw,280px);aspect-ratio:1;margin:18px auto 0;border-radius:50%;border:0;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#fff8,transparent 45%),var(--c);color:var(--ink);font-size:80px;line-height:1;
+  box-shadow:0 14px 0 rgba(0,0,0,.35),inset 0 -10px 0 rgba(0,0,0,.15);transition:transform .08s,box-shadow .08s}
+.hx-buzz span{font-family:var(--body);font-weight:800;font-size:24px}
+.hx-buzz:active,.hx-buzz.hit{transform:translateY(10px);box-shadow:0 4px 0 rgba(0,0,0,.35),inset 0 -6px 0 rgba(0,0,0,.15)}
+.hx-buzz:disabled{cursor:default}

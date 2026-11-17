@@ -905,81 +905,137 @@ B.push(K=>{
     "و":[{q:"عاصمة أمريكا",a:"واشنطن",alt:["واشنطون"]},{q:"الجزء الأخضر في الشجرة",a:"ورقة",alt:["ورق","ورقه","أوراق"]}],
     "ي":[{q:"دولة عاصمتها طوكيو",a:"اليابان",alt:["يابان"]},{q:"دولة عاصمتها صنعاء",a:"اليمن",alt:["يمن"]}],
   };
-  const N=5,TEAM=["الأخضر","البرتقالي"],TC=["#2ee6a6","#ff9a3c"],GOAL=["يربط يمين ↔ يسار","يربط فوق ↕ تحت"];
-  const nbrs=i=>{const r=Math.floor(i/N),c=i%N,o=r%2?[[-1,0],[-1,1],[1,0],[1,1]]:[[-1,-1],[-1,0],[1,-1],[1,0]];
-    return[[0,-1],[0,1],...o].map(([dr,dc])=>[r+dr,c+dc]).filter(([a,b])=>a>=0&&a<N&&b>=0&&b<N).map(([a,b])=>a*N+b)};
-  // team 0 connects column 0 to column N-1, team 1 connects row 0 to row N-1
-  function won(own,t){const start=[...Array(N*N).keys()].filter(i=>own[i]===t&&(t===0?i%N===0:i<N)),seen=new Set(start),q=[...start];
-    while(q.length){const i=q.shift();if(t===0?i%N===N-1:i>=N*(N-1))return true;nbrs(i).forEach(j=>{if(own[j]===t&&!seen.has(j)){seen.add(j);q.push(j)}})}return false}
+  const TEAM=["الأخضر","البرتقالي","البنفسجي"],TC=["#2ee6a6","#ff9a3c","#b892ff"],TE=["🟢","🟠","🟣"];
+  const LETTER_PTS=10,GEM_PTS=100,BOARD_PTS=200,GEMS=3;
+  // two teams: 5×5 hex board, green links right↔left, orange links top↕bottom.
+  // three teams: triangle board of 28 hexes (every Arabic letter once), first team whose chain touches all three sides wins.
+  const N=5,R=7;
+  const geo=nt=>{
+    if(nt===3){const cells=[];for(let r=0;r<R;r++)for(let c=0;c<=r;c++)cells.push([r,c]);const at=(r,c)=>r>=0&&r<R&&c>=0&&c<=r?r*(r+1)/2+c:-1;
+      return{n:cells.length,rows:[...Array(R).keys()].map(r=>[...Array(r+1).keys()].map(c=>at(r,c))),center:at(4,2),
+        nbrs:i=>{const[r,c]=cells[i];return[[r,c-1],[r,c+1],[r-1,c-1],[r-1,c],[r+1,c],[r+1,c+1]].map(([a,b])=>at(a,b)).filter(j=>j>=0)},
+        // sides: 0 = right edge (c=r), 1 = left edge (c=0), 2 = bottom row
+        sides:i=>{const[r,c]=cells[i];return[c===r,c===0,r===R-1]}}}
+    return{n:N*N,rows:[...Array(N).keys()].map(r=>[...Array(N).keys()].map(c=>r*N+c)),center:Math.floor(N*N/2),
+      nbrs:i=>{const r=Math.floor(i/N),c=i%N,o=r%2?[[-1,0],[-1,1],[1,0],[1,1]]:[[-1,-1],[-1,0],[1,-1],[1,0]];
+        return[[0,-1],[0,1],...o].map(([dr,dc])=>[r+dr,c+dc]).filter(([a,b])=>a>=0&&a<N&&b>=0&&b<N).map(([a,b])=>a*N+b)}}};
+  // does team t have a winning chain?
+  function won(G,own,nt,t){const seen=new Set();
+    for(let s0=0;s0<G.n;s0++){if(own[s0]!==t||seen.has(s0))continue;
+      const q=[s0],hit=[false,false,false,false];seen.add(s0);
+      while(q.length){const i=q.shift();
+        if(nt===3)G.sides(i).forEach((x,k)=>{if(x)hit[k]=true});
+        else{const r=Math.floor(i/N),c=i%N;if(c===0)hit[0]=true;if(c===N-1)hit[1]=true;if(r===0)hit[2]=true;if(r===N-1)hit[3]=true}
+        G.nbrs(i).forEach(j=>{if(own[j]===t&&!seen.has(j)){seen.add(j);q.push(j)}})}
+      if(nt===3?hit[0]&&hit[1]&&hit[2]:t===0?hit[0]&&hit[1]:hit[2]&&hit[3])return true}
+    return false}
+  const goal=(nt,t)=>nt===3?"يوصل الأضلاع الثلاثة":t===0?"يربط يمين ↔ يسار":"يربط فوق ↕ تحت";
+  // the win music: short for a gem, full for a board
+  const winMusic=secs=>K.playSting("huroof_win",sfx.applause,secs);
   return{
     id:"huroof",name:"حروف",emoji:"🔠",color:"#22a052",min:2,
-    desc:"لوحة حروف مثل البرنامج المشهور: فريقين، كل حرف له سؤال، وأول فريق يوصل طرفين اللوحة يفوز!",
+    desc:"لوحة حروف مثل البرنامج المشهور: فريقين أو ثلاثة، تضغطون الجرس وتجاوبون، وتحت بعض الحروف جواهر 💎",
     tags:["٢-٨ لاعبين","فرق","معلومات"],
-    rules:["تنقسمون فريقين: الأخضر والبرتقالي","الفريق اللي عليه الدور يختار حرف من اللوحة","يطلع سؤال جوابه يبدأ بهذا الحرف، والكل يتسابق يكتب الجواب","أول واحد يجاوب صح ياخذ الخلية لفريقه","الأخضر يربط اليمين باليسار، والبرتقالي يربط فوق بتحت"],
+    rules:["تنقسمون فريقين (أو ثلاثة)، وكل لوحة تبدأ بالحرف اللي في النص","يطلع السؤال للكل، وأول واحد يضغط الجرس 🔔 هو اللي يجاوب","إذا غلط، الفرصة للفريق الثاني","الجواب الصح ياخذ الحرف لفريقك (١٠ نقاط)، وتحت بعض الحروف جوهرة 💎 بـ ١٠٠ نقطة","اللي جاوب صح يختار الحرف الجاي","فريقين: الأخضر يربط يمين↔يسار والبرتقالي فوق↕تحت · ثلاث فرق: أول فريق يوصل أضلاع المثلث الثلاثة"],
     winTitle:"بطل الحروف!",likeTitle:"",
-    timed:["hpick","hq"],options:[K.roundsOpt([1,2,3],1,"عدد اللوحات")],
-    start(){const pl=shuffle([...H.order]),g=H.g={pl,team:{},turnTeam:0,cap:[0,0],used:{},boards:K.opt("r"),bn:0,wins:[0,0]};
-      pl.forEach((id,i)=>g.team[id]=i%2);this.newBoard()},
-    newBoard(){const g=H.g;g.bn++;g.own=Array(N*N).fill(null);g.n=0;g.done=undefined;g.letters=shuffle(Object.keys(BANK)).slice(0,N*N);this.pickStep()},
+    timed:["hpick","hq","hans"],
+    options:[K.roundsOpt([1,2,3],1,"عدد اللوحات"),{key:"teams",label:"عدد الفرق",choices:[["2","فريقين"],["3","ثلاث فرق"]],def:"2"}],
+    start(){const pl=shuffle([...H.order]),nt=K.opt("teams")==="3"&&pl.length>=3?3:2;
+      const g=H.g={pl,nt,team:{},rot:0,cap:[0,0,0],used:{},boards:K.opt("r"),bn:0,wins:[0,0,0],tp:[0,0,0]};
+      pl.forEach((id,i)=>g.team[id]=i%nt);this.newBoard()},
+    newBoard(){const g=H.g,G=geo(g.nt);g.bn++;g.own=Array(G.n).fill(null);g.n=0;g.done=undefined;g.bp=[0,0,0];
+      g.letters=g.nt===3?shuffle(Object.keys(BANK)):shuffle(Object.keys(BANK)).slice(0,G.n);
+      g.gems=shuffle([...Array(G.n).keys()].filter(i=>i!==G.center)).slice(0,GEMS);g.gemFound=[];
+      g.picker=null;H.quip="أول حرف دايماً من نص اللوحة 🎯";this.ask(G.center)},
     members(t){const g=H.g;return g.pl.filter(id=>g.team[id]===t&&active().includes(id))},
-    pickStep(){const g=H.g,m=this.members(g.turnTeam);if(!m.length)g.turnTeam=1-g.turnTeam;
-      const mm=this.members(g.turnTeam);g.picker=mm.length?mm[g.cap[g.turnTeam]++%mm.length]:null;
-      H.ph="hpick";H.k++;setTimer(15);sfx.pop();H.quip=`دور الفريق ${TEAM[g.turnTeam]}: ${g.picker?nm(g.picker)+" يختار حرف":"اختاروا حرف"}`},
+    // who picks next: the player who just answered right, otherwise the next team in turn
+    pickStep(by){const g=H.g;let p=by&&active().includes(by)?by:null;
+      if(!p){for(let k=0;k<g.nt;k++){const t=(g.rot+k)%g.nt,m=this.members(t);if(m.length){p=m[g.cap[t]++%m.length];g.rot=(t+1)%g.nt;break}}}
+      g.picker=p;H.ph="hpick";H.k++;setTimer(15);sfx.pop();
+      H.quip=p?`${nm(p)} يختار الحرف الجاي للفريق ${TEAM[g.team[p]]}`:"اختاروا حرف"},
     ask(cell){const g=H.g,L=g.letters[cell],list=BANK[L],qi=(g.used[L]||0)%list.length;g.used[L]=(g.used[L]||0)+1;
-      g.cell=cell;g.q={L,...list[qi]};g.truths=[g.q.a,...g.q.alt].map(norm);g.winner=null;g.wrong={};g.seen={};
-      H.ph="hq";H.k++;setTimer(25);sfx.tada();H.quip="أسرع واحد يكتب الجواب ياخذ الخلية!"},
+      g.cell=cell;g.q={L,...list[qi]};g.truths=[g.q.a,...g.q.alt].map(norm);g.winner=null;g.locked=[];g.buzzer=null;g.tried=[];
+      this.openBuzz(20)},
+    openBuzz(secs){const g=H.g;g.buzzer=null;H.ph="hq";H.k++;setTimer(secs);sfx.tada();
+      H.quip=g.locked.length?`الفرصة للفريق ${g.locked.length===g.nt-1?TEAM[[0,1,2].find(t=>t<g.nt&&!g.locked.includes(t))]:"الثاني"}! اضغطوا الجرس 🔔`:"اللي يعرف الجواب يضغط الجرس 🔔"},
     tick(now){const g=H.g;
-      if(H.ph==="hpick"){const free=g.own.map((o,i)=>o===null?i:-1).filter(i=>i>=0);if(!free.length)return this.finish(null);
+      if(H.ph==="hpick"){const free=g.own.map((o,i)=>o===null?i:-1).filter(i=>i>=0);if(!free.length)return this.finish(this.leader());
         const a=g.picker&&K.act(g.picker);
         if(a&&Number.isInteger(a.cell)&&g.own[a.cell]===null)return this.ask(a.cell);
         if(now>H.end||g.forceSkip||!g.picker||!active().includes(g.picker)){g.forceSkip=false;this.ask(pick(free))}}
       else if(H.ph==="hq"){
-        for(const id of g.pl){if(!active().includes(id))continue;const a=K.act(id);if(!a||typeof a.ans!=="string"||g.seen[id]===a.n)continue;g.seen[id]=a.n;
-          if(nearTruth(a.ans,g.truths)){g.winner=id;break}else g.wrong[id]=a.n}
-        if(g.winner||now>H.end||g.forceSkip){g.forceSkip=false;this.resolve()}}
-      else if(H.ph==="hres"){if(now>H.end){if(g.done!==undefined)return this.finish(g.done);this.pickStep()}}
+        // first press of the buzzer from a team that hasn't missed yet
+        const presses=g.pl.filter(id=>active().includes(id)&&!g.locked.includes(g.team[id])).map(id=>[id,K.act(id)]).filter(([,a])=>a&&a.buzz);
+        if(presses.length){presses.sort((x,y)=>(x[1].t||0)-(y[1].t||0));g.buzzer=presses[0][0];H.ph="hans";H.k++;setTimer(12);sfx.coin();
+          H.quip=`${nm(g.buzzer)} ضغط الجرس! يلا جاوب ⏱️`;return}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;this.resolve()}}
+      else if(H.ph==="hans"){const a=K.act(g.buzzer);
+        if(a&&typeof a.ans==="string"){g.tried.push({id:g.buzzer,a:a.ans});
+          if(nearTruth(a.ans,g.truths)){g.winner=g.buzzer;return this.resolve()}
+          return this.miss()}
+        if(now>H.end||g.forceSkip||!active().includes(g.buzzer)){g.forceSkip=false;this.miss()}}
+      else if(H.ph==="hres"){if(now>H.end){if(g.done!==undefined)return this.finish(g.done);this.pickStep(g.winner)}}
       else if(H.ph==="hend"){if(now>H.end){if(g.bn<g.boards)this.newBoard();else K.finishGame()}}},
-    resolve(){const g=H.g;g.n++;
-      if(g.winner){const t=g.team[g.winner];g.own[g.cell]=t;C.add(g.winner,100);g.turnTeam=t;sfx.coin();
-        if(won(g.own,t))g.done=t}
-      else{sfx.lie();g.turnTeam=1-g.turnTeam}
-      if(g.done===undefined&&(g.own.every(o=>o!==null)||g.n>=40))g.done=null;
-      H.ph="hres";H.k++;setTimer(4)},
-    finish(t){const g=H.g;g.done=t;if(t===0||t===1){g.wins[t]++;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,500)});sfx.truth();confetti()}
-      H.ph="hend";H.k++;setTimer(8)},
+    // wrong answer (or no answer): that team is out for this letter, the others get a chance
+    miss(){const g=H.g;sfx.lie();g.locked.push(g.team[g.buzzer]);
+      const left=[...Array(g.nt).keys()].filter(t=>!g.locked.includes(t)&&this.members(t).length);
+      if(left.length)this.openBuzz(12);else this.resolve()},
+    resolve(){const g=H.g;g.n++;g.gemNow=false;
+      if(g.winner){const t=g.team[g.winner],gem=g.gems.includes(g.cell),pts=gem?GEM_PTS:LETTER_PTS;
+        g.own[g.cell]=t;g.tp[t]+=pts;g.bp[t]+=pts;C.add(g.winner,pts);g.gained=pts;
+        if(gem){g.gemNow=true;g.gemFound.push(g.cell);winMusic(7);confetti()}else sfx.applause();
+        if(won(geo(g.nt),g.own,g.nt,t))g.done=t}
+      else sfx.lie();
+      if(g.done===undefined&&(g.own.every(o=>o!==null)||g.n>=45))g.done=this.leader();
+      H.ph="hres";H.k++;setTimer(g.gemNow?6:4)},
+    // board ended without a chain: the team with most points on this board takes it
+    leader(){const g=H.g,b=g.bp.slice(0,g.nt),m=Math.max(...b);return b.filter(x=>x===m).length===1&&m>0?b.indexOf(m):null},
+    finish(t){const g=H.g;g.done=t;
+      if(t!==null&&t!==undefined){g.wins[t]++;g.tp[t]+=BOARD_PTS;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,BOARD_PTS)});winMusic(14);sfx.truth();confetti()}
+      H.ph="hend";H.k++;setTimer(12)},
     doneMap(){return null},
-    view(v){const g=H.g;if(!g.letters)return;v.letters=g.letters;v.own=g.own;v.team=g.team;v.picker=g.picker;v.tt=g.turnTeam;
-      if(H.ph==="hq"){v.q={L:g.q.L,q:g.q.q};v.wrong=g.wrong;v.cell=g.cell}
-      if(H.ph==="hres"){v.cell=g.cell;v.win=g.winner}
+    view(v){const g=H.g;if(!g.letters)return;v.letters=g.letters;v.own=g.own;v.team=g.team;v.picker=g.picker;v.nt=g.nt;v.gems=g.gemFound;v.tp=g.tp;
+      if(H.ph==="hq"){v.q={L:g.q.L,q:g.q.q};v.locked=g.locked;v.cell=g.cell}
+      if(H.ph==="hans"){v.q={L:g.q.L,q:g.q.q};v.buzzer=g.buzzer;v.cell=g.cell}
+      if(H.ph==="hres"){v.cell=g.cell;v.win=g.winner;v.gem=g.gemNow}
       if(["hres","hend"].includes(H.ph))v.sc=H.sc},
-    pill(){const g=H.g;const c=[0,1].map(t=>g.own.filter(o=>o===t).length);return`<span class="pill">${g.boards>1?`اللوحة ${fmt(g.bn)} من ${fmt(g.boards)} · الفوز 🟢 ${fmt(g.wins[0])}-${fmt(g.wins[1])} 🟠 · `:""}الخلايا 🟢 ${fmt(c[0])} · 🟠 ${fmt(c[1])}</span>`},
-    boardHTML(sel,small){const g=H.g;
-      return`<div class="hx-board ${small?"sm":""}" style="--g:${TC[0]};--o:${TC[1]}">${[...Array(N).keys()].map(r=>`<div class="hx-row ${r%2?"odd":""}">${[...Array(N).keys()].map(c=>{const i=r*N+c,o=g.own[i];
-        return`<div class="hx ${o===0?"t0":o===1?"t1":""} ${i===sel?"sel":""}"><span>${esc(g.letters[i])}</span></div>`}).join("")}</div>`).join("")}</div>`},
-    teamsHTML(){const g=H.g;return`<div class="hx-teams">${[0,1].map(t=>`<div class="hx-team t${t} ${g.turnTeam===t&&H.ph==="hpick"?"turn":""}"><b>${t?"🟠":"🟢"} ${TEAM[t]}</b><small>${GOAL[t]}</small><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span>${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
+    pill(){const g=H.g;return`<span class="pill">${g.boards>1?`اللوحة ${fmt(g.bn)} من ${fmt(g.boards)} · `:""}${[...Array(g.nt).keys()].map(t=>`${TE[t]} ${fmt(g.tp[t])}`).join(" · ")}</span>`},
+    boardHTML(sel,small){const g=H.g,G=geo(g.nt);
+      return`<div class="hx-board ${g.nt===3?"tri":""} ${small?"sm":""}" style="--g:${TC[0]};--o:${TC[1]};--p:${TC[2]}">${G.rows.map((row,r)=>`<div class="hx-row ${g.nt===2&&r%2?"odd":""}">${row.map(i=>{const o=g.own[i],gem=g.gemFound.includes(i);
+        return`<div class="hx ${o!==null?"t"+o:""} ${i===sel?"sel":""} ${gem?"gem":""}"><span>${esc(g.letters[i])}</span>${gem?`<i>💎</i>`:""}</div>`}).join("")}</div>`).join("")}</div>`},
+    teamsHTML(){const g=H.g,turn=H.ph==="hpick"&&g.picker?g.team[g.picker]:-1;
+      return`<div class="hx-teams">${[...Array(g.nt).keys()].map(t=>`<div class="hx-team t${t} ${turn===t?"turn":""}"><b>${TE[t]} ${TEAM[t]} <span class="hx-pts">${fmt(g.tp[t])}</span></b><small>${goal(g.nt,t)}</small><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span>${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
     render(){const g=H.g;
       if(H.ph==="hpick")return C.head(H.quip)+`<div class="hx-wrap">${this.teamsHTML()}${this.boardHTML()}</div>`;
-      if(H.ph==="hq")return C.head(H.quip)+`<div class="hx-wrap">${this.boardHTML(g.cell,true)}<div class="ticket hx-q"><span class="hx-l">${esc(g.q.L)}</span><p class="qtext">${esc(g.q.q)}</p><p class="note">الجواب يبدأ بحرف «${esc(g.q.L)}»</p></div></div>`;
-      if(H.ph==="hres"){const w=g.winner;return`<div class="hx-wrap">${this.boardHTML(g.cell)}<div class="reveal"><div class="answer">${esc(g.q.a)}</div>
-        <div class="who">${w?`${C.avatar(w)}<span>${esc(nm(w))} جاوب أول</span><span class="pts">+١٠٠</span>`:"<span>ما أحد عرفها 😅 الدور ينتقل للفريق الثاني</span>"}</div></div></div>`}
+      if(H.ph==="hq"||H.ph==="hans"){const b=H.ph==="hans"?g.buzzer:null;
+        return C.head(H.quip)+`<div class="hx-wrap">${this.boardHTML(g.cell,true)}<div class="ticket hx-q"><span class="hx-l">${esc(g.q.L)}</span><p class="qtext">${esc(g.q.q)}</p><p class="note">الجواب يبدأ بحرف «${esc(g.q.L)}»</p>
+          ${b?`<div class="hx-buzzed" style="background:${TC[g.team[b]]}">🔔 ${C.avatar(b)} <b>${esc(nm(b))}</b> يجاوب…</div>`
+            :`<div class="hx-bell">🔔 اضغطوا الجرس في جوالاتكم${g.locked.length?` · <span class="hx-out">${g.locked.map(t=>TE[t]).join(" ")} خارج هالسؤال</span>`:""}</div>`}</div></div>`}
+      if(H.ph==="hres"){const w=g.winner,t=w?g.team[w]:null;return`<div class="hx-wrap">${this.boardHTML(g.cell)}<div class="reveal"><div class="answer">${esc(g.q.a)}</div>
+        ${g.gemNow?`<div class="hx-gemwin">💎 جوهرة! +${fmt(GEM_PTS)}</div>`:""}
+        <div class="who">${w?`${C.avatar(w)}<span>${esc(nm(w))} جاوب صح للفريق ${TEAM[t]}</span><span class="pts">+${fmt(g.gained)}</span>`:"<span>ما أحد عرفها 😅</span>"}</div></div></div>`}
       if(H.ph==="hend"){const t=g.done;return`<div class="hx-wrap">${this.boardHTML(-1,true)}<div class="reveal hx-end">
         <div class="hx-win" style="${t===null?"":`background:${TC[t]}`}">${t===null?"تعادل! 🤝":`فاز الفريق ${TEAM[t]}! 🏆`}</div>
-        ${t!==null?`<div class="who">${g.pl.filter(id=>g.team[id]===t).map(id=>`${C.avatar(id)}<span>${esc(nm(id))}</span>`).join("")}<span class="pts">+٥٠٠</span></div>`:""}</div></div>`}
+        ${t!==null?`<div class="who">${g.pl.filter(id=>g.team[id]===t).map(id=>`${C.avatar(id)}<span>${esc(nm(id))}</span>`).join("")}<span class="pts">+${fmt(BOARD_PTS)}</span></div>`:""}
+        <p class="note" style="font-size:22px">النقاط: ${[...Array(g.nt).keys()].map(x=>`${TE[x]} ${fmt(g.tp[x])}`).join(" · ")}</p></div></div>`}
       return""},
-    phone(v,{root,tline}){const me=K.me(),t=v.team?v.team[me]:undefined;C.fresh(v);
+    phone(v,{root,tline}){const me=K.me(),t=v.team?v.team[me]:undefined,nt=v.nt||2;C.fresh(v);
       if(t===undefined){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
-      const head=`<div class="xo-me" style="background:${TC[t]}">أنت في الفريق ${TEAM[t]} · ${GOAL[t]}</div>`;
+      const head=`<div class="xo-me" style="background:${TC[t]}">أنت في الفريق ${TEAM[t]} · ${goal(nt,t)}</div>`;
       if(v.ph==="hpick"){
         if(v.picker!==me){root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🤔",`${C.pnm(v,v.picker)} يختار حرف…`,"");return}
-        root.insertAdjacentHTML("beforeend",head+`<h2 style="font-size:26px">اختار حرف لفريقك 👇</h2>${tline}<div class="hx-pick">${v.letters.map((L,i)=>`<button class="hx-b ${v.own[i]===0?"t0":v.own[i]===1?"t1":""}" data-i="${i}" ${v.own[i]!==null?"disabled":""}>${esc(L)}</button>`).join("")}</div>`);
+        root.insertAdjacentHTML("beforeend",head+`<h2 style="font-size:26px">جاوبت صح! اختار الحرف الجاي 👇</h2>${tline}<div class="hx-pick">${v.letters.map((L,i)=>`<button class="hx-b ${v.own[i]!==null?"t"+v.own[i]:""}" data-i="${i}" ${v.own[i]!==null?"disabled":""}>${esc(L)}</button>`).join("")}</div>`);
         root.querySelectorAll(".hx-b[data-i]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,cell:+b.dataset.i});root.querySelectorAll(".hx-b").forEach(x=>x.disabled=true);b.classList.add("pick")});return}
-      if(v.ph==="hq"){root.insertAdjacentHTML("beforeend",head+`<div class="pq" style="text-align:center"><span class="hx-l sm">${esc(v.q.L)}</span><br>${esc(v.q.q)}</div>${tline}<div id="hxBox"></div>`);this.form(v);return}
-      if(v.ph==="hres"){C.watch(root,v,v.win===me?"🎉":v.win&&v.team[v.win]===t?"💪":"👀",v.win===me?"جاوبت أول!":"ناظر الشاشة!");return}
+      if(v.ph==="hq"){const out=(v.locked||[]).includes(t);
+        root.insertAdjacentHTML("beforeend",head+`<div class="pq" style="text-align:center"><span class="hx-l sm">${esc(v.q.L)}</span><br>${esc(v.q.q)}</div>${tline}
+          ${out?`<p class="big" style="font-size:24px">❌ فريقك جاوب غلط… الفرصة للباقين</p>`:`<button class="hx-buzz" id="hxBuzz" style="--c:${TC[t]}">🔔<span>أعرف الجواب!</span></button>`}`);
+        const b=document.getElementById("hxBuzz");if(b)b.onclick=()=>{K.sendAct({k:v.k,buzz:1,t:Date.now()});b.disabled=true;b.classList.add("hit");b.querySelector("span").textContent="ضغطت! ⏳";sfx.pop()};return}
+      if(v.ph==="hans"){
+        if(v.buzzer===me){root.insertAdjacentHTML("beforeend",head+`<div class="pq" style="text-align:center"><span class="hx-l sm">${esc(v.q.L)}</span><br>${esc(v.q.q)}</div><h2 style="font-size:26px">🔔 أنت أول واحد! اكتب جوابك</h2>${tline}<div id="hxBox"></div>`);
+          const box=document.getElementById("hxBox");C.textForm(box,{ph:"الجواب يبدأ بـ «"+v.q.L+"»",max:40,btn:"جاوب ⚡",onSend:x=>{K.sendAct({k:v.k,ans:x});box.innerHTML=`<p class="big">🤔…</p>`}});return}
+        root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🔔",`${C.pnm(v,v.buzzer)} يجاوب…`,v.team[v.buzzer]===t?"فريقك! 🤞":"إذا غلط، الفرصة لكم 👀");return}
+      if(v.ph==="hres"){C.watch(root,v,v.win===me?(v.gem?"💎":"🎉"):v.win&&v.team[v.win]===t?"💪":"👀",v.win===me?(v.gem?"جوهرة! +١٠٠":"جاوبت صح!"):"ناظر الشاشة!");return}
       C.watch(root,v);},
-    form(v,msg){const box=document.getElementById("hxBox");if(!box)return;C.L.n=C.L.n||0;
-      C.textForm(box,{ph:"الجواب يبدأ بـ «"+v.q.L+"»",max:40,btn:"جاوب ⚡",onSend:t=>{C.L.n=Date.now();C.L.wait=C.L.n;K.sendAct({k:v.k,ans:t,n:C.L.n});box.innerHTML=`<p class="big">🤔…</p>`}});
-      if(msg)box.insertAdjacentHTML("afterbegin",`<p class="err">${msg}</p>`)},
-    phoneLive(v){if(v.ph!=="hq")return;const me=K.me(),L=C.L;if(L.wait&&v.wrong&&v.wrong[me]===L.wait){L.wait=0;sfx.lie();this.form(v,"❌ مو هو… جرّب بسرعة!")}},
   };
 });
 
