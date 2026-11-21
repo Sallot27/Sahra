@@ -574,3 +574,8 @@ small.hx-ctag{font-size:13px;margin:0;vertical-align:middle}
 .mymon .mon .mm{transform:scaleY(.3)}.mymon .mon.shout .mm{transform:scaleY(1.2)}
 #ytbg{position:fixed;left:0;bottom:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none;z-index:-1}
 #ytbg iframe{width:200px;height:120px}
+
+/* test bots: hidden phones */
+#botbox{position:fixed;left:-5000px;top:0;width:390px;pointer-events:none}
+#botbox iframe{width:390px;height:844px;border:0;display:block}
+.botrow{border:2px dashed rgba(255,255,255,.25)}

@@ -620,10 +620,23 @@ function opt(key,game){const G=GAMES[game||H.game];const o=G&&(G.options||[]).fi
 function setOpt(key,v){(H.opts[H.game]=H.opts[H.game]||{})[key]=v;try{localStorage.setItem("sahra_opts",JSON.stringify(H.opts))}catch(e){}}
 function roundsOpt(choices,def,label="عدد الجولات"){return{key:"r",label,choices:choices.map(n=>[n,fmt(n)]),def}}
 function goMenu(){H.paused=false;H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
+// test bots: hidden phones in this page
+const BOTS=[],BOT_NAMES=["بوت سعود","بوت نورة","بوت فهد","بوت ريم","بوت دانة","بوت سلطان","بوت لمى","بوت خالد"];
+const botPeer=b=>{try{return b.frame.contentWindow.__myPeer||null}catch(e){return null}};
+function setBots(n){let box=$("botbox");if(!box){box=document.createElement("div");box.id="botbox";box.setAttribute("aria-hidden","true");document.body.appendChild(box)}
+  while(BOTS.length>n){const b=BOTS.pop(),id=botPeer(b);b.frame.remove();if(id)H.order=H.order.filter(x=>x!==id)}
+  while(BOTS.length<n){const used=new Set(Object.values(H.names||{})),name=BOT_NAMES.find(x=>!used.has(x)&&!BOTS.some(b=>b.name===x))||"بوت "+(BOTS.length+1);
+    const f=document.createElement("iframe");f.src="/?bot=1&code="+encodeURIComponent(ST.code)+"&name="+encodeURIComponent(name);f.title=name;box.appendChild(f);BOTS.push({name,frame:f})}
+  H.lastKey="";sfx.pop()}
+// a bot knows the حروف answer about half the time
+window.__botHint=()=>H.game==="huroof"&&H.ph==="hans"&&H.g.q&&Math.random()<.55?H.g.q.a:null;
+const botsRow=()=>{const humans=H.order.filter(id=>!BOTS.some(b=>botPeer(b)===id)).length,max=Math.max(0,Math.min(6,8-humans));
+  return`<div class="optrow botrow"><span>🤖 بوتات للتجربة</span><div class="seg">${[...Array(max+1).keys()].map(n=>`<button class="segb" data-bots="${n}" aria-pressed="${BOTS.length===n}">${n?fmt(n):"بدون"}</button>`).join("")}</div></div>`};
 // host controls: pause the clock, remove a player (they can't come back to this room)
 const inPlay=()=>!!H.game&&!["menu","lobby","end"].includes(H.ph);
 function setPaused(on){if(!inPlay()&&on)return;if(on){H.pauseLeft=Math.max(0,H.end-Date.now());H.paused=true}else{H.paused=false;H.end=Date.now()+(H.pauseLeft||0)}sfx.pop()}
-function kickPlayer(id){if(!id||(H.kicked||[]).includes(id))return;(H.kicked=H.kicked||[]).push(id);
+function kickPlayer(id){const bi=BOTS.findIndex(b=>botPeer(b)===id);if(bi>=0){BOTS[bi].frame.remove();BOTS.splice(bi,1)}
+  if(!id||(H.kicked||[]).includes(id))return;(H.kicked=H.kicked||[]).push(id);
   if(H.ph==="menu"||H.ph==="lobby")H.order=H.order.filter(x=>x!==id);
   let t=null;try{t=JSON.parse(sessionStorage.getItem("sahra_host")||"{}").t}catch(_){}
   if(t&&/^p-/.test(id))api("POST","/rooms/"+ST.code+"/kick",{host_token:t,uid:id.slice(2)}).catch(()=>{});
@@ -756,6 +769,7 @@ function renderHost(){
       <div class="card" style="justify-content:space-between">
         <div class="row lobhead"><span class="lobemoji">${G.emoji}</span><div style="flex:1;min-width:0"><h2 class="lobtitle">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
         <div class="col lobrules">${G.rules.map(r=>`<p>• ${esc(r)}</p>`).join("")}</div>
+        ${botsRow()}
         ${(G.options||[]).map(o=>`<div class="optrow"><span>${esc(o.label)}</span><div class="seg">${o.choices.map(([v,l])=>`<button class="segb" data-ok="${esc(o.key)}" data-ov="${esc(String(v))}" aria-pressed="${opt(o.key)===v}">${esc(l)}</button>`).join("")}</div></div>`).join("")}
         <div class="col">
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
@@ -785,6 +799,7 @@ function renderHost(){
   const sp=$("spinBtn");if(sp)sp.onclick=()=>{initAudio();wheelSpin()};
   const stb=$("styleBtn");if(stb)stb.onclick=()=>{if(!H.wheel.spinning)setMenuStyle(menuStyle()==="box"?"shelf":"box")};
   const pg=$("playSel");if(pg)pg.onclick=()=>{initAudio();if(H.wheel&&H.wheel.sel)pickGame(H.wheel.sel)};
+  root.querySelectorAll("[data-bots]").forEach(b=>b.onclick=()=>{initAudio();setBots(+b.dataset.bots)});
   root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{const o=(G.options||[]).find(x=>x.key===b.dataset.ok);const c=o&&o.choices.find(c=>String(c[0])===b.dataset.ov);
     if(c){setOpt(o.key,c[0]);root.querySelectorAll(`[data-ok="${o.key}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b));sfx.pop()}});
   if(H.ph==="menu")wheelPaint();
@@ -1278,6 +1293,32 @@ function fetchDrawing(g,id,drawId){
   api("GET","/drawings/"+encodeURIComponent(drawId)).then(r=>{const s=cleanStrokes(r.strokes);if(s.length&&H.g===g)g.drawings[id]=s})
     .catch(()=>{if(g.fetching)delete g.fetching[id]});
 }
+/* ================= test bots =================
+   A bot is a hidden phone (an iframe of this page with ?bot=1) that joins the room and plays by itself:
+   it waits a little at every step, then types answers, draws, taps choices and presses the buzzer. */
+const BOT=!!window.__BOT;
+const BOT_WORDS=["قطوة","موز","سيارة","بحر","ضحكة","كرة","ابوي","مطر","قهوة","نجمة","بطيخ","طيارة","جمل","شاورما","بيت جدتي","سمك","ورد","كبسة","مدرسة","تلفون"];
+function botJoin(){const q=new URLSearchParams(location.search);$("nickIn").value=q.get("name")||"بوت";$("codeIn").value=(q.get("code")||"").toUpperCase();
+  const av=root.querySelectorAll("[data-av^=\"p:\"]");if(av.length)av[Math.floor(Math.random()*av.length)].click();
+  setTimeout(()=>$("joinBtn").click(),300);setInterval(botTick,700)}
+const BT={key:null,at:0,wait:0,drew:false,typed:new Set()};
+const vis=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(el).visibility!=="hidden"};
+function botDraw(cv){const r=cv.getBoundingClientRect(),ev=(t,x,y)=>cv.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:r.left+x*r.width,clientY:r.top+y*r.height,pointerId:1,pointerType:"touch"}));
+  for(let s=0;s<3+Math.floor(Math.random()*3);s++){let x=.2+Math.random()*.6,y=.2+Math.random()*.6;ev("pointerdown",x,y);
+    for(let k=0;k<8;k++){x=Math.min(.95,Math.max(.05,x+(Math.random()-.5)*.2));y=Math.min(.95,Math.max(.05,y+(Math.random()-.5)*.2));ev("pointermove",x,y)}ev("pointerup",x,y)}}
+function botTick(){if(!window.__myPeer&&myPeer)window.__myPeer=myPeer;
+  const k=ME&&ME.lastKey;if(!k)return;const now=Date.now();
+  if(k!==BT.key){BT.key=k;BT.at=now;BT.wait=1200+Math.random()*2600;BT.drew=false;BT.typed=new Set();BT.buzz=2500+Math.random()*6000;return}
+  if(now-BT.at<BT.wait)return;
+  let hint=null;try{hint=window.parent!==window&&window.parent.__botHint?window.parent.__botHint():null}catch(e){}
+  root.querySelectorAll('input[type="text"]:not([disabled]),textarea:not([disabled])').forEach(inp=>{if(!vis(inp)||inp.value||BT.typed.has(inp))return;BT.typed.add(inp);
+    inp.value=hint||BOT_WORDS[Math.floor(Math.random()*BOT_WORDS.length)]+(Math.random()<.4?" "+BOT_WORDS[Math.floor(Math.random()*BOT_WORDS.length)]:"");
+    inp.dispatchEvent(new Event("input",{bubbles:true}))});
+  const cv=$("pad");if(cv&&vis(cv)&&!BT.drew){BT.drew=true;botDraw(cv);return}
+  if(Math.random()>.4)return;
+  const skip=b=>b.id==="singBtn"||b.id==="undo"||b.id==="clr"||b.id==="rj"||b.matches("[data-kick],.snd,.bt-dice,[data-t],[data-w]")||(b.id==="hxBuzz"&&now-BT.at<BT.buzz);
+  const bs=[...root.querySelectorAll("button:not([disabled])")].filter(b=>vis(b)&&!skip(b));
+  if(bs.length)bs[Math.floor(Math.random()*bs.length)].click()}
 async function boot(){
   root.innerHTML=`<div class="emoji" style="margin-top:calc(var(--sh)*0.2)">🎉</div><p class="big">لحظة…</p>`;
   const fail=(t,d)=>{root.innerHTML=`<div class="emoji" style="margin-top:calc(var(--sh)*0.2)">😵</div><p class="big">${esc(t)}</p><p class="note center">${esc(d)}</p>`};
@@ -1285,6 +1326,7 @@ async function boot(){
   catch(e){return fail("ما قدرنا نحمّل الألعاب",e.status?"خطأ من السيرفر ("+e.status+"). افتح /api/status لمعرفة السبب.":"تأكد من الإنترنت وحدّث الصفحة.")}
   if(!QS.length)return fail("ما فيه أسئلة في قاعدة البيانات","شغّل الأمر: php artisan db:seed --force");
   landing(CFG.ready?"":"تنبيه: WebSockets مو مربوطة بالتطبيق، اللعب الجماعي ما بيشتغل.");
+  if(BOT)botJoin();
 }
 boot();
 })();

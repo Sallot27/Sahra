@@ -17,6 +17,16 @@
 <canvas id="fx"></canvas>
 <div id="app"><div class="wrap narrow" id="root"></div></div>
 
+<script>
+// a test bot (opened by the big screen with ?bot=1) keeps its own storage, so it never mixes with the big screen's
+if (/[?&]bot=1(&|$)/.test(location.search)) {
+  const mem = () => { const m = new Map(); return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => m.set(k, String(v)),
+    removeItem: k => m.delete(k), clear: () => m.clear(), key: i => [...m.keys()][i] ?? null, get length() { return m.size } } };
+  try { Object.defineProperty(window, 'localStorage', { value: mem(), configurable: true });
+        Object.defineProperty(window, 'sessionStorage', { value: mem(), configurable: true }); } catch (e) {}
+  window.__BOT = true;
+}
+</script>
 <script>window.SAHRA = @json($config);</script>
 <script src="/js/vendor/pusher-8.4.0.min.js"></script>
 <script src="/js/vendor/qrcode-1.4.4.js"></script>
