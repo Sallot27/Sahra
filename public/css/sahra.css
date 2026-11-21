@@ -847,3 +847,6 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 @keyframes hxwin{to{filter:brightness(1.5) drop-shadow(0 0 10px #fff)}}
 .hx-flash{position:fixed;inset:0;pointer-events:none;z-index:40;background:#000;animation:hxlights 3s steps(1) 1 both}
 @keyframes hxlights{0%{opacity:.7}12%{opacity:0}24%{opacity:.7}36%{opacity:0}48%{opacity:.6}60%{opacity:0}72%{opacity:.4}84%,100%{opacity:0}}
+.ls-pics{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(10px,calc(var(--sw)*.02),30px);font-size:clamp(70px,calc(var(--sh)*.15),140px);line-height:1.2;margin:10px 0;direction:ltr}
+.ls-pics span{display:inline-block;animation:pop .5s calc(var(--i)*.25s) cubic-bezier(.2,1.6,.4,1) both}
+.ls-pics.sm{font-size:clamp(40px,calc(var(--sh)*.08),70px)}
