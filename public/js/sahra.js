@@ -246,26 +246,47 @@ function fxLoop(){
 }
 
 /* ================= drawings: strokes are [{c:0|1|2, w:1|2, p:[x,y,x,y…]}] in 0..1000 ================= */
-function strokeColor(c,owner){return c===2?"#ffffff":c===1?INK[Math.max(0,H.order.indexOf(owner))%8]:"#1a1033"}
+/* drawing kit. A stroke is {c: colour, w: size, p: [x,y,…] in 0..1000, f: 1 = paint-bucket fill at p}.
+   colour 0 = black, 1 = the player's own ink, 2 = eraser, 3.. = PAL */
+const PAL=["#e53935","#fb8c00","#fdd835","#7cb342","#2e7d32","#00acc1","#1e88e5","#283593","#8e24aa","#ec407a","#6d4c41","#f1c27d","#9e9e9e","#ffffff","#81d4fa","#8b0000"];
+const NCOL=3+PAL.length,WID={1:7,2:16,3:3,4:28,5:46};
+const colorOf=(c,ink)=>c===2?"#ffffff":c===1?ink:c>=3&&c<NCOL?PAL[c-3]:"#1a1033";
+const widthOf=s=>(WID[s.w]||7)*(s.c===2?1.8:1);
+function strokeColor(c,owner){return colorOf(c,INK[Math.max(0,H.order.indexOf(owner))%8])}
+// paint bucket: fill the area of similar colour around (x,y) on the canvas
+function floodFill(ctx,x,y,hex){const W=ctx.canvas.width,Hh=ctx.canvas.height;x=Math.round(x);y=Math.round(y);if(x<0||y<0||x>=W||y>=Hh)return;
+  const img=ctx.getImageData(0,0,W,Hh),d=img.data,i0=(y*W+x)*4,tr=d[i0],tg=d[i0+1],tb=d[i0+2];
+  const n=parseInt(hex.slice(1),16),fr=n>>16&255,fg=n>>8&255,fb=n&255;if(Math.abs(tr-fr)+Math.abs(tg-fg)+Math.abs(tb-fb)<12)return;
+  const near=i=>Math.abs(d[i]-tr)+Math.abs(d[i+1]-tg)+Math.abs(d[i+2]-tb)<=90,seen=new Uint8Array(W*Hh),st=[x,y];
+  while(st.length){const yy=st.pop(),xx=st.pop();let l=xx;while(l>0&&!seen[yy*W+l-1]&&near((yy*W+l-1)*4))l--;
+    let up=false,dn=false;for(let k=l;k<W;k++){const j=yy*W+k;if(seen[j]||!near(j*4))break;seen[j]=1;d[j*4]=fr;d[j*4+1]=fg;d[j*4+2]=fb;d[j*4+3]=255;
+      if(yy>0){const u=j-W;if(!seen[u]&&near(u*4)){if(!up){st.push(k,yy-1);up=true}}else up=false}
+      if(yy<Hh-1){const b=j+W;if(!seen[b]&&near(b*4)){if(!dn){st.push(k,yy+1);dn=true}}else dn=false}}}
+  ctx.putImageData(img,0,0)}
 function paint(cv,strokes,owner,animate,colorFn){
   if(!cv)return;const r=cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);
   cv.width=Math.max(10,r.width*dpr);cv.height=Math.max(10,r.height*dpr);
-  const x=cv.getContext("2d"),S=cv.width/1000;x.lineCap="round";x.lineJoin="round";
+  const x=cv.getContext("2d",{willReadFrequently:true}),S=cv.width/1000;x.lineCap="round";x.lineJoin="round";
   const col=colorFn||(c=>strokeColor(c,owner));
-  const list=Array.isArray(strokes)?strokes:[];
-  const total=list.reduce((n,s)=>n+((s.p||[]).length>>1),0)||1;
-  const drawUpTo=lim=>{x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);let n=0;
-    for(const s of list){const p=s.p||[];if(p.length<2)continue;x.strokeStyle=col(s.c);x.lineWidth=(s.c===2?28:s.w===2?16:7)*S;
-      x.beginPath();x.moveTo(p[0]*S,p[1]*S);if(p.length===2)x.lineTo(p[0]*S+.1,p[1]*S);
-      for(let i=2;i<p.length;i+=2){if(n++>lim)break;x.lineTo(p[i]*S,p[i+1]*S)}x.stroke();if(n>lim)return}};
-  if(!animate||matchMedia("(prefers-reduced-motion: reduce)").matches){drawUpTo(Infinity);return}
-  const t0=performance.now(),dur=1800;
-  const step=t=>{const k=Math.min(1,(t-t0)/dur);drawUpTo(k*total);if(k<1&&cv.isConnected)requestAnimationFrame(step)};requestAnimationFrame(step);
+  const list=(Array.isArray(strokes)?strokes:[]).filter(s=>(s.p||[]).length>=2);
+  x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);
+  // strokes are drawn in order, a little more each frame when animating (fills happen when reached)
+  let si=0,pi=0;
+  const step=budget=>{while(si<list.length&&budget>0){const s=list[si],p=s.p;
+      if(s.f){floodFill(x,p[0]*S,p[1]*S,col(s.c));si++;pi=0;budget-=40;continue}
+      x.strokeStyle=col(s.c);x.lineWidth=widthOf(s)*S;x.beginPath();
+      if(pi===0){x.moveTo(p[0]*S,p[1]*S);x.lineTo(p[0]*S+.1,p[1]*S);pi=2}else x.moveTo(p[pi-2]*S,p[pi-1]*S);
+      while(pi<p.length&&budget>0){x.lineTo(p[pi]*S,p[pi+1]*S);pi+=2;budget--}
+      x.stroke();if(pi>=p.length){si++;pi=0}}};
+  if(!animate||matchMedia("(prefers-reduced-motion: reduce)").matches){step(Infinity);return}
+  const total=list.reduce((n,s)=>n+(s.f?40:(s.p.length>>1)),0)||1,per=Math.max(4,Math.ceil(total/108));
+  const frame=()=>{if(!cv.isConnected)return;step(per);if(si<list.length)requestAnimationFrame(frame)};frame();
 }
 function cleanStrokes(d){
   if(!Array.isArray(d))return[];let pts=0;const out=[];
   for(const s of d.slice(0,400)){if(!s||!Array.isArray(s.p))continue;const p=s.p.slice(0,2000).map(v=>Math.max(0,Math.min(1000,v|0)));
-    if(p.length<2)continue;pts+=p.length;if(pts>12000)break;out.push({c:[0,1,2].includes(s.c)?s.c:0,w:s.w===2?2:1,p})}
+    if(p.length<2)continue;pts+=p.length;if(pts>12000)break;
+    const o={c:Number.isInteger(s.c)&&s.c>=0&&s.c<NCOL?s.c:0,w:[1,2,3,4,5].includes(s.w)?s.w:1,p};if(s.f){o.f=1;o.p=p.slice(0,2)}out.push(o)}
   return out;
 }
 
@@ -817,7 +838,7 @@ const FAB={
   pill(){const m=this.m();return`<span class="pill ${m===3?"x":""}">${m===3?"الفبركة الأخيرة":m===2?"الجولة الثانية":"الجولة الأولى"}${m>1?` · ×${fmt(m)}`:""}</span>`},
   spotNames(){return H.g.pick},
   themeName(){const g=H.g;return["lie","choose","reveal"].includes(H.ph)&&QS[g.q]?QS[g.q].t:null},
-  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)} · ${esc(q.c)}</span><p class="qtext" dir="${q.l==="en"?"ltr":"rtl"}">${blankify(q.q,fill?q.a:"")}</p></div>`},
+  ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)}</span><p class="qtext" dir="${q.l==="en"?"ltr":"rtl"}">${blankify(q.q,fill?q.a:"")}</p></div>`},
   render(){const g=H.g;
     if(H.ph==="pick")return`<div class="spread"><div class="row"><div class="av lg" style="--c:${col(g.picker)}">${face(g.picker)}</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.picker))} يختار الموضوع…</h2></div>${ringHTML()}</div>
       ${spotlightHTML(g.pick)}`;
@@ -838,12 +859,13 @@ const DRW={
   rules:["كل لاعب ياخذ موضوع سري ويرسمه بجواله","تطلع الرسمة على الشاشة، والباقين يكتبون عنوان كذب لها","تختارون العنوان الحقيقي","نقاط إذا عرفت، وإذا انخدعوا بعنوانك، والرسام ياخذ نقاط إذا عرفوا رسمته"],
   winTitle:"أعظم فنان!",likeTitle:"أظرف عنوان",
   used:new Set(),
-  options:[roundsOpt([1,2,3],2)],
+  // drawing time on the phones, picked in the lobby
+  options:[roundsOpt([1,2,3],2),{key:"dt",label:"وقت الرسم",choices:[["90","دقيقة ونص"],["150","دقيقتين ونص"],["240","٤ دقايق"]],def:"150"}],
   start(){H.g={round:0,rounds:opt("r")};this.newRound()},
   newRound(){const g=H.g;g.round++;
     let pool=DRAW.filter(p=>!this.used.has(p));if(pool.length<H.order.length+6){this.used.clear();pool=[...DRAW]}
     pool=shuffle(pool);g.prompts={};active().forEach(id=>{const p=pool.pop();g.prompts[id]=p;this.used.add(p)});
-    g.drawings={};g.queue=[];H.ph="draw";H.k++;setTimer(90);H.quip=pick(QUIP.draw);sfx.go()},
+    g.drawings={};g.queue=[];H.ph="draw";H.k++;setTimer(+opt("dt")||150);H.quip=pick(QUIP.draw);sfx.go()},
   nextDrawing(){const g=H.g;
     if(!g.queue.length){H.ph="scores";H.k++;setTimer(8);H.quip=pick(QUIP.scores);return}
     g.ex=g.queue.shift();g.truth=g.prompts[g.ex];g.alts=[];
@@ -985,8 +1007,8 @@ const SAL={
 const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 /* Beta games live in /js/sahra-beta.js and plug in through this kit. */
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
-  act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,
-  sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),me:()=>myPeer,code:()=>ST.code,
+  act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,colorOf,
+  sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),autoSend:f=>{ME.autoSend=f},me:()=>myPeer,code:()=>ST.code,
   commercial:CFG.edition==="commercial",avImg,opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
@@ -1030,10 +1052,12 @@ function renderPlayer(){
     if(v.ph==="draw"&&(v.done||[]).includes(myPeer)&&!ME.drawShown){ME.drawShown=true;$("drawArea").innerHTML=`<div class="emoji">🖼️</div><p class="big">وصلت رسمتك!</p><p class="note center">انتظر الباقين يخلّصون.</p>`}
     const t=$("ptl");if(t)t.textContent=Number(v.tl)||0;
     if(ME.padSend&&ME.padK===v.k&&v.tl<=3)ME.padSend();
+    // time is up: send whatever the player typed, they don't have to press the button
+    if(ME.autoSend&&v.tl<=1){const f=ME.autoSend;ME.autoSend=null;try{f()}catch(e){}}
     const Gl=GAMES[v.game];if(Gl&&Gl.phoneLive&&idx>=0)Gl.phoneLive(v);
     return;
   }
-  ME.lastKey=key;ME.padSend=null;
+  ME.lastKey=key;ME.padSend=null;ME.autoSend=null;
   if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=MAXP?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
   const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
   if(v.ph==="menu"){root.innerHTML=head+`<div class="emoji">${f}</div><p class="big">أنت داخل!</p><p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;return}
@@ -1111,6 +1135,7 @@ function showLieForm(v,err,found){
   const inp=$("lieIn");
   inp.oninput=()=>$("cnt").textContent=inp.value.length+"/40";
   $("lieBtn").onclick=()=>send(inp.value);
+  ME.autoSend=()=>{if(inp.isConnected&&inp.value.trim())send(inp.value)};
   inp.onkeydown=e=>{if(e.key==="Enter")send(e.target.value)};
   setTimeout(()=>inp.focus(),50);
 }
@@ -1121,29 +1146,32 @@ function showLikes(v,mine){
   box.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>{const i=+b.dataset.l;ME.lk.has(i)?ME.lk.delete(i):ME.lk.add(i);b.setAttribute("aria-pressed",ME.lk.has(i));sendAct({k:v.k,ch:ME.ch,lk:[...ME.lk]})});
 }
 function drawPad(box,v,idx){
-  const myInk=INK[idx%8];
-  box.innerHTML=`<div class="col"><canvas class="pad" id="pad"></canvas>
-    <div class="tools"><div class="row" style="gap:8px">
-      <button class="swatch" data-c="0" style="--c:#1a1033" aria-pressed="true" aria-label="أسود"></button>
-      <button class="swatch" data-c="1" style="--c:${myInk}" aria-pressed="false" aria-label="لونك"></button>
-      <button class="tool" data-w="1" aria-pressed="true" aria-label="قلم رفيع">✏️</button>
-      <button class="tool" data-w="2" aria-pressed="false" aria-label="قلم عريض">🖌️</button>
-      <button class="tool" data-c="2" aria-pressed="false" aria-label="ممحاة">🧽</button></div>
-      <div class="row" style="gap:8px"><button class="tool" id="undo" aria-label="تراجع">↩️</button><button class="tool" id="clr" aria-label="مسح الكل">🗑️</button></div></div>
-    <button class="btn mint wide" id="sendDraw">خلصت! أرسل الرسمة 🎨</button></div>`;
-  const cv=$("pad"),strokes=[];let cur=null,c=0,w=1;
-  const colorFn=k=>k===2?"#ffffff":k===1?myInk:"#1a1033";
+  const myInk=INK[idx%8],COLS=[0,1,...PAL.map((_,i)=>i+3)];
+  box.innerHTML=`<div class="col dkit">
+    <button class="btn mint wide" id="sendDraw">خلصت! أرسل الرسمة 🎨</button>
+    <canvas class="pad" id="pad"></canvas>
+    <div class="dk-row dk-cols">${COLS.map(k=>`<button class="swatch sm" data-c="${k}" style="--c:${colorOf(k,myInk)}" aria-pressed="${k===0}" aria-label="لون"></button>`).join("")}</div>
+    <div class="dk-row"><div class="dk-sizes">${[3,1,2,4,5].map(w=>`<button class="tool dk-w" data-w="${w}" aria-pressed="${w===1}" aria-label="حجم القلم"><i style="--s:${Math.max(4,Math.round(WID[w]*.55))}px"></i></button>`).join("")}</div></div>
+    <div class="dk-row"><button class="tool" data-t="pen" aria-pressed="true" aria-label="قلم">✏️</button><button class="tool" data-t="fill" aria-pressed="false" aria-label="تعبئة">🪣</button><button class="tool" data-t="erase" aria-pressed="false" aria-label="ممحاة">🧽</button>
+      <span class="dk-gap"></span><button class="tool" id="undo" aria-label="تراجع">↩️</button><button class="tool" id="clr" aria-label="مسح الكل">🗑️</button></div></div>`;
+  const cv=$("pad"),strokes=[];let cur=null,c=0,w=1,tool="pen";
+  const colorFn=k=>colorOf(k,myInk);
   const redraw=()=>paint(cv,strokes,null,false,colorFn);
   setTimeout(redraw,0);
   const pos=e=>{const r=cv.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*1000),Math.round((e.clientY-r.top)/r.height*1000)]};
-  cv.onpointerdown=e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);const[x,y]=pos(e);cur={c,w,p:[x,y]};strokes.push(cur);redraw()};
-  cv.onpointermove=e=>{if(!cur)return;const[x,y]=pos(e),p=cur.p,lx=p[p.length-2],ly=p[p.length-1];if(Math.hypot(x-lx,y-ly)<5)return;p.push(x,y);
-    const ctx=cv.getContext("2d"),S=cv.width/1000;ctx.strokeStyle=colorFn(cur.c);ctx.lineWidth=(cur.c===2?28:cur.w===2?16:7)*S;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(lx*S,ly*S);ctx.lineTo(x*S,y*S);ctx.stroke()};
+  cv.onpointerdown=e=>{e.preventDefault();const[x,y]=pos(e);
+    if(tool==="fill"){strokes.push({c,w:1,f:1,p:[x,y]});const S=cv.width/1000;floodFill(cv.getContext("2d",{willReadFrequently:true}),x*S,y*S,colorFn(c));return}
+    cv.setPointerCapture(e.pointerId);cur={c:tool==="erase"?2:c,w,p:[x,y]};strokes.push(cur);
+    const ctx=cv.getContext("2d"),S=cv.width/1000;ctx.fillStyle=colorFn(cur.c);ctx.beginPath();ctx.arc(x*S,y*S,widthOf(cur)*S/2,0,7);ctx.fill()};
+  cv.onpointermove=e=>{if(!cur)return;const[x,y]=pos(e),p=cur.p,lx=p[p.length-2],ly=p[p.length-1];if(Math.hypot(x-lx,y-ly)<4)return;p.push(x,y);
+    const ctx=cv.getContext("2d"),S=cv.width/1000;ctx.strokeStyle=colorFn(cur.c);ctx.lineWidth=widthOf(cur)*S;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.moveTo(lx*S,ly*S);ctx.lineTo(x*S,y*S);ctx.stroke()};
   cv.onpointerup=cv.onpointercancel=()=>{cur=null};
-  box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{c=+b.dataset.c;box.querySelectorAll("[data-c]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
-  box.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{w=+b.dataset.w;if(c===2){c=0;box.querySelector('[data-c="0"]').setAttribute("aria-pressed","true");box.querySelector('[data-c="2"]').setAttribute("aria-pressed","false")}box.querySelectorAll("[data-w]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+  const press=(sel,b)=>box.querySelectorAll(sel).forEach(x=>x.setAttribute("aria-pressed",x===b));
+  box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{c=+b.dataset.c;press("[data-c]",b);if(tool==="erase"){tool="pen";press("[data-t]",box.querySelector('[data-t="pen"]'))}});
+  box.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{w=+b.dataset.w;press("[data-w]",b);if(tool==="fill"){tool="pen";press("[data-t]",box.querySelector('[data-t="pen"]'))}});
+  box.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{tool=b.dataset.t;press("[data-t]",b)});
   $("undo").onclick=()=>{strokes.pop();redraw()};
-  $("clr").onclick=()=>{strokes.length=0;redraw()};
+  let clrT=0;$("clr").onclick=()=>{const b=$("clr");if(Date.now()-clrT<2500){strokes.length=0;redraw();b.textContent="🗑️";clrT=0;return}clrT=Date.now();b.textContent="متأكد؟";setTimeout(()=>{if(b.isConnected)b.textContent="🗑️"},2500)};
   let sending=false,sent=false;
   const send=auto=>{const sb=$("sendDraw");if(sending||sent)return;
     if(!strokes.length){if(!auto&&sb)sb.textContent="ارسم شي أول 😅";return}

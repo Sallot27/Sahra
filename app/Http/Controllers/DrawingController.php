@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 
 class DrawingController extends Controller
 {
+    /** highest colour index: 0 black, 1 own ink, 2 eraser, 3..18 palette */
+    private const MAX_COLOUR = 18;
+
     private const MAX_STROKES = 400;
 
     private const MAX_POINTS = 12000;
@@ -44,7 +47,8 @@ class DrawingController extends Controller
     }
 
     /**
-     * Strokes are [{c: 0|1|2, w: 1|2, p: [x, y, x, y, ...]}] with coordinates 0..1000.
+     * Strokes are [{c: 0..18, w: 1..5, p: [x, y, x, y, ...], f?: 1}] with coordinates 0..1000.
+     * c: 0 black, 1 the player's ink, 2 eraser, 3.. palette colours. f = paint-bucket fill at the first point.
      * Anything else is dropped, and the total size is capped.
      */
     private function clean(mixed $input): array
@@ -77,11 +81,18 @@ class DrawingController extends Controller
                 break;
             }
 
-            $out[] = [
-                'c' => in_array($stroke['c'] ?? 0, [0, 1, 2], true) ? $stroke['c'] : 0,
-                'w' => ($stroke['w'] ?? 1) === 2 ? 2 : 1,
+            $c = $stroke['c'] ?? 0;
+            $w = $stroke['w'] ?? 1;
+            $one = [
+                'c' => is_int($c) && $c >= 0 && $c <= self::MAX_COLOUR ? $c : 0,
+                'w' => in_array($w, [1, 2, 3, 4, 5], true) ? $w : 1,
                 'p' => $p,
             ];
+            if (! empty($stroke['f'])) {
+                $one['f'] = 1;
+                $one['p'] = array_slice($p, 0, 2);
+            }
+            $out[] = $one;
         }
 
         return $out;

@@ -548,3 +548,13 @@ button:focus-visible,input:focus-visible{outline:4px solid #fff;outline-offset:3
 .hx-ctag{display:inline-block;margin:6px 0 2px;background:var(--sky);color:var(--ink);font-weight:800;font-size:17px;border-radius:99px;padding:2px 14px}
 small.hx-ctag{font-size:13px;margin:0;vertical-align:middle}
 .hx-q .hx-ctag{display:table;margin:8px auto 0}
+
+/* drawing kit */
+.dkit{gap:10px}
+.dk-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.dk-cols{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;width:100%}
+.swatch.sm{width:100%;height:auto;aspect-ratio:1;border-width:3px}
+.swatch[style*="#ffffff"]{box-shadow:0 3px 0 rgba(0,0,0,.3),inset 0 0 0 1px #ccc}
+.dk-sizes{display:flex;gap:6px}
+.dk-w{width:48px;display:grid;place-items:center}.dk-w i{display:block;width:var(--s);height:var(--s);border-radius:50%;background:currentColor}
+.dk-gap{flex:1}
