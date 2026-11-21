@@ -604,15 +604,18 @@ function settle(){if(CFG.edition==="commercial")return;
 /* ================= menu bookshelf ================= */
 // every game is a book on the shelf; tap one to pull it out, or let the stage light pick one
 H.wheel={sel:null,dark:false};
-const wheelGames=()=>Object.values(GAMES);
+// games kept in the code but not shown in the menu (and never picked by the light)
+const HIDDEN_GAMES=new Set(["xo","mazad"]);
+const wheelGames=()=>Object.values(GAMES).filter(g=>!HIDDEN_GAMES.has(g.id));
 const bookSize=i=>{const r=((i*73+29)%97)/97;return{h:84+Math.round(r*16),w:60+((i*37)%5)*4}};
 // two looks for the game menu: game boxes on a table (default) or books on a shelf
 const menuStyle=()=>{try{return localStorage.getItem("sahra_menu")==="shelf"?"shelf":"box"}catch(e){return"box"}};
 function setMenuStyle(v){try{localStorage.setItem("sahra_menu",v)}catch(e){}H.wheel.dark=false;H.lastKey="";sfx.pop()}
+const portraitNow=()=>document.body.classList.contains("portrait");
 function boxesHTML(){const gs=wheelGames();
   return`<div class="shelfbox boxtable ${H.wheel.dark?"dark":""}" id="shelf">
     <div class="lamp" aria-hidden="true"></div><div class="beam" id="beam" aria-hidden="true"></div><div class="spot" id="spot" aria-hidden="true"></div>
-    <div class="boxgrid">${gs.map((g,i)=>`<button class="gbox ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--t:${((i*7)%5-2)*.7}deg">
+    <div class="boxgrid" style="--per:${portraitNow()?4:Math.max(3,Math.ceil(gs.length/3))}">${gs.map((g,i)=>`<button class="gbox ${g.id===H.wheel.sel?"on":""}" data-g="${g.id}" style="--c:${g.color};--t:${((i*7)%5-2)*.7}deg">
       <span class="gb-lid"><span class="gb-art">${g.emoji}</span><b class="gb-name">${esc(g.name)}</b><span class="gb-tag">${esc((g.tags||[])[0]||"")}</span></span></button>`).join("")}</div>
     </div>
     <div class="shelfctl"><button class="btn lightbtn" id="spinBtn">🔦 خلّ الضوء يختار</button><div class="wsel" id="wsel">${wheelInfo()}</div><button class="snd stylebtn" id="styleBtn" title="غيّر شكل القائمة">📚</button></div>`}
