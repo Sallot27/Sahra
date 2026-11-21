@@ -1245,4 +1245,159 @@ B.push(K=>{
       root.insertAdjacentHTML("beforeend",scn);C.watch(root,v,"😂","ناظر الشاشة!","");},
   };
 });
+/* =====================================================================
+   14) اختبر معلوماتك: doors with a category on each, a question behind every door,
+   four coloured options, everyone answers from the phone. Faster = more points; the golden door doubles.
+   A modern take on the 90s family quiz, with our own host: a little retro computer called «حاسوب».
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,tl}=K;
+  const C=common(K);
+  const CAT={isl:{e:"🕌",n:"إسلامية"},sci:{e:"🔬",n:"علمية"},his:{e:"🏛️",n:"تاريخية"},geo:{e:"🌍",n:"جغرافيا"},gen:{e:"💡",n:"عامة"}};
+  const OPT=[{c:"#ff5a6e",s:"▲"},{c:"#3fa9ff",s:"◆"},{c:"#ffc534",s:"●"},{c:"#38d39f",s:"■"}];
+  const TEAM=["الأخضر","البرتقالي"],TC=["#2ee6a6","#ff9a3c"],TE=["🟢","🟠"];
+  const DOORS=10,BASE=500;
+  const st=k=>K.playSting("ikh/"+k);
+  const bank=()=>window.IKH_BANK||{};
+  // questions seen in earlier games on this big screen come back only after the rest
+  const SEEN="sahra_ikh_seen";
+  const seen=()=>{try{return JSON.parse(localStorage.getItem(SEEN)||"[]")}catch(e){return[]}};
+  const remember=id=>{try{const s=seen().filter(x=>x!==id);s.push(id);localStorage.setItem(SEEN,JSON.stringify(s.slice(-600)))}catch(e){}};
+  const qid=(c,q)=>c+":"+[...q].reduce((h,ch)=>(h*33+ch.charCodeAt(0))>>>0,5381).toString(36);
+  const CHEER=["أحسنت!","ما شاء الله عليك!","برافو!","كفو والله!","صح عليك!","ذكي ما شاء الله!"];
+  const SOFT=["قريبة!","ولا يهمك!","أوه، قريبة مرة!","المرة الجاية لك!"];
+
+  // our host: a retro computer with a face on its screen. mood: idle | happy | sad | think
+  const host=(mood="idle",say="")=>`<div class="ik-host ${mood}"><svg viewBox="0 0 140 170" aria-hidden="true">
+      <line x1="70" y1="14" x2="70" y2="2" stroke="#8a7d66" stroke-width="3"/><circle class="ik-ant" cx="70" cy="4" r="5"/>
+      <g class="ik-arm l"><path d="M18 78 Q4 92 10 110" stroke="#cdbf9f" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="10" cy="112" r="8" fill="#efe3c6"/></g>
+      <g class="ik-arm r"><path d="M122 78 Q136 92 130 110" stroke="#cdbf9f" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="130" cy="112" r="8" fill="#efe3c6"/></g>
+      <rect x="16" y="14" width="108" height="104" rx="16" fill="#efe3c6" stroke="#b9aa86" stroke-width="3"/>
+      <rect x="28" y="24" width="84" height="66" rx="10" fill="#183b2c"/><rect x="28" y="24" width="84" height="66" rx="10" fill="url(#ikScan)" opacity=".35"/>
+      <g class="ik-face f-idle"><rect x="48" y="44" width="9" height="12" rx="2" fill="#7dffb0"/><rect x="83" y="44" width="9" height="12" rx="2" fill="#7dffb0"/><rect x="56" y="70" width="28" height="5" rx="2" fill="#7dffb0"/></g>
+      <g class="ik-face f-happy"><path d="M45 54 l7 -8 l7 8" stroke="#7dffb0" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M80 54 l7 -8 l7 8" stroke="#7dffb0" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M52 66 Q70 84 88 66" stroke="#7dffb0" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+      <g class="ik-face f-sad"><text x="70" y="76" text-anchor="middle" font-size="44" font-weight="900" fill="#7dffb0" font-family="monospace">?</text><rect x="44" y="40" width="9" height="9" rx="2" fill="#7dffb0"/><rect x="87" y="40" width="9" height="9" rx="2" fill="#7dffb0"/></g>
+      <g class="ik-face f-think"><rect x="48" y="46" width="9" height="9" rx="2" fill="#7dffb0"/><rect x="83" y="46" width="9" height="9" rx="2" fill="#7dffb0"/><circle class="ik-dot d1" cx="58" cy="72" r="3.5" fill="#7dffb0"/><circle class="ik-dot d2" cx="70" cy="72" r="3.5" fill="#7dffb0"/><circle class="ik-dot d3" cx="82" cy="72" r="3.5" fill="#7dffb0"/></g>
+      <rect x="40" y="98" width="34" height="6" rx="3" fill="#b9aa86"/><circle cx="104" cy="101" r="5" fill="#ff6b6b"/>
+      <rect x="44" y="118" width="52" height="12" rx="4" fill="#cdbf9f"/>
+      <g class="ik-legs"><rect x="46" y="130" width="10" height="24" rx="5" fill="#cdbf9f"/><rect x="84" y="130" width="10" height="24" rx="5" fill="#cdbf9f"/><ellipse cx="51" cy="157" rx="13" ry="7" fill="#ff7a59"/><ellipse cx="89" cy="157" rx="13" ry="7" fill="#ff7a59"/></g>
+      <defs><pattern id="ikScan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="#000"/></pattern></defs>
+    </svg>${say?`<div class="ik-say">${esc(say)}</div>`:""}</div>`;
+  const doorHTML=(d,i,{sel,tag="div",dis}={})=>`<${tag} class="ik-door ${d.gold?"gold":""} ${d.open?"used":""} ${sel?"sel":""}" ${tag==="button"?`data-i="${i}" ${dis||d.open?"disabled":""}`:""}>
+      <span class="ik-plate">${CAT[d.c].e}</span><span class="ik-leaf"><i class="ik-num">${fmt(i+1)}</i><i class="ik-knob"></i></span>${d.gold?`<b class="ik-x2">×٢</b>`:""}<small>${CAT[d.c].n}</small></${tag}>`;
+  const optHTML=(o,i,cls="")=>`<div class="ik-opt ${cls}" style="--o:${OPT[i].c};--i:${i}"><span class="ik-shape">${OPT[i].s}</span><b>${esc(o)}</b></div>`;
+
+  return{
+    id:"ikhtabir",name:"اختبر معلوماتك",emoji:"🚪",color:"#e8a33d",min:2,
+    desc:"خلف كل باب سؤال! أبواب إسلامية وعلمية وتاريخية وجغرافيا وعامة… جاوب من جوالك وبسرعة، والباب الذهبي نقاطه دبل",
+    tags:["٢-٨ لاعبين","معلومات","مناسبة للعائلة"],
+    rules:["لاعب (أو فريق) يختار باب من جواله، وكل باب عليه فئته","ينفتح الباب ويطلع السؤال على الشاشة الكبيرة مع ٤ خيارات ملوّنة","الكل يجاوب من جواله بالألوان، وكل ما جاوبت أسرع أخذت نقاط أكثر","الباب الذهبي ✨ نقاطه دبل!"],
+    winTitle:"عبقري السهرة!",likeTitle:"",
+    timed:["kpick","kq"],
+    options:[K.roundsOpt([10,15,20],10,"عدد الأسئلة"),{key:"mode",label:"طريقة اللعب",choices:[["solo","فردي"],["team","فريقين"]],def:"solo"},
+      {key:"qt",label:"وقت السؤال",choices:[["15","١٥ ثانية"],["20","٢٠ ثانية"],["30","٣٠ ثانية"]],def:"20"},
+      {key:"vib",label:"اهتزاز الجوال",choices:[["1","شغّال"],["0","مطفّي"]],def:"1"}],
+    start(){const team=K.opt("mode")==="team"&&H.order.length>=2,pl=team?shuffle([...H.order]):[...H.order];
+      const g=H.g={team,pl,tm:{},tp:[0,0],rot:0,cap:[0,0],turn:0,total:K.opt("r"),qn:0,used:[]};
+      if(team)pl.forEach((id,i)=>g.tm[id]=i%2);
+      this.newDoors();this.pickStep()},
+    newDoors(){const g=H.g,cs=Object.keys(CAT),list=shuffle([...cs,...cs]).slice(0,DOORS),gi=Math.floor(Math.random()*DOORS);
+      g.doors=list.map((c,i)=>({c,gold:i===gi,open:false}))},
+    members(t){const g=H.g;return g.pl.filter(id=>g.tm[id]===t&&active().includes(id))},
+    pickStep(){const g=H.g;if(g.doors.every(d=>d.open))this.newDoors();let p=null;
+      if(g.team){for(let k=0;k<2;k++){const t=(g.rot+k)%2,m=this.members(t);if(m.length){p=m[g.cap[t]++%m.length];g.rot=(t+1)%2;break}}}
+      else{const a=g.pl.filter(id=>active().includes(id));if(a.length){p=a[g.turn%a.length];g.turn++}}
+      g.picker=p;H.ph="kpick";H.k++;setTimer(25);sfx.pop();g.mood="think";
+      H.quip=p?`${nm(p)}${g.team?` (الفريق ${TEAM[g.tm[p]]})`:""}، اختار باب! 🚪`:"اختاروا باب!"},
+    chooseQ(c){const g=H.g,list=(bank()[c]||[]).map(q=>({q,id:qid(c,q[0])})).filter(x=>!g.used.includes(x.id)),s=seen();
+      if(!list.length)return null;
+      // easier ones early in the game, then anything
+      const late=g.qn>=Math.ceil(g.total/3),fit=list.filter(x=>late||x.q[6]<=2),pool0=fit.length?fit:list;
+      const never=pool0.filter(x=>!s.includes(x.id)),pool=never.length?never:pool0.slice().sort((a,b)=>s.indexOf(a.id)-s.indexOf(b.id)).slice(0,Math.max(1,Math.ceil(pool0.length/3)));
+      const x=pick(pool);g.used.push(x.id);remember(x.id);return x.q},
+    open(i){const g=H.g,d=g.doors[i];if(!d||d.open)return;let q=this.chooseQ(d.c);
+      // this category ran out: take one from another category
+      for(const c of shuffle(Object.keys(CAT))){if(q)break;q=this.chooseQ(c);if(q)d.c=c}
+      if(!q)return K.finishGame();
+      d.open=true;g.di=i;g.door=d;g.qn++;
+      const order=shuffle([0,1,2,3]);g.q={t:q[0],o:order.map(k=>q[1+k]),cor:order.indexOf(0),f:q[5],c:d.c,gold:d.gold};
+      g.ans={};g.at={};H.ph="kopen";H.k++;setTimer(3);st("knock");setTimeout(()=>st("open"),900);g.mood="idle";
+      H.quip=d.gold?"✨ الباب الذهبي! نقاطه دبل":`باب ${CAT[d.c].n} ${CAT[d.c].e}… طق طق!`},
+    ask(){const g=H.g;H.ph="kq";H.k++;g.qt=+K.opt("qt")||20;setTimer(g.qt);g.t0=Date.now();g.lastTick=99;sfx.tada();g.mood="think";
+      H.quip=g.q.gold?"✨ سؤال ذهبي: النقاط دبل!":pick(["جاوبوا من الجوال!","ركّزوا…","مين يعرفها؟ 🤔"])},
+    reveal(){const g=H.g,q=g.q,ok=[],pts={};
+      Object.entries(g.ans).forEach(([id,a])=>{if(a===q.cor){const left=Math.max(0,g.qt*1000-(g.at[id]-g.t0)),p=Math.round((BASE+BASE*left/(g.qt*1000))/10)*10*(q.gold?2:1);
+        ok.push(id);pts[id]=p;C.add(id,p);if(g.team)g.tp[g.tm[id]]+=p}});
+      ok.sort((a,b)=>pts[b]-pts[a]);g.ok=ok;g.pts=pts;g.none=!Object.keys(g.ans).length;
+      H.ph="krev";H.k++;setTimer(g.none?6:7);
+      if(ok.length){g.mood="happy";st("ding");setTimeout(()=>{sfx.applause()},500);setTimeout(()=>confetti(q.gold?160:70),300);H.quip=`${pick(CHEER)} ${q.f}`}
+      else if(g.none){g.mood="sad";st("timeup");H.quip=`خلص الوقت! الجواب: «${q.o[q.cor]}». ${q.f}`}
+      else{g.mood="sad";st("boop");H.quip=`${pick(SOFT)} الجواب الصحيح هو «${q.o[q.cor]}». ${q.f}`}},
+    next(){const g=H.g;if(g.qn>=g.total)return this.finish();
+      if(g.qn%5===0&&!g.sc5?.[g.qn]){g.sc5=g.sc5||{};g.sc5[g.qn]=1;H.ph="kscore";H.k++;setTimer(7);H.quip=pick(K.QUIP.scores);g.mood="idle";return}
+      this.pickStep()},
+    finish(){const g=H.g;
+      // team mode: every member gets the team total, so the winning team is on top
+      if(g.team)g.pl.forEach(id=>{H.sc[id]=g.tp[g.tm[id]]});
+      const best=Object.entries(H.sc).sort((a,b)=>b[1]-a[1])[0];
+      H.quip=g.team?(g.tp[0]===g.tp[1]?"تعادل! الفريقين أبطال 🤝":`الفريق ${TEAM[g.tp[0]>g.tp[1]?0:1]} فاز! مبروك 🏆`):best?`${nm(best[0])} عبقري السهرة! 🏆 أحسنتم كلكم`:"";
+      st("win");K.finishGame()},
+    tick(now){const g=H.g;
+      if(H.ph==="kpick"){const a=g.picker&&K.act(g.picker);
+        if(a&&Number.isInteger(a.door)&&g.doors[a.door]&&!g.doors[a.door].open)return this.open(a.door);
+        if(now>H.end||g.forceSkip||!g.picker||!active().includes(g.picker)){g.forceSkip=false;const f=g.doors.map((d,i)=>d.open?-1:i).filter(i=>i>=0);this.open(pick(f))}}
+      else if(H.ph==="kopen"){if(now>H.end)this.ask()}
+      else if(H.ph==="kq"){
+        active().forEach(id=>{if(id in g.ans)return;const a=K.act(id);if(a&&Number.isInteger(a.a)&&a.a>=0&&a.a<4){g.ans[id]=a.a;g.at[id]=Math.min(now,Math.max(g.t0,+a.t||now));sfx.pop()}});
+        const left=Math.ceil((H.end-now)/1000);if(left<=5&&left>0&&left<g.lastTick){g.lastTick=left;st("tick")}
+        if(now>H.end||g.forceSkip||(active().length&&active().every(id=>id in g.ans))){g.forceSkip=false;this.reveal()}}
+      else if(H.ph==="krev"){if(now>H.end)this.next()}
+      else if(H.ph==="kscore"){if(now>H.end)this.pickStep()}},
+    doneMap(){const g=H.g;if(H.ph!=="kq")return null;const m={};Object.keys(g.ans).forEach(id=>m[id]=1);return m},
+    view(v){const g=H.g;if(!g.doors)return;v.doors=g.doors;v.picker=g.picker;v.teamOn=g.team;v.tm=g.tm;v.vib=K.opt("vib")!=="0";
+      if(H.ph==="kq"){v.gold=g.q.gold;v.cat=CAT[g.q.c].n}
+      if(H.ph==="krev"){v.cor=g.q.cor;v.ans=g.ans;v.ok=g.ok;v.pts=g.pts;v.corT=g.q.o[g.q.cor]}
+      if(["krev","kscore"].includes(H.ph))v.sc=H.sc},
+    pill(){const g=H.g;return`<span class="pill">السؤال ${fmt(Math.max(1,g.qn))} من ${fmt(g.total)}${g.team?` · ${TE[0]} ${fmt(g.tp[0])} · ${TE[1]} ${fmt(g.tp[1])}`:""}</span>`},
+    teams(){const g=H.g;if(!g.team)return"";return`<div class="ik-teams">${[0,1].map(t=>`<div class="ik-team" style="--c:${TC[t]}"><b>${TE[t]} ${TEAM[t]}</b><span>${fmt(g.tp[t])}</span><div>${g.pl.filter(id=>g.tm[id]===t).map(id=>C.avatar(id)).join("")}</div></div>`).join("")}</div>`},
+    render(){const g=H.g;
+      const top=(mood)=>`<div class="ik-top">${host(mood||g.mood,H.quip)}<div id="dyn" class="still">${this.dyn()}</div></div>`;
+      if(H.ph==="kpick")return top()+`<div class="ik-doors">${g.doors.map((d,i)=>doorHTML(d,i)).join("")}</div>${this.teams()}<div class="row"><button class="btn ghost" id="ikRand">🎲 باب عشوائي</button></div>`;
+      if(H.ph==="kopen")return top()+`<div class="ik-stage"><div class="ik-bigdoor ${g.door.gold?"gold":""}"><span class="ik-light"></span>${doorHTML({...g.door,open:false},g.di,{sel:1})}</div><div class="ik-catbig">${CAT[g.door.c].e} ${CAT[g.door.c].n}${g.door.gold?" · ✨ ×٢":""}</div></div>`;
+      if(H.ph==="kq")return top()+`<div class="ik-q ${g.q.gold?"gold":""}"><div class="ik-qhead"><span class="ik-tag">${CAT[g.q.c].e} ${CAT[g.q.c].n}${g.q.gold?" · ✨ ذهبي ×٢":""}</span></div><p class="ik-qt">${esc(g.q.t)}</p>
+        <div class="ik-opts">${g.q.o.map((o,i)=>optHTML(o,i)).join("")}</div></div>`;
+      if(H.ph==="krev"){const q=g.q,picked=new Set(Object.values(g.ans)),wrongPicked=[...picked].filter(i=>i!==q.cor);
+        return top()+`<div class="ik-q rev ${q.gold?"gold":""}"><div class="ik-qhead"><span class="ik-tag">${CAT[q.c].e} ${CAT[q.c].n}</span><div class="ik-mini ${g.ok.length?"win":"shut"}">${g.ok.length?`<span class="ik-light"></span>`:""}${doorHTML({...g.door,open:false},g.di)}</div></div><p class="ik-qt">${esc(q.t)}</p>
+          <div class="ik-opts">${q.o.map((o,i)=>optHTML(o,i,i===q.cor?(wrongPicked.length?"cor late":"cor"):wrongPicked.includes(i)?"bad":"dim")).join("")}</div>
+          <div class="who">${g.ok.length?g.ok.map((id,i)=>`${C.avatar(id)}<span>${esc(nm(id))}</span><span class="pts ik-fly" style="--i:${i}">+${fmt(g.pts[id])}</span>`).join(""):g.none?"<span>⏳ ما أحد جاوب</span>":"<span>ولا أحد جابها هالمرة 😅</span>"}</div></div>`}
+      if(H.ph==="kscore")return top("happy")+(g.team?this.teams():"")+K.boardHTML();
+      return""},
+    dyn(){const g=H.g;if(H.ph==="kq"){const t=tl();return`<div class="ik-timer ${t<=5?"hot":""}"><b>${fmt(t)}</b><small>ثانية</small></div>${K.troupe(active(),new Set(Object.keys(g.ans)))}`}
+      if(H.ph==="kpick")return`<div class="ik-timer"><b>${fmt(tl())}</b><small>للاختيار</small></div>`;return""},
+    after(){const b=document.getElementById("ikRand");if(b)b.onclick=()=>{H.g.forceSkip=true}},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);if(!v.doors){C.watch(root,v);return}
+      const team=v.teamOn&&v.tm?v.tm[me]:undefined;
+      const head=team!==undefined?`<div class="xo-me" style="background:${TC[team]}">أنت في الفريق ${TEAM[team]}</div>`:"";
+      const vib=p=>{if(v.vib)try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+      if(v.ph==="kpick"){
+        if(v.picker!==me){root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🚪",`${C.pnm(v,v.picker)} يختار باب…`,"");return}
+        root.insertAdjacentHTML("beforeend",head+`<h2 style="font-size:24px">دورك! اختار باب 👇</h2><div class="ik-doors ph">${v.doors.map((d,i)=>doorHTML(d,i,{tag:"button"})).join("")}</div>`);
+        root.querySelectorAll(".ik-door[data-i]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,door:+b.dataset.i});root.querySelectorAll(".ik-door[data-i]").forEach(x=>x.disabled=true);b.classList.add("sel");vib(20)});return}
+      if(v.ph==="kopen"){root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🚪","طق طق… الباب ينفتح!","ناظر الشاشة الكبيرة 👀");return}
+      if(v.ph==="kq"){
+        // four coloured buttons only (no question text, so everyone watches the big screen)
+        root.insertAdjacentHTML("beforeend",head+`${v.gold?`<p class="ik-goldtag">✨ سؤال ذهبي ×٢</p>`:""}<p class="note center">ناظر الشاشة واختار اللون 👇</p>${tline}
+          <div class="ik-pad">${OPT.map((o,i)=>`<button class="ik-pb" data-a="${i}" style="--o:${o.c}"><span>${o.s}</span></button>`).join("")}</div>`);
+        root.querySelectorAll(".ik-pb").forEach(b=>b.onclick=()=>{const a=+b.dataset.a;K.sendAct({k:v.k,a,t:Date.now()});vib(15);
+          root.querySelector(".ik-pad").outerHTML=`<div class="ik-chosen" style="--o:${OPT[a].c}"><span>${OPT[a].s}</span><p>تم! ننتظر الباقين…</p></div>`});return}
+      if(v.ph==="krev"){const mine=v.ans&&me in v.ans?v.ans[me]:null,ok=(v.ok||[]).includes(me);
+        if(ok){const p=v.pts[me];root.insertAdjacentHTML("beforeend",`<div class="ik-res good"><div class="ik-mark">✓</div><p class="big">صح عليك!</p><div class="ik-count" data-to="${p}">+٠</div></div>`);vib(40);
+          const el=root.querySelector(".ik-count"),t0=performance.now(),run=()=>{if(!el.isConnected)return;const k=Math.min(1,(performance.now()-t0)/900);el.textContent="+"+fmt(Math.round(p*k/10)*10);if(k<1)requestAnimationFrame(run)};requestAnimationFrame(run)}
+        else if(mine===null)root.insertAdjacentHTML("beforeend",`<div class="ik-res none"><div class="ik-mark ik-hour">⏳</div><p class="big">خلص الوقت!</p><p class="note center">الجواب: ${esc(v.corT||"")}</p></div>`);
+        else{root.insertAdjacentHTML("beforeend",`<div class="ik-res bad"><div class="ik-mark">✗</div><p class="big">ولا يهمك، الجاية لك!</p><p class="note center">الجواب: ${esc(v.corT||"")}</p></div>`);vib([40,70,40])}
+        return}
+      C.watch(root,v,"🏁","ناظر الترتيب!");},
+  };
+});
+
 })();
