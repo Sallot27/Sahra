@@ -550,8 +550,7 @@ function hostTick(){
   else if(H.game&&H.ph!=="lobby"&&H.ph!=="menu"&&H.ph!=="end"&&!(H.hold&&now<H.hold)){
     try{GAMES[H.game].tick(now);H._err=0}catch(e){console.error("sahra tick",e);if(++H._err>8){H._err=0;goMenu();H.quip="صار خلل بسيط في اللعبة… اختاروا لعبة ثانية 🙏"}}}
   const G0=H.game?GAMES[H.game]:null,timed=(G0&&G0.timed||[]).includes(H.ph);
-  if((timed||["lie","choose","draw","vote","guess"].includes(H.ph))&&tl()<=5&&tl()>0&&H._lastTl!==tl())sfx.tick();
-  if((timed||H.ph==="lie"||H.ph==="choose"||H.ph==="draw"||H.ph==="vote")&&tl()===5&&H._hurryK!==H.k){H._hurryK=H.k;playVO(VO.hurry,{queue:false})}
+  // (no warning tick in the last seconds: the owner asked for quiet countdowns)
   H._lastTl=tl();
   {const g=H.g||{},src=G0&&G0.doneMap?G0.doneMap():{lie:g.lies,choose:g.choices,draw:g.drawings,vote:g.votes}[H.ph],n=src?Object.keys(src).length:0;
    if(H._dk===H.k&&n>H._dn)sfx.submit();H._dk=H.k;H._dn=n}

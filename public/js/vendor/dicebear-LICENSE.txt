@@ -1,0 +1,3 @@
+dicebear-lorelei.js is a bundle of @dicebear/core and @dicebear/lorelei (DiceBear 9.x).
+Design: Lorelei by Lisa Wischofsky, CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+Code: MIT License, Copyright (c) 2024 Florian Körner (https://www.dicebear.com)
