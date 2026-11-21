@@ -927,10 +927,10 @@ B.push(K=>{
     return false}
   // the board, drawn from plain data so phones can draw it too. pick: cells are buttons (data-i)
   // Edges show each team's path: 2 teams = green edges right/left, orange edges top/bottom; 3 teams = every team needs all three sides
-  function hexBoard(d,sel,cls,pick){const G=geo(d.nt),tag=pick?"button":"div";
+  function hexBoard(d,sel,cls,pick,party){const G=geo(d.nt),tag=pick?"button":"div";
     const badges=d.nt===2?`<b class="hx-eb e-r" style="--c:${TC[0]}">${TE[0]}</b><b class="hx-eb e-l" style="--c:${TC[0]}">${TE[0]}</b><b class="hx-eb e-t" style="--c:${TC[1]}">${TE[1]}</b><b class="hx-eb e-b" style="--c:${TC[1]}">${TE[1]}</b>`:"";
     return`<div class="hx-board ${d.nt===3?"tri":""} ${cls||""}" style="--g:${TC[0]};--o:${TC[1]};--p:${TC[2]}">${badges}${G.rows.map((row,r)=>`<div class="hx-row ${d.nt===2&&r%2?"odd":""}">${row.map(i=>{const o=d.own[i],gem=(d.gems||[]).includes(i),num=/^[٠-٩0-9]+$/.test(d.lab[i]);
-      return`<${tag} class="hx ${o!==null?"t"+o:""} ${i===sel?"sel":""} ${gem?"gem":""} ${num?"num":""}" ${pick?`data-i="${i}" ${o!==null?"disabled":""}`:""}><span>${esc(d.lab[i])}</span>${gem?`<i>💎</i>`:""}</${tag}>`}).join("")}</div>`).join("")}</div>`}
+      return`<${tag} class="hx ${o!==null?"t"+o:""} ${i===sel?"sel":""} ${gem?"gem":""} ${num?"num":""} ${i===party?"party":""}" ${pick?`data-i="${i}" ${o!==null?"disabled":""}`:""}><span>${esc(d.lab[i])}</span>${gem?`<i>💎</i>`:""}</${tag}>`}).join("")}</div>`).join("")}</div>`}
   const goal=(nt,t)=>nt===3?"يوصل الأضلاع الثلاثة":t===0?"يربط يمين ↔ يسار":"يربط فوق ↕ تحت";
   // the win song plays in full, for a gem and for a board win
   const winMusic=()=>K.playSting("huroof_win",sfx.applause);
@@ -1044,7 +1044,7 @@ B.push(K=>{
       if(H.ph==="hswap")v.cell=g.cell;
       if(["hres","hend"].includes(H.ph))v.sc=H.sc},
     pill(){const g=H.g;return`<span class="pill">${g.boards>1?`اللوحة ${fmt(g.bn)} من ${fmt(g.boards)} · `:""}${[...Array(g.nt).keys()].map(t=>`${TE[t]} ${fmt(g.tp[t])}`).join(" · ")}</span>`},
-    boardHTML(sel,small){const g=H.g;return hexBoard({nt:g.nt,own:g.own,lab:this.labs(),gems:g.gemFound},sel,small?"sm":"")},
+    boardHTML(sel,small,extra,party){const g=H.g;return hexBoard({nt:g.nt,own:g.own,lab:this.labs(),gems:g.gemFound},sel,(small?"sm ":"")+(extra||""),false,party)},
     teamsHTML(){const g=H.g,turn=H.ph==="hpick"&&g.picker?g.team[g.picker]:-1;
       return`<div class="hx-teams">${[...Array(g.nt).keys()].map(t=>`<div class="hx-team t${t} ${turn===t?"turn":""}" style="background:${TC[t]}"><b>${TE[t]} ${TEAM[t]} <span class="hx-pts">${fmt(g.tp[t])}</span></b><small>${goal(g.nt,t)}</small><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span>${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
     render(){const g=H.g;
@@ -1056,10 +1056,10 @@ B.push(K=>{
         return C.head(H.quip)+`<div class="hx-wrap">${this.boardHTML(g.cell,true)}<div class="ticket hx-q"><span class="hx-l">${esc(g.q.L)}</span><div class="hx-ctag">${esc(CATS[g.q.c]||"")}</div><p class="qtext">${esc(g.q.q)}</p><p class="note">الجواب يبدأ بحرف «${esc(g.q.L)}»</p>
           ${b?`<div class="hx-buzzed" style="background:${TC[g.team[b]]}">🔔 ${C.avatar(b)} <b>${esc(nm(b))}</b> يجاوب…</div>`
             :`<div class="hx-bell">🔔 اضغطوا الجرس في جوالاتكم${g.locked.length?` · <span class="hx-out">${g.locked.map(t=>TE[t]).join(" ")} خارج هالسؤال</span>`:""}</div>`}</div></div>`}
-      if(H.ph==="hres"){const w=g.winner,t=w?g.team[w]:null;return`<div class="hx-wrap">${this.boardHTML(g.cell)}<div class="reveal"><div class="answer">${esc(g.q.a)}</div>
+      if(H.ph==="hres"){const w=g.winner,t=w?g.team[w]:null;return`<div class="hx-wrap">${g.gemNow?this.boardHTML(-1,false,"gemparty",g.cell):this.boardHTML(g.cell)}<div class="reveal"><div class="answer">${esc(g.q.a)}</div>
         ${g.gemNow?`<div class="hx-gemwin">💎 جوهرة! +${fmt(GEM_PTS)}</div>`:""}
         <div class="who">${w?`${C.avatar(w)}<span>${esc(nm(w))} جاوب صح للفريق ${TEAM[t]}</span><span class="pts">+${fmt(g.gained)}</span>`:"<span>ما أحد عرفها 😅</span>"}</div></div></div>`}
-      if(H.ph==="hend"){const t=g.done;return`<div class="hx-wrap">${this.boardHTML(-1,true)}<div class="reveal hx-end">
+      if(H.ph==="hend"){const t=g.done;return`${t!==null&&t!==undefined?'<div class="hx-flash" aria-hidden="true"></div>':""}<div class="hx-wrap">${this.boardHTML(-1,true,t!==null&&t!==undefined?"lights win-t"+t:"")}<div class="reveal hx-end">
         <div class="hx-win" style="${t===null?"":`background:${TC[t]}`}">${t===null?"تعادل! 🤝":`فاز الفريق ${TEAM[t]}! 🏆`}</div>
         ${t!==null?`<div class="who">${g.pl.filter(id=>g.team[id]===t).map(id=>`${C.avatar(id)}<span>${esc(nm(id))}</span>`).join("")}<span class="pts">+${fmt(BOARD_PTS)}</span></div>`:""}
         <p class="note" style="font-size:22px">النقاط: ${[...Array(g.nt).keys()].map(x=>`${TE[x]} ${fmt(g.tp[x])}`).join(" · ")}</p></div></div>

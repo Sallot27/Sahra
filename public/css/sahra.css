@@ -827,3 +827,23 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 @keyframes kscroll{from{transform:scaleX(.4)}to{transform:scaleX(1)}}
 @keyframes kbino{0%,40%,100%{transform:none}55%,85%{transform:translateY(8px)}}
 @keyframes khat{0%,60%,100%{transform:none}75%{transform:translateY(-14px) rotate(-12deg)}}
+
+/* حروف: the gem cell celebrates a right answer */
+.hx.party{z-index:5;animation:hxparty .6s cubic-bezier(.3,1.6,.5,1) 0s 6 alternate;background:linear-gradient(135deg,#fff6b0,#ffd34d 45%,#7fe9ff)!important}
+.hx.party span{color:#4a2a00}
+.hx.party i{font-size:calc(var(--s)*.4)!important;animation:hxspin 1.2s linear infinite}
+@keyframes hxparty{from{transform:scale(1)}to{transform:scale(1.45);filter:brightness(1.25) drop-shadow(0 0 16px #fff)}}
+@keyframes hxspin{to{transform:rotate(360deg)}}
+.hx-board.gemparty{animation:hxboardglow 1s ease-in-out infinite alternate}
+@keyframes hxboardglow{to{box-shadow:0 0 50px rgba(127,233,255,.8),0 10px 0 rgba(0,0,0,.3)}}
+.hx-board.gemparty::after{content:"✨💎✨";position:absolute;inset:auto 0 -40px 0;text-align:center;font-size:30px;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+/* حروف: board win: bulbs around the board blink on and off, the winning team's cells flash */
+.hx-board.lights{overflow:visible}
+.hx-board.lights::before,.hx-board.lights::after{content:"";position:absolute;inset:-16px;border-radius:30px;border:11px dotted #ffd34d;pointer-events:none;animation:hxbulb .5s steps(1) infinite}
+.hx-board.lights::after{inset:-16px;border-color:#ff5a6e;border-style:dotted;animation-delay:.25s;transform:rotate(.6deg)}
+@keyframes hxbulb{0%{opacity:1;filter:drop-shadow(0 0 8px #ffd34d)}50%{opacity:.15;filter:none}}
+.hx-board.win-t0 .hx.t0,.hx-board.win-t1 .hx.t1,.hx-board.win-t2 .hx.t2{animation:hxwin .45s ease-in-out infinite alternate}
+.hx-board.win-t0 .hx.t0:nth-child(odd),.hx-board.win-t1 .hx.t1:nth-child(odd),.hx-board.win-t2 .hx.t2:nth-child(odd){animation-delay:.22s}
+@keyframes hxwin{to{filter:brightness(1.5) drop-shadow(0 0 10px #fff)}}
+.hx-flash{position:fixed;inset:0;pointer-events:none;z-index:40;background:#000;animation:hxlights 3s steps(1) 1 both}
+@keyframes hxlights{0%{opacity:.7}12%{opacity:0}24%{opacity:.7}36%{opacity:0}48%{opacity:.6}60%{opacity:0}72%{opacity:.4}84%,100%{opacity:0}}
