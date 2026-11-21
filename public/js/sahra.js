@@ -199,10 +199,39 @@ function playSting(key,fallback,max){
     duck(t,len)});
 }
 const MUSIC_LEVEL=.45;
-function duck(at,dur){const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0;
+function duck(at,dur){if(YTB.ready&&!YTB.failed&&YTB.want){YTB.duckUntil=performance.now()+(dur+.3)*1000;ytApply();setTimeout(ytApply,(dur+.35)*1000)}
+  const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0;
   g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
+/* Background sound from a YouTube video (private edition): a hidden player on the big screen.
+   Fades in and out, gets quiet under the host's voice, softer while people think, pauses on reveals
+   and continues from the same spot. If it can't load, the game's own sounds are used instead. */
+const BG_YT=CFG.edition==="commercial"?null:"bQNuigI_DYs";
+const YTB={p:null,ready:false,failed:!BG_YT,loading:false,want:0,cur:0,duckUntil:0,tm:null,playing:false};
+function ytFail(){if(YTB.failed)return;YTB.failed=true;const k=AUD.musicKey;AUD.musicKey=null;if(k)music(k)}
+function ytLoad(){if(YTB.loading||YTB.failed)return;YTB.loading=true;
+  const box=document.createElement("div");box.id="ytbg";box.setAttribute("aria-hidden","true");document.body.appendChild(box);
+  const host=document.createElement("div");box.appendChild(host);
+  window.onYouTubeIframeAPIReady=()=>{try{YTB.p=new YT.Player(host,{videoId:BG_YT,width:200,height:120,
+    playerVars:{autoplay:0,controls:0,loop:1,playlist:BG_YT,playsinline:1,disablekb:1,rel:0,iv_load_policy:3,fs:0},
+    events:{onReady:()=>{YTB.ready=true;YTB.p.setVolume(0);ytApply()},onError:ytFail,
+      onStateChange:e=>{YTB.playing=e.data===1}}})}catch(e){ytFail()}};
+  const sc=document.createElement("script");sc.src="https://www.youtube.com/iframe_api";sc.onerror=ytFail;document.head.appendChild(sc);
+  setTimeout(()=>{if(!YTB.ready)ytFail()},12000)}
+// move the volume smoothly toward where it should be
+function ytApply(){if(!YTB.ready||YTB.failed)return;clearInterval(YTB.tm);
+  YTB.tm=setInterval(()=>{const duck=performance.now()<YTB.duckUntil?.3:1,target=ST.mus?YTB.want*duck:0;
+    if(target>0&&YTB.p.getPlayerState&&YTB.p.getPlayerState()!==1)YTB.p.playVideo();
+    YTB.cur+=Math.sign(target-YTB.cur)*Math.min(Math.abs(target-YTB.cur),target>YTB.cur?2.5:4);YTB.p.setVolume(Math.round(YTB.cur));
+    if(YTB.cur<=0&&target===0){if(YTB.p.getPlayerState&&YTB.p.getPlayerState()===1)YTB.p.pauseVideo();clearInterval(YTB.tm)}
+    else if(YTB.cur===target)clearInterval(YTB.tm)},80)}
 async function music(key){
-  if(!ac||AUD.musicKey===key)return;AUD.musicKey=key;
+  if(!ac||AUD.musicKey===key)return;
+  if(BG_YT&&!YTB.failed){
+    if(key&&["choir","music_lobby","music_thinking"].includes(key)){AUD.musicKey=key;
+      const old=AUD.music,oldG=AUD.musicGain;if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}AUD.music=null;AUD.musicGain=null;
+      YTB.want=key==="music_thinking"?26:42;ytLoad();ytApply();monIdle();return}
+    YTB.want=0;ytApply()}
+  AUD.musicKey=key;
   const old=AUD.music,oldG=AUD.musicGain;
   if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}
   AUD.music=null;AUD.musicGain=null;
@@ -234,6 +263,11 @@ function choirMix(){if(!CHOIR.on||!ac)return;const on=choirSlots();CHOIR.gains.f
 function choirShout(slot){if(!ac)return;loadAudio("choir/shout").then(b=>{if(!b)return;const src=ac.createBufferSource(),g=ac.createGain();
   src.buffer=b;src.playbackRate.value=2**(SHOUT[slot%8]/12);g.gain.value=.75;src.connect(g).connect(ac.destination);src.start()});
   CHOIR.shoutAt[slot]=performance.now()}
+function monIdle(){if(YTB.idle)return;YTB.idle=true;fetch("/audio/choir/env.json").then(r=>r.json()).then(e=>{CHOIR.env=CHOIR.env||e}).catch(()=>{});
+  const t0=performance.now();const fr=()=>{requestAnimationFrame(fr);if(CHOIR.on)return;const els=root.querySelectorAll(".mon[data-s]");if(!els.length)return;
+    const pos=(performance.now()-t0)/1000,on=choirSlots(),b=YTB.playing?Math.abs(Math.sin(Math.PI*pos/.6)):0,now=performance.now(),E=CHOIR.env,f=Math.floor(pos*20);
+    els.forEach(el=>{const i=+el.dataset.s,e=YTB.playing&&E&&E.env[i]?E.env[i][f%E.env[i].length]||0:0,sh=now-(CHOIR.shoutAt[i]||-1e9)<700;
+      el.style.setProperty("--o",sh?1.25:on[i]?(.12+e*.8).toFixed(2):.1);el.style.setProperty("--b",on[i]?(b*.7).toFixed(2):0);el.classList.toggle("shout",sh)})};fr()}
 // mouths follow each monster's own voice; bodies bounce on the beat
 function choirFrame(){if(!CHOIR.on)return;requestAnimationFrame(choirFrame);
   const els=root.querySelectorAll(".mon[data-s]");if(!els.length)return;
@@ -255,7 +289,7 @@ function monsterSVG(kind,c){const eye=(x,y,r=7)=>`<circle cx="${x}" cy="${y}" r=
     `<path d="M20 92 Q20 24 50 22 Q80 24 80 92 Q72 84 65 92 Q57 84 50 92 Q43 84 35 92 Q28 84 20 92Z" fill="${c}"/><circle cx="32" cy="64" r="5" fill="#ff7fa8" opacity=".7"/><circle cx="68" cy="64" r="5" fill="#ff7fa8" opacity=".7"/>${eye(40,50)}${eye(60,50)}${mouth(50,68,11,8)}`];
   return`<svg viewBox="0 0 100 100" aria-hidden="true">${B[kind%8]}</svg>`}
 const monHTML=(slot,c,cls="")=>`<div class="mon ${cls}" data-s="${slot}" style="--c:${c}">${monsterSVG(slot,c)}</div>`;
-function setMusicOn(on){ST.mus=on;saveST();if(AUD.musicGain&&ac)AUD.musicGain.gain.setTargetAtTime(on?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0,ac.currentTime,.2)}
+function setMusicOn(on){ST.mus=on;saveST();ytApply();if(AUD.musicGain&&ac)AUD.musicGain.gain.setTargetAtTime(on?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0,ac.currentTime,.2)}
 function setVoiceOn(on){ST.vo=on;saveST();if(!on&&AUD.voice){try{AUD.voice.stop()}catch(e){}}}
 // Called whenever the host screen enters a new phase.
 function onPhase(){

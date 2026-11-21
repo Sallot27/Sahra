@@ -924,8 +924,8 @@ B.push(K=>{
       if(nt===3?hit[0]&&hit[1]&&hit[2]:t===0?hit[0]&&hit[1]:hit[2]&&hit[3])return true}
     return false}
   const goal=(nt,t)=>nt===3?"يوصل الأضلاع الثلاثة":t===0?"يربط يمين ↔ يسار":"يربط فوق ↕ تحت";
-  // the win music: short for a gem, full for a board
-  const winMusic=secs=>K.playSting("huroof_win",sfx.applause,secs);
+  // the win song plays in full, for a gem and for a board win
+  const winMusic=()=>K.playSting("huroof_win",sfx.applause);
   return{
     id:"huroof",name:"حروف",emoji:"🔠",color:"#22a052",min:2,
     desc:"لوحة حروف مثل البرنامج المشهور: فريقين أو ثلاثة، تضغطون الجرس وتجاوبون، وتحت بعض الحروف جواهر 💎",
@@ -992,7 +992,7 @@ B.push(K=>{
       if(g.winner){const t=g.team[g.winner],gem=g.gems.includes(g.cell),pts=gem?GEM_PTS:LETTER_PTS;
         g.own[g.cell]=t;g.tp[t]+=pts;g.bp[t]+=pts;C.add(g.winner,pts);g.gained=pts;
         g.log.push({L:g.q.L,q:g.q.q,a:g.q.a,by:g.winner,t,gem});
-        if(gem){g.gemNow=true;g.gemFound.push(g.cell);winMusic(7);confetti()}else sfx.applause();
+        if(gem){g.gemNow=true;g.gemFound.push(g.cell);winMusic();confetti()}else sfx.applause();
         if(won(geo(g.nt),g.own,g.nt,t))g.done=t}
       else sfx.lie();
       if(g.done===undefined&&(g.own.every(o=>o!==null)||g.n>=45))g.done=this.leader();
@@ -1000,7 +1000,7 @@ B.push(K=>{
     // board ended without a chain: the team with most points on this board takes it
     leader(){const g=H.g,b=g.bp.slice(0,g.nt),m=Math.max(...b);return b.filter(x=>x===m).length===1&&m>0?b.indexOf(m):null},
     finish(t){const g=H.g;g.done=t;
-      if(t!==null&&t!==undefined){g.wins[t]++;g.tp[t]+=BOARD_PTS;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,BOARD_PTS)});winMusic(14);sfx.truth();confetti()}
+      if(t!==null&&t!==undefined){g.wins[t]++;g.tp[t]+=BOARD_PTS;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,BOARD_PTS)});winMusic();sfx.truth();confetti()}
       H.ph="hend";H.k++;setTimer(Math.min(30,12+g.log.length*1.2))},
     doneMap(){return null},
     after(){const b=document.getElementById("hxRand");if(b)b.onclick=()=>{H.g.forceSkip=true}},

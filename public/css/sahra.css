@@ -572,3 +572,5 @@ small.hx-ctag{font-size:13px;margin:0;vertical-align:middle}
 .mymon{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px}
 .btn.sing{font-size:26px;padding-inline:34px}
 .mymon .mon .mm{transform:scaleY(.3)}.mymon .mon.shout .mm{transform:scaleY(1.2)}
+#ytbg{position:fixed;left:0;bottom:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none;z-index:-1}
+#ytbg iframe{width:200px;height:120px}
