@@ -1092,83 +1092,113 @@ B.push(K=>{
 });
 
 /* =====================================================================
-   12) مين يمثّل؟: everyone does a task in real life, one faker doesn't know it
+   12) ولا كلمة: charades in teams. The actor picks a topic, gets a word on his phone only,
+   and acts it out without a word; his team guesses (typed on the phone, or said out loud and
+   the actor taps ✅). At least 4 players, an even number, two teams or more.
    ===================================================================== */
 B.push(K=>{
-  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,playSting}=K;
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,norm,nearTruth,tl}=K;
   const C=common(K);
-  const TASKS=[
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا عمرك نمت وأنت تتفرج على فيلم"},
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا تحب الأناناس على البيتزا"},
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا عمرك ضيّعت جوالك وهو في يدك"},
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا تخاف من الصراصير"},
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا عمرك كلّمت نفسك بصوت عالي"},
-    {k:"✋ ارفعوا يدكم",t:"ارفع يدك إذا تصحى قبل المنبه"},
-    {k:"🖐️ ارفعوا أصابع",t:"ارفع أصابع بعدد: كم مرة تفتح الثلاجة في اليوم؟ (من ٠ إلى ٥)"},
-    {k:"🖐️ ارفعوا أصابع",t:"ارفع أصابع بعدد: كم كوب شاي أو قهوة تشرب في اليوم؟ (من ٠ إلى ٥)"},
-    {k:"🖐️ ارفعوا أصابع",t:"ارفع أصابع بعدد: كم ساعة تقضي على الجوال يومياً؟ (من ٠ إلى ١٠)"},
-    {k:"🖐️ ارفعوا أصابع",t:"قيّم نفسك بأصابعك: كم أنت طبّاخ شاطر؟ (من ٠ إلى ١٠)"},
-    {k:"👉 أشّروا على شخص",t:"أشّر على أكثر واحد يتأخر عن المواعيد"},
-    {k:"👉 أشّروا على شخص",t:"أشّر على أكثر واحد ياكل في الجلسة"},
-    {k:"👉 أشّروا على شخص",t:"أشّر على الشخص اللي ممكن يضحك في موقف جدّي"},
-    {k:"👉 أشّروا على شخص",t:"أشّر على أكثر واحد يحب النوم"},
-    {k:"😜 سوّوا وجه",t:"سوّ وجه كأنك ذقت ليمون حامض"},
-    {k:"😜 سوّوا وجه",t:"سوّ وجه كأنك شفت جائزة مليون ريال"},
-    {k:"😜 سوّوا وجه",t:"سوّ وجه كأن أحد قال لك عندك اختبار بكرة"},
-    {k:"😜 سوّوا وجه",t:"سوّ وجه كأنك شممت ريحة جوارب"},
-    {k:"🕺 سوّوا حركة",t:"سوّ حركة كأنك تسبح"},
-    {k:"🕺 سوّوا حركة",t:"سوّ حركة كأنك تطير مثل الطيارة"},
-  ];
+  const TOPIC={
+    film:{e:"🎬",n:"أفلام وكرتون",w:["سندريلا","علاء الدين","الأسد الملك","سبايدرمان","توم وجيري","كابتن ماجد","البحث عن نيمو","سنو وايت","باتمان","سوبرمان","المحقق كونان","سلاحف النينجا"],lic:1},
+    prov:{e:"📜",n:"أمثال",w:["الصبر مفتاح الفرج","عصفور في اليد","الوقت كالسيف","القرد في عين أمه غزال","اللي فات مات","يد واحدة ما تصفق","الجار قبل الدار","من جد وجد"]},
+    anim:{e:"🐾",n:"حيوانات",w:["فيل","زرافة","قرد","أرنب","بطريق","تمساح","كنغر","ثعبان","دجاجة","حصان","قطة","أخطبوط","فراشة","جمل"]},
+    job:{e:"👷",n:"مهن",w:["طبيب أسنان","طيار","طباخ","رجل إطفاء","حلاق","مصور","معلم","رسام","ميكانيكي","سباك","حارس مرمى","رائد فضاء","مذيع"]},
+    food:{e:"🍔",n:"أكلات",w:["كبسة","بيتزا","آيسكريم","شاورما","فشار","بطيخ","سمبوسة","معكرونة","لقيمات","موز","فلافل","كيك"]},
+    sport:{e:"⚽",n:"رياضة",w:["كرة القدم","سباحة","ملاكمة","تنس","كرة السلة","تزلج","ركوب الخيل","رفع أثقال","بولينغ","كاراتيه","رماية","جري"]},
+    home:{e:"🏠",n:"أشياء في البيت",w:["مكنسة","ثلاجة","غسالة","مروحة","ريموت","مخدة","مكوى","سشوار","فرشاة أسنان","مظلة","كاميرا","ساعة منبه"]},
+    act:{e:"🏃",n:"أفعال",w:["يطبخ","يسوق سيارة","ينام","يعطس","يرقص","يصلح","يتسلق","يغسل الصحون","يصوّر سيلفي","يلعب بلايستيشن","يكوي","يصيد سمك"]},
+    place:{e:"🌍",n:"أماكن",w:["المطار","المستشفى","المدرسة","البحر","السينما","المطبخ","الملعب","حديقة الحيوان","المخيم","البنك","السوق","المسبح"]},
+    life:{e:"📱",n:"مواقف يومية",w:["البطارية خلصت","زحمة سير","تأخرت على الدوام","نسيت المفتاح","انقطع النت","أول يوم مدرسة","الأكل حار","شفت صرصور"]}};
+  const TEAM=["الأخضر","البرتقالي","البنفسجي","الأزرق"],TC=["#2ee6a6","#ff9a3c","#b892ff","#4cc2ff"],TE=["🟢","🟠","🟣","🔵"];
+  const applyCols=cols=>(cols||[]).forEach((c,t)=>{TEAM[t]=c.n;TC[t]=c.c;TE[t]=c.e});
+  const topics=()=>Object.keys(TOPIC).filter(k=>!(K.commercial&&TOPIC[k].lic));
   return{
-    id:"mumathil",name:"مين يمثّل؟",emoji:"🎭",color:"#ff7fd0",min:3,
-    desc:"الكل تجيه مهمة في جواله يسويها قدام بعض… إلا واحد ما يدري وش المهمة ويمثّل إنه يدري! اكشفوه 😂",
-    tags:["٣-٨ لاعبين","حركة وتمثيل","ضحك"],
-    rules:["كل جولة واحد منكم هو «الممثل» وما يعرف المهمة","الباقين تجيهم مهمة مثل: ارفع يدك إذا…، أشّر على…، سوّ وجه…","بعد العد ٣-٢-١ الكل يسوي المهمة في نفس اللحظة، والممثل يحاول يندمج","بعدها تصوتون: مين كان يمثّل؟"],
-    winTitle:"أعظم ممثل!",likeTitle:"",
-    timed:["accuse"],options:[K.roundsOpt([3,5,8],5)],
-    start(){const pl=shuffle(active());H.g={pl,round:0,rounds:K.opt("r"),used:[],fakers:shuffle(pl)};this.next()},
-    next(){const g=H.g;g.round++;if(g.round>g.rounds)return K.finishGame();
-      const live=g.pl.filter(id=>active().includes(id));if(live.length<3)return K.finishGame();
-      g.faker=g.fakers.find(id=>live.includes(id)&&!g.used.includes(id))||pick(live);g.used.push(g.faker);
-      const pool=TASKS.filter(t=>!(g.tasks||[]).includes(t.t));g.task=pick(pool.length?pool:TASKS);(g.tasks=g.tasks||[]).push(g.task.t);
-      g.votes={};H.ph="read";H.k++;setTimer(7);sfx.go();H.quip="اقروا المهمة في جوالاتكم… ولا تقولونها!"},
+    id:"mumathil",name:"ولا كلمة",emoji:"🤐",color:"#ff7fd0",min:4,
+    desc:"مثّل الكلمة لفريقك بدون ولا كلمة! تختار موضوع، تطلع لك كلمة في جوالك بس، وفريقك يخمّن",
+    tags:["٤-٨ لاعبين","فرق","تمثيل","ضحك"],
+    rules:["لازم ٤ لاعبين أو أكثر وعددكم زوجي، وتنقسمون فرق","الممثل يختار موضوع من جواله، وتطلع له كلمة ما يشوفها غيره","يمثّلها لفريقه بدون كلام ولا أصوات 🤐","فريقه يكتب الجواب في الجوال، أو يقوله بصوت عالي والممثل يضغط ✅"],
+    winTitle:"نجوم التمثيل! 🎭",likeTitle:"",
+    timed:["wpick","wact"],
+    options:[{key:"teams",label:"عدد الفرق",choices:[["2","فريقين"],["3","٣ فرق"],["4","٤ فرق"]],def:"2"},
+      {key:"r",label:"كم مرة يمثّل كل فريق",choices:[[2,"٢"],[3,"٣"],[4,"٤"]],def:3},
+      {key:"at",label:"وقت التمثيل",choices:[["60","دقيقة"],["90","دقيقة ونص"],["120","دقيقتين"]],def:"90"}],
+    teamN(){const n=+K.opt("teams")||2;return Math.max(2,Math.min(n,Math.floor(H.order.length/2)||2))},
+    // can't start with fewer than 4, an odd number, or a team of one
+    startErr(){const n=H.order.length,t=this.teamN();if(n<4)return"ولا كلمة تحتاج ٤ لاعبين على الأقل";if(n%2)return"لازم يكون عددكم زوجي (الحين "+fmt(n)+") عشان تكون الفرق متساوية";
+      if(n/t<2)return"كل فريق لازم يكون فيه لاعبين على الأقل";return""},
+    start(){const nt=this.teamN(),pl=[...H.order],cols=K.teamColors(nt);applyCols(cols);
+      const g=H.g={nt,pl,cols,team:K.teamsFor(nt,pl),tp:Array(nt).fill(0),turn:0,rounds:+K.opt("r")||3,cap:Array(nt).fill(0),used:[],log:[]};
+      g.total=g.rounds*nt;this.nextTurn()},
+    members(t){const g=H.g;return g.pl.filter(id=>g.team[id]===t&&active().includes(id))},
+    nextTurn(){const g=H.g;if(g.turn>=g.total)return this.finish();
+      const t=g.turn%g.nt,mem=this.members(t);if(mem.length<2){g.turn++;return this.nextTurn()}
+      g.t=t;g.actor=mem[g.cap[t]++%mem.length];g.turn++;g.word=null;g.ok=null;g.guessN={};g.wrong={};g.skips=1;
+      g.offer=shuffle(topics()).slice(0,6);H.ph="wpick";H.k++;setTimer(25);sfx.pop();
+      H.quip=`دور ${nm(g.actor)} من الفريق ${TEAM[t]} 🎭 يختار موضوع`},
+    newWord(c){const g=H.g,list=TOPIC[c].w.filter(w=>!g.used.includes(w));const w=pick(list.length?list:TOPIC[c].w);g.used.push(w);g.word=w;g.cat=c;g.truths=[norm(w)]},
     tick(now){const g=H.g;
-      if(H.ph==="read"){if(now>H.end){H.ph="act";H.k++;setTimer(11);g.t0=now}}
-      else if(H.ph==="act"){if(now>H.end){H.ph="accuse";H.k++;setTimer(30);sfx.swoosh();H.quip="مين كان يمثّل؟ صوّتوا! 🕵️"}}
-      else if(H.ph==="accuse"){g.pl.forEach(id=>{const a=K.act(id);if(a&&typeof a.vote==="string"&&a.vote!==id&&g.pl.includes(a.vote))g.votes[id]=a.vote});
-        const live=g.pl.filter(id=>active().includes(id));if(now>H.end||g.forceSkip||(live.length&&live.every(id=>g.votes[id]))){g.forceSkip=false;this.unmask()}}
-      else if(H.ph==="unmask"){if(now>H.end)this.next()}},
-    unmask(){const g=H.g,cnt={};Object.values(g.votes).forEach(v=>cnt[v]=(cnt[v]||0)+1);g.cnt=cnt;
-      const max=Math.max(0,...Object.values(cnt)),tops=Object.keys(cnt).filter(id=>cnt[id]===max);g.caught=max>0&&tops.length===1&&tops[0]===g.faker;
-      Object.entries(g.votes).forEach(([id,v])=>{if(v===g.faker&&id!==g.faker)C.add(id,300)});if(!g.caught)C.add(g.faker,800);
-      H.ph="unmask";H.k++;setTimer(8);playSting("sting_reveal",sfx.drum);setTimeout(()=>{if(g.caught){sfx.truth();confetti()}else sfx.lie()},1600)},
-    doneMap(){return H.ph==="accuse"?H.g.votes:null},
-    view(v){const g=H.g;if(!g.pl)return;v.pl=g.pl;v.r=g.round;
-      if(["read","act"].includes(H.ph)){v.kind=g.task.k;v.faker=g.faker;v.t=g.task.t}
-      if(H.ph==="accuse")v.done=Object.keys(g.votes);if(H.ph==="unmask")v.sc=H.sc},
-    pill(){const g=H.g;return`<span class="pill">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}</span>`},
+      if(H.ph==="wpick"){const a=K.act(g.actor);let c=a&&typeof a.topic==="string"&&g.offer.includes(a.topic)?a.topic:null;
+        if(!c&&(now>H.end||g.forceSkip||!active().includes(g.actor))){g.forceSkip=false;c=pick(g.offer)}
+        if(c){this.newWord(c);H.ph="wact";H.k++;g.at=+K.opt("at")||90;setTimer(g.at);g.t0=now;sfx.tada();H.quip=`🤐 ممنوع الكلام! ${nm(g.actor)} يمثّل لفريقه ${TEAM[g.t]}`}}
+      else if(H.ph==="wact"){
+        // the actor: ✅ (they said it out loud) or skip a hard word (once per turn)
+        const a=K.act(g.actor);
+        if(a&&a.got&&a.n!==g.gotN){g.gotN=a.n;return this.done(g.actor)}
+        if(a&&a.skip&&a.n!==g.skipN&&g.skips>0){g.skipN=a.n;g.skips--;this.newWord(g.cat);H.k++;sfx.swoosh();H.quip="كلمة ثانية! 🔄";return}
+        // teammates type their guess
+        for(const id of this.members(g.t)){if(id===g.actor)continue;const b=K.act(id);if(!b||typeof b.ans!=="string"||g.guessN[id]===b.n)continue;g.guessN[id]=b.n;
+          if(nearTruth(b.ans,g.truths))return this.done(id);g.wrong[id]=b.n}
+        if(now>H.end||g.forceSkip||!active().includes(g.actor)){g.forceSkip=false;this.done(null)}}
+      else if(H.ph==="wres"){if(now>H.end){if(g.turn%g.nt===0&&g.turn<g.total){H.ph="wscore";H.k++;setTimer(6);return}this.nextTurn()}}
+      else if(H.ph==="wscore"){if(now>H.end)this.nextTurn()}},
+    // guessed (by who) or time is up; faster = more points
+    done(by){const g=H.g,el=(Date.now()-g.t0)/1000;g.ok=by;
+      if(by){const p=Math.round((100+100*Math.max(0,1-el/g.at))/10)*10;g.gain=p;g.tp[g.t]+=p;sfx.truth();confetti(60);H.quip=`${by===g.actor?"عرفوها!":nm(by)+" عرفها!"} 🎉 +${fmt(p)} للفريق ${TEAM[g.t]}`}
+      else{g.gain=0;sfx.lie();H.quip="خلص الوقت! ⏰"}
+      g.log.push({w:g.word,t:g.t,ok:!!by});H.ph="wres";H.k++;setTimer(6)},
+    finish(){const g=H.g;g.pl.forEach(id=>H.sc[id]=g.tp[g.team[id]]||0);K.finishGame()},
+    doneMap(){return null},
+    view(v){const g=H.g;if(!g.pl)return;v.cols=g.cols;v.team=g.team;v.t=g.t;v.actor=g.actor;v.nt=g.nt;
+      if(H.ph==="wpick")v.offer=g.offer.map(k=>[k,TOPIC[k].e,TOPIC[k].n]);
+      if(H.ph==="wact"){v.word=g.word;v.cat=TOPIC[g.cat].e+" "+TOPIC[g.cat].n;v.skips=g.skips;v.wrong=g.wrong}
+      if(H.ph==="wres"){v.word=g.word;v.ok=g.ok;v.gain=g.gain}},
+    pill(){const g=H.g;return`<span class="pill">${[...Array(g.nt).keys()].map(t=>`${TE[t]} ${fmt(g.tp[t])}`).join(" · ")} · الدور ${fmt(Math.min(g.turn,g.total))} من ${fmt(g.total)}</span>`},
+    teamsHTML(){const g=H.g;return`<div class="wl-teams">${[...Array(g.nt).keys()].map(t=>`<div class="wl-team ${t===g.t&&H.ph!=="wscore"?"on":""}" style="--c:${TC[t]}"><b>${TE[t]} ${TEAM[t]}</b><span>${fmt(g.tp[t])}</span><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<i class="${id===g.actor&&t===g.t?"act":""}">${esc(nm(id))}</i>`).join("")}</div></div>`).join("")}</div>`},
     render(){const g=H.g;
-      if(H.ph==="read")return C.head(H.quip)+`<div class="col center" style="gap:12px"><span style="font-size:96px;line-height:1">📱</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),58px)">${esc(g.task.k)}</h2><p class="note" style="font-size:22px">المهمة مكتوبة في جوالاتكم… وفيه واحد ما يدري وش هي 😏</p></div>`;
-      if(H.ph==="act")return`<div class="col center" style="gap:10px;margin-top:calc(var(--sh)*0.04)"><div class="mm-count" id="mmC">٣</div><h2 style="font-size:clamp(30px,calc(var(--sw)*0.044),52px)">${esc(g.task.k)}!</h2><p class="note" style="font-size:22px">ثبّتوا على حركتكم… وناظروا بعض 👀</p></div>`;
-      if(H.ph==="accuse")return C.head(H.quip)+`<div class="col center"><span style="font-size:90px;line-height:1">🕵️</span><h2 style="font-size:clamp(34px,calc(var(--sw)*0.05),56px)">مين كان يمثّل؟</h2></div><div id="dyn" class="still">${this.dyn()}</div>`;
-      if(H.ph==="unmask"){const tro=g.pl.map((id,i)=>`<div class="pl" style="--i:${i};position:relative"><div class="av lg" style="--c:${K.col(id)}">${K.face(id)}${g.cnt[id]?`<span class="vote-n">${fmt(g.cnt[id])}</span>`:""}</div><span>${esc(nm(id))}</span></div>`).join("");
-        return`<h2 style="font-size:36px;text-align:center">المهمة كانت: «${esc(g.task.t)}»</h2><div class="troupe">${tro}</div><div class="reveal"><div class="row" style="justify-content:center;animation:fade .3s 1.2s both">${C.avatar(g.faker,"lg")}<span style="font-family:var(--display);font-size:clamp(30px,calc(var(--sw)*0.04),46px)">${esc(nm(g.faker))} كان يمثّل!</span></div>
-          <div class="stamp ${g.caught?"truth":"lie"}">${g.caught?"انكشف! 😂":"ضحك عليكم! 🎭"}</div><div class="who">${g.caught?"<span>اللي صوّتوا صح</span><span class=\"pts\">+٣٠٠</span>":`<span>${esc(nm(g.faker))}</span><span class="pts">+٨٠٠</span>`}</div></div>`}
+      if(H.ph==="wpick")return C.head(H.quip)+`<div class="col center"><div class="wl-actor" style="--c:${TC[g.t]}">${C.avatar(g.actor,"lg")}<b>${esc(nm(g.actor))}</b></div>
+        <div class="wl-topics">${g.offer.map(k=>`<span>${TOPIC[k].e} ${TOPIC[k].n}</span>`).join("")}</div><p class="note" style="font-size:20px">📱 يختار الموضوع من جواله</p></div>${this.teamsHTML()}`;
+      if(H.ph==="wact")return C.head(H.quip)+`<div class="col center"><div class="wl-zip">🤐</div><div class="wl-cat">${TOPIC[g.cat].e} ${TOPIC[g.cat].n}</div>
+        <div class="wl-actor" style="--c:${TC[g.t]}">${C.avatar(g.actor,"lg")}<b>${esc(nm(g.actor))} يمثّل</b></div>
+        <p class="note" style="font-size:20px">الفريق ${TEAM[g.t]}: اكتبوا الجواب في الجوال أو قولوه بصوت عالي 🗣️</p><div id="dyn" class="still">${this.dyn()}</div></div>${this.teamsHTML()}`;
+      if(H.ph==="wres")return`<div class="reveal" style="padding-top:20px"><p class="note" style="font-size:24px">الكلمة كانت:</p><div class="answer">${esc(g.word)}</div>
+        <div class="stamp ${g.ok?"truth":"lie"}">${g.ok?`عرفوها! +${fmt(g.gain)}`:"ما لحقوا ⏰"}</div></div>${this.teamsHTML()}`;
+      if(H.ph==="wscore")return`<div class="spread"><h2 style="font-size:46px">🏁 النتيجة</h2></div>${this.teamsHTML()}`;
       return""},
-    after(){if(H.ph!=="act")return;const el=document.getElementById("mmC");if(!el)return;const t0=Date.now();
-      const step=()=>{if(!el.isConnected)return;const s=(Date.now()-t0)/1000;if(s<3){el.textContent=["٣","٢","١"][Math.floor(s)];sfx.pop();setTimeout(step,1000-((Date.now()-t0)%1000))}else{el.textContent="الحين! 🎬";el.classList.add("go");sfx.tada()}};step()},
-    dyn(){const g=H.g;return H.ph==="accuse"?K.troupe(g.pl,new Set(Object.keys(g.votes))):""},
-    phone(v,{root,tline}){const me=K.me();C.fresh(v);
-      if(!(v.pl||[]).includes(me)){C.watch(root,v,"🍿","تفرّج هالجولة","");return}
-      if(v.ph==="read"||v.ph==="act"){const f=v.faker===me;
-        root.insertAdjacentHTML("beforeend",`<div class="secret ${f?"out":""}" id="mmS">${f?`<span style="font-size:56px">🎭</span><b>أنت الممثل!</b><span>ما تعرف المهمة… النوع: <b style="font-size:24px;display:inline">${esc(v.kind)}</b><br>شوف الباقين وسوّ مثلهم بدون ما تنكشف 😏</span>`:`<span>${esc(v.kind)}</span><b style="font-size:30px">${esc(v.t)}</b><span>${v.ph==="act"?"سوّها الحين! 🎬":"استعد… بعد العد سوّها"}</span>`}</div>
-          <p class="note center">خبّ جوالك عن اللي جنبك 🙈</p>`);return}
-      if(v.ph==="accuse"){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:28px">مين كان يمثّل؟ 🕵️</h2>${tline}<div id="mmBox"></div>`);
-        const box=document.getElementById("mmBox"),others=v.pl.filter(id=>id!==me);
-        C.choices(box,others.map(id=>{const j=(v.order||[]).indexOf(id);return{val:id,c:K.COLORS[j%8],html:`${K.avImg(v.av&&v.av[id],K.FACES[j%8]).replace('class="avimg"','class="avimg inl"')} ${C.pnm(v,id)}`}}),it=>{K.sendAct({k:v.k,vote:it.val});C.sent(box,"🗳️","صوّتت على "+((v.nm&&v.nm[it.val])||""),"")});return}
-      C.watch(root,v);},
+    dyn(){const g=H.g;if(H.ph!=="wact")return"";const n=Object.keys(g.wrong).length;return n?`<p class="note">🤔 ${fmt(n)} تخمين غلط…</p>`:""},
+    phone(v,{root,tline}){const me=K.me(),mt=v.team?v.team[me]:undefined;C.fresh(v);applyCols(v.cols);
+      if(mt===undefined){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
+      const head=`<div class="xo-me" style="background:${TC[mt]}">أنت في الفريق ${TEAM[mt]}</div>`;
+      if(v.ph==="wpick"){
+        if(v.actor!==me){root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🎭",`${C.pnm(v,v.actor)} يختار موضوع…`,mt===v.t?"جهّز نفسك تخمّن! 👀":"");return}
+        root.insertAdjacentHTML("beforeend",head+`<h2 style="font-size:26px">دورك تمثّل! اختار موضوع 👇</h2><div class="wl-pick">${v.offer.map(([k,e,n])=>`<button class="pbtn" data-tp="${k}"><span style="font-size:30px">${e}</span> ${esc(n)}</button>`).join("")}</div>`);
+        root.querySelectorAll("[data-tp]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,topic:b.dataset.tp});root.querySelectorAll("[data-tp]").forEach(x=>x.disabled=true)});return}
+      if(v.ph==="wact"){
+        if(v.actor===me){root.insertAdjacentHTML("beforeend",head+`<p class="note center">${esc(v.cat)} · مثّلها بدون كلام 🤐</p><div class="wl-word">${esc(v.word)}</div>${tline}
+          <button class="btn coral wide" id="wGot" style="font-size:24px">✅ قالوها صح!</button>${v.skips>0?`<button class="btn ghost wide" id="wSkip">🔄 صعبة؟ غيّرها (مرة وحدة)</button>`:""}`);
+          const n=()=>Date.now();document.getElementById("wGot").onclick=e=>{K.sendAct({k:v.k,got:1,n:n()});e.target.disabled=true};
+          const sk=document.getElementById("wSkip");if(sk)sk.onclick=()=>{K.sendAct({k:v.k,skip:1,n:n()});sk.disabled=true};return}
+        if(mt===v.t){root.insertAdjacentHTML("beforeend",head+`<h2 style="font-size:24px">${C.pnm(v,v.actor)} يمثّل لكم! وش هي؟ 🤔</h2><p class="note center">${esc(v.cat)}</p>${tline}<div id="wBox"></div>`);this.form(v);return}
+        root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🤐",`${C.pnm(v,v.actor)} يمثّل لفريقه`,"ممنوع تساعدونهم 😄");return}
+      if(v.ph==="wres"){root.insertAdjacentHTML("beforeend",head);C.watch(root,v,v.ok?"🎉":"⏰",v.ok?"عرفوها!":"خلص الوقت",`الكلمة: ${esc(v.word||"")}`);return}
+      root.insertAdjacentHTML("beforeend",head);C.watch(root,v,"🏁","ناظر النتيجة!","");},
+    form(v,msg){const box=document.getElementById("wBox");if(!box)return;
+      C.textForm(box,{ph:"اكتب تخمينك…",max:40,btn:"خمّن 🎯",onSend:t=>{const n=Date.now();C.L.wait=n;K.sendAct({k:v.k,ans:t,n});box.innerHTML=`<p class="big">🤔…</p>`}});
+      if(msg)box.insertAdjacentHTML("afterbegin",`<p class="err">${msg}</p>`)},
+    phoneLive(v){if(v.ph!=="wact"||v.actor===K.me())return;const L=C.L;if(L.wait&&v.wrong&&v.wrong[K.me()]===L.wait){L.wait=0;sfx.lie();this.form(v,"❌ لا… جرّب ثاني")}},
   };
 });
+
 /* =====================================================================
    13) شكلي إذا: a situation, everyone answers with a reaction picture. No points, just laughs.
    ===================================================================== */

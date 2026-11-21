@@ -850,3 +850,19 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 .ls-pics{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(10px,calc(var(--sw)*.02),30px);font-size:clamp(70px,calc(var(--sh)*.15),140px);line-height:1.2;margin:10px 0;direction:ltr}
 .ls-pics span{display:inline-block;animation:pop .5s calc(var(--i)*.25s) cubic-bezier(.2,1.6,.4,1) both}
 .ls-pics.sm{font-size:clamp(40px,calc(var(--sh)*.08),70px)}
+
+/* ولا كلمة */
+.wl-actor{display:flex;flex-direction:column;align-items:center;gap:6px;background:color-mix(in srgb,var(--c) 25%,transparent);border:4px solid var(--c);border-radius:24px;padding:12px 26px}
+.wl-actor b{font-size:26px}
+.wl-topics{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:900px}
+.wl-topics span{background:var(--paper);color:var(--ink);font-weight:800;font-size:22px;border-radius:99px;padding:6px 18px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.wl-zip{font-size:clamp(80px,calc(var(--sh)*.16),130px);line-height:1;animation:wob 1.4s ease-in-out infinite}
+.wl-cat{font-family:var(--display);font-size:clamp(30px,calc(var(--sh)*.06),50px)}
+.wl-teams{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.wl-team{background:color-mix(in srgb,var(--c) 20%,transparent);border:4px solid var(--c);border-radius:20px;padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:150px;opacity:.8}
+.wl-team.on{opacity:1;transform:scale(1.05);box-shadow:0 0 0 4px #fff}
+.wl-team b{color:var(--c);font-size:20px}.wl-team>span{font-family:var(--display);font-size:34px}
+.wl-team div{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}.wl-team i{font-style:normal;font-weight:700;font-size:14px;background:rgba(255,255,255,.12);border-radius:99px;padding:1px 8px}
+.wl-team i.act{background:var(--c);color:#1a1033}
+.wl-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wl-word{font-family:var(--display);font-size:clamp(40px,12vw,64px);text-align:center;background:var(--paper);color:var(--ink);border-radius:24px;padding:18px 10px;margin:12px 0;box-shadow:0 8px 0 rgba(0,0,0,.3)}
