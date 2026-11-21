@@ -203,12 +203,12 @@ function playSting(key,fallback,max){
     const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime,len=max?Math.min(max,b.duration):b.duration;
     src.buffer=b;g.gain.value=.9;src.connect(g).connect(ac.destination);src.start();
     if(len<b.duration){g.gain.setValueAtTime(.9,t+len-1.2);g.gain.linearRampToValueAtTime(0,t+len);src.stop(t+len+.05)}
-    duck(t,len)});
+    duck(t,len,key==="huroof_win"?0:.25)});
 }
 const MUSIC_LEVEL=.45;
-function duck(at,dur){
+function duck(at,dur,to=.25){
   const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL:0;
-  g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
+  g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*to,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
 async function music(key){
   if(!ac||AUD.musicKey===key)return;
   const prev=AUD.musicKey;AUD.musicKey=key;
