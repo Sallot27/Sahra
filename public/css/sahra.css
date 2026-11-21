@@ -558,3 +558,17 @@ small.hx-ctag{font-size:13px;margin:0;vertical-align:middle}
 .dk-sizes{display:flex;gap:6px}
 .dk-w{width:48px;display:grid;place-items:center}.dk-w i{display:block;width:var(--s);height:var(--s);border-radius:50%;background:currentColor}
 .dk-gap{flex:1}
+
+/* جوقة الوحوش */
+.monrow{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px}
+.monwrap{display:flex;flex-direction:column;align-items:center;width:70px;animation:drop .5s calc(var(--i)*.05s) cubic-bezier(.2,1.6,.4,1) both}
+.monname{font-weight:800;font-size:13px;max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mon{width:60px;height:60px;transform:translateY(calc(var(--b,0)*-6px)) scaleY(calc(1 + var(--b,0)*.04));transform-origin:50% 100%;filter:drop-shadow(0 5px 0 rgba(0,0,0,.25))}
+.mon svg{width:100%;height:100%;overflow:visible}
+.mon .mm{transform-box:fill-box;transform-origin:center;transform:scaleY(var(--o,.1));transition:transform .06s linear}
+.mon.shout{animation:monjump .7s cubic-bezier(.2,1.6,.4,1)}
+@keyframes monjump{30%{transform:translateY(-16px) scale(1.12)}}
+.mon.big{width:150px;height:150px;margin:0 auto}
+.mymon{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px}
+.btn.sing{font-size:26px;padding-inline:34px}
+.mymon .mon .mm{transform:scaleY(.3)}.mymon .mon.shout .mm{transform:scaleY(1.2)}

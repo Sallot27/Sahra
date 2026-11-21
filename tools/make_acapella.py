@@ -1,8 +1,9 @@
 """A cappella background sounds for سهرة: synthesized choir "aahs", humming and mouth percussion.
 No instruments: every sound is a (synthesized) voice or a mouth sound. Happy major keys.
 
-    python3 tools/make_acapella.py public/audio
-writes music_lobby.mp3, music_thinking.mp3, sting_reveal.mp3, sting_win.mp3 (needs numpy, scipy, ffmpeg).
+    python3 tools/make_acapella.py public/audio          # music_lobby, music_thinking, sting_reveal, sting_win
+    python3 tools/make_acapella.py public/audio choir    # choir/s0..s7.mp3, env.json, shout.mp3 (جوقة الوحوش)
+needs numpy, scipy, ffmpeg.
 """
 import subprocess, sys, os
 import numpy as np
@@ -159,8 +160,68 @@ def sting_win(out):
     place(tr, kick(), 0); place(tr, snare(), .42); place(tr, kick(), .42)
     save(master(reverb(tr, mix=.32)[: int(4.2 * SR)], .9), out, fade_out=.6)
 
-if __name__ == "__main__":
+if __name__ == "__main__" and (len(sys.argv) < 3 or sys.argv[2] != "choir"):
     d = sys.argv[1] if len(sys.argv) > 1 else "."
     lobby(os.path.join(d, "music_lobby.mp3")); print("lobby")
     thinking(os.path.join(d, "music_thinking.mp3")); print("thinking")
     sting_reveal(os.path.join(d, "sting_reveal.mp3")); sting_win(os.path.join(d, "sting_win.mp3")); print("stings")
+
+
+# ---------------------------------------------------------------------------
+# جوقة الوحوش: 8 stems of one song (same tempo, key and length). Each player's
+# monster sings one stem; the big screen plays only the stems whose monster is in the room.
+# Also writes env.json (mouth openness per 1/20 s for each stem) and shout.mp3.
+def choir(d):
+    os.makedirs(d, exist_ok=True)
+    bpm, bars = 100, 8; beat = 60 / bpm; bar = beat * 4; L = bar * bars
+    N = int((L + 3) * SR)
+    st = [np.zeros(N) for _ in range(8)]
+    for b in range(bars):
+        ch = PROG[b % 4]; t0 = b * bar
+        # 0: "aah" chords
+        for i, nte in enumerate(ch):
+            place(st[0], voice(nte, bar * .98, "a", singers=3, attack=.3, release=.4, loud=.5), t0)
+        # 1: bass "bm ba"
+        for off, ln in [(0, .9), (1.5, .45), (2, .9), (3.5, .45)]:
+            place(st[1], voice(BASS[b % 4] + 12, beat * ln, "ba", singers=2, attack=.02, release=.08, vib=.002, loud=.8), t0 + off * beat)
+        # 2: mouth beat (kick + snare)
+        for s in range(8):
+            at = t0 + s * beat / 2
+            if s in (0, 3, 4): place(st[2], kick(1 if s != 3 else .6), at)
+            if s in (2, 6): place(st[2], snare(.9), at)
+        # 3: "doo doo" melody
+        mel = [ch[2] + 12, ch[1] + 12, ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[2] + 12, ch[2] + 12, None] if b % 2 == 0 else [ch[1] + 12, ch[1] + 12, ch[1] + 12, None, ch[2] + 12, ch[2] + 15 if ch[2] + 15 in (79, 76, 72, 77) else ch[2] + 12, ch[2] + 12, None]
+        for k, m in enumerate(mel):
+            if m: place(st[3], voice(m, beat * .45, "u", singers=2, attack=.02, release=.1, vib=.003, loud=.42), t0 + k * beat / 2)
+        # 4: humming "mmm" (one long low note per bar, the third of the chord)
+        place(st[4], voice(ch[1] - 12 + 12, bar * .97, "m", singers=3, attack=.4, release=.5, vib=.004, loud=.5), t0)
+        # 5: "ts ts" and tongue clicks
+        for s in range(16):
+            at = t0 + s * beat / 4
+            place(st[5], hat(.8 if s % 2 else .45), at)
+            if s in (5, 13): place(st[5], snap(.8), at)
+        # 6: high "ooh" countermelody, long notes
+        top = [ch[2] + 24, ch[0] + 24][b % 2]
+        place(st[6], voice(top, bar * .5, "u", singers=3, attack=.25, release=.3, loud=.32), t0)
+        place(st[6], voice(top - (1 if top % 12 in (0, 5) else 2), bar * .45, "u", singers=3, attack=.2, release=.3, loud=.3), t0 + bar * .5)
+        # 7: "ba ba ba" arpeggio
+        for s in range(8):
+            nte = [ch[0], ch[1], ch[2], ch[1]][s % 4] + 12
+            place(st[7], voice(nte, beat * .3, "ba", singers=1, attack=.01, release=.05, vib=0, loud=.35), t0 + s * beat / 2)
+    outs = [loopify(reverb(x, mix=.24), L) for x in st]
+    peak = max(np.abs(sum(outs)).max(), 1e-9)
+    env = []
+    for i, x in enumerate(outs):
+        y = np.tanh(x / peak * 1.2) * .8
+        save(y.copy(), os.path.join(d, f"s{i}.mp3"))
+        hop = SR // 20
+        e = np.array([np.sqrt(np.mean(y[j:j + hop] ** 2)) for j in range(0, len(y) - hop + 1, hop)])
+        env.append([round(float(v), 2) for v in (e / (e.max() + 1e-9))])
+    import json
+    json.dump({"len": L, "fps": 20, "env": env}, open(os.path.join(d, "env.json"), "w"))
+    # a monster's "aah!" (pitched per monster by playback rate)
+    sh = np.zeros(int(1.6 * SR)); place(sh, voice(60, .9, "a", singers=3, attack=.03, release=.4, vib=.012, loud=1), 0)
+    save(master(reverb(sh, mix=.25)[: int(1.6 * SR)], .9), os.path.join(d, "shout.mp3"), fade_out=.3)
+
+if __name__ == "__main__" and len(sys.argv) > 2 and sys.argv[2] == "choir":
+    choir(os.path.join(sys.argv[1], "choir"))

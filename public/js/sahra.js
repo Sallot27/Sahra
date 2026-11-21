@@ -171,7 +171,7 @@ const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
   truthIntro:["truth_1"],truth:["truth_2"],notruth:["no_truth"],caught:["caught"],escaped:["escaped"],guess:["guess_last"],artist:["artist_win"],
   scores:["scores_1","scores_2"],final:["final_round"],winner:["winner"],again:["play_again"]};
 const AUD={buf:{},voice:null,busyUntil:0,music:null,musicKey:null,musicGain:null,last:{},lastPhase:"",welcomed:false};
-const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win","huroof_win"])];
+const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win","huroof_win","choir/shout",...[...Array(8).keys()].map(i=>"choir/s"+i)])];
 function loadAudio(key){
   if(!AUD.buf[key])AUD.buf[key]=fetch("/audio/"+key+".mp3").then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()})
     .then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).catch(()=>null);
@@ -199,24 +199,69 @@ function playSting(key,fallback,max){
     duck(t,len)});
 }
 const MUSIC_LEVEL=.45;
-function duck(at,dur){const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL:0;
+function duck(at,dur){const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0;
   g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
 async function music(key){
   if(!ac||AUD.musicKey===key)return;AUD.musicKey=key;
   const old=AUD.music,oldG=AUD.musicGain;
   if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}
   AUD.music=null;AUD.musicGain=null;
-  if(!key)return;const b=await loadAudio(key);if(!b||AUD.musicKey!==key)return;
+  if(!key)return;if(key==="choir")return choirStart();const b=await loadAudio(key);if(!b||AUD.musicKey!==key)return;
   const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.loop=true;g.gain.value=0;src.connect(g).connect(ac.destination);src.start();
   g.gain.setTargetAtTime(ST.mus?MUSIC_LEVEL:0,ac.currentTime,.6);AUD.music=src;AUD.musicGain=g;
 }
-function setMusicOn(on){ST.mus=on;saveST();if(AUD.musicGain&&ac)AUD.musicGain.gain.setTargetAtTime(on?MUSIC_LEVEL:0,ac.currentTime,.2)}
+/* ================= جوقة الوحوش =================
+   Every player in the room is a monster on the big screen, and every monster sings one layer
+   (stem) of the same a cappella song. Only the layers of monsters in the room are heard, so the
+   song grows as people join. Phones have a button that makes their monster shout "aah!". */
+const CHOIR={n:8,stems:[...Array(8).keys()].map(i=>"choir/s"+i),env:null,len:19.2,srcs:[],gains:[],t0:0,on:false,shoutAt:{}};
+// pitch of each monster's shout (semitones above middle C), so the room sounds like a chord
+const SHOUT=[0,4,7,12,-5,2,9,16];
+async function choirStart(){
+  if(!CHOIR.env)CHOIR.env=await fetch("/audio/choir/env.json").then(r=>r.json()).catch(()=>null);
+  const bufs=await Promise.all(CHOIR.stems.map(loadAudio));if(AUD.musicKey!=="choir"||bufs.some(b=>!b))return;
+  const master=ac.createGain();master.gain.value=0;master.connect(ac.destination);
+  const at=ac.currentTime+.08,L=CHOIR.env?CHOIR.env.len:bufs[0].duration;
+  CHOIR.srcs=[];CHOIR.gains=bufs.map(b=>{const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.loop=true;src.loopStart=0;src.loopEnd=Math.min(L,b.duration);
+    g.gain.value=0;src.connect(g).connect(master);src.start(at);CHOIR.srcs.push(src);return g});
+  CHOIR.t0=at;CHOIR.len=L;CHOIR.on=true;
+  master.gain.setTargetAtTime(ST.mus?MUSIC_LEVEL*1.6:0,ac.currentTime,.5);
+  AUD.music={stop(){CHOIR.on=false;CHOIR.srcs.forEach(x=>{try{x.stop()}catch(e){}})}};AUD.musicGain=master;
+  choirMix();requestAnimationFrame(choirFrame)}
+// which layers sing: one per monster in the room (join order)
+function choirSlots(){const here=new Set(active());return H.order.slice(0,CHOIR.n).map(id=>here.has(id))}
+function choirMix(){if(!CHOIR.on||!ac)return;const on=choirSlots();CHOIR.gains.forEach((g,i)=>g.gain.setTargetAtTime(on[i]?1:0,ac.currentTime,.25))}
+function choirShout(slot){if(!ac)return;loadAudio("choir/shout").then(b=>{if(!b)return;const src=ac.createBufferSource(),g=ac.createGain();
+  src.buffer=b;src.playbackRate.value=2**(SHOUT[slot%8]/12);g.gain.value=.75;src.connect(g).connect(ac.destination);src.start()});
+  CHOIR.shoutAt[slot]=performance.now()}
+// mouths follow each monster's own voice; bodies bounce on the beat
+function choirFrame(){if(!CHOIR.on)return;requestAnimationFrame(choirFrame);
+  const els=root.querySelectorAll(".mon[data-s]");if(!els.length)return;
+  const pos=((ac.currentTime-CHOIR.t0)%CHOIR.len+CHOIR.len)%CHOIR.len,f=Math.floor(pos*(CHOIR.env?CHOIR.env.fps:20)),on=choirSlots(),beat=60/100;
+  const b=Math.abs(Math.sin(Math.PI*pos/beat)),now=performance.now();
+  els.forEach(el=>{const i=+el.dataset.s,e=CHOIR.env&&CHOIR.env.env[i]?CHOIR.env.env[i][f%CHOIR.env.env[i].length]||0:0,sh=now-(CHOIR.shoutAt[i]||-1e9)<700;
+    el.style.setProperty("--o",sh?1.25:on[i]?(.12+e*.95).toFixed(2):.1);el.style.setProperty("--b",on[i]?(b*(.6+e*.6)).toFixed(2):0);el.classList.toggle("shout",sh)})}
+// eight original monsters; c = the player's colour
+function monsterSVG(kind,c){const eye=(x,y,r=7)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${x+1}" cy="${y+1}" r="${r*.48}" fill="#1a1033"/>`,
+  mouth=(x,y,w=16,h=10)=>`<ellipse class="mm" cx="${x}" cy="${y}" rx="${w}" ry="${h}" fill="#3a0d2e"/>`;
+  const B=[
+    `<ellipse cx="50" cy="62" rx="36" ry="32" fill="${c}"/>${eye(38,52)}${eye(62,52)}${mouth(50,72)}`,
+    `<path d="M26 40 L20 18 L36 32 Z M74 40 L80 18 L64 32 Z" fill="#fff4dc"/><rect x="18" y="30" width="64" height="62" rx="22" fill="${c}"/>${eye(38,52)}${eye(62,52)}${mouth(50,74,15,9)}`,
+    `<line x1="50" y1="22" x2="50" y2="8" stroke="${c}" stroke-width="4"/><circle cx="50" cy="8" r="6" fill="#fff4dc"/><rect x="26" y="20" width="48" height="74" rx="24" fill="${c}"/>${eye(50,44,12)}${mouth(50,72,13,9)}`,
+    `${[0,1,2,3,4,5,6,7,8,9].map(k=>{const a=k/10*6.283;return`<circle cx="${50+Math.cos(a)*30}" cy="${60+Math.sin(a)*28}" r="12" fill="${c}"/>`}).join("")}<circle cx="50" cy="60" r="31" fill="${c}"/>${eye(39,52,6)}${eye(61,52,6)}${mouth(50,72,12,8)}`,
+    `<ellipse cx="22" cy="44" rx="10" ry="22" fill="${c}" transform="rotate(-25 22 44)"/><ellipse cx="78" cy="44" rx="10" ry="22" fill="${c}" transform="rotate(25 78 44)"/><path d="M50 26 C78 26 86 60 82 80 C78 94 22 94 18 80 C14 60 22 26 50 26Z" fill="${c}"/>${eye(39,54)}${eye(61,54)}${mouth(50,76,14,9)}`,
+    `<path d="M22 46 L28 26 L36 40 L44 20 L52 38 L60 18 L66 38 L74 24 L78 46 Z" fill="${c}"/><rect x="18" y="38" width="64" height="56" rx="26" fill="${c}"/>${eye(38,56)}${eye(62,56)}${mouth(50,77,16,9)}`,
+    `<rect x="30" y="14" width="40" height="80" rx="20" fill="${c}"/>${eye(40,36,6)}${eye(60,36,6)}${eye(50,52,6)}${mouth(50,74,11,9)}`,
+    `<path d="M20 92 Q20 24 50 22 Q80 24 80 92 Q72 84 65 92 Q57 84 50 92 Q43 84 35 92 Q28 84 20 92Z" fill="${c}"/><circle cx="32" cy="64" r="5" fill="#ff7fa8" opacity=".7"/><circle cx="68" cy="64" r="5" fill="#ff7fa8" opacity=".7"/>${eye(40,50)}${eye(60,50)}${mouth(50,68,11,8)}`];
+  return`<svg viewBox="0 0 100 100" aria-hidden="true">${B[kind%8]}</svg>`}
+const monHTML=(slot,c,cls="")=>`<div class="mon ${cls}" data-s="${slot}" style="--c:${c}">${monsterSVG(slot,c)}</div>`;
+function setMusicOn(on){ST.mus=on;saveST();if(AUD.musicGain&&ac)AUD.musicGain.gain.setTargetAtTime(on?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0,ac.currentTime,.2)}
 function setVoiceOn(on){ST.vo=on;saveST();if(!on&&AUD.voice){try{AUD.voice.stop()}catch(e){}}}
 // Called whenever the host screen enters a new phase.
 function onPhase(){
   const ph=H.ph,G=H.game;
   const GG=G?GAMES[G]:null,thinking=["lie","choose","draw","ask","vote","guess","pick"].includes(ph)||!!(GG&&(GG.timed||[]).includes(ph));
-  if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(thinking?"music_thinking":"music_lobby");
+  if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(ph==="menu"||ph==="lobby"?"choir":thinking?"music_thinking":"music_lobby");
   if(ph==="menu"){playVO(AUD.welcomed?VO.menu:VO.welcome);AUD.welcomed=true}
   else if(ph==="lobby")playVO(VO.intro[G]);
   else if(ph==="lie"){const p=playVO(G==="arsimha"?VO.dlie:(G==="fabraka"&&FAB.m()===3?VO.final:VO.lie));
@@ -476,7 +521,7 @@ function fitStage(){const w=innerWidth,h=innerHeight,portrait=h>w*1.05;
   const r=document.documentElement.style;r.setProperty("--sh",h/z+"px");r.setProperty("--sw",w/z+"px");
   document.body.classList.toggle("portrait",portrait);document.body.classList.add("bigscreen")}
 function startHost(snap){
-  role="host";if(CFG.debug){window.__H=H;window.__G=GAMES}
+  role="host";if(CFG.debug){window.__H=H;window.__G=GAMES;window.__C=CHOIR}
   fitStage();addEventListener("resize",()=>{fitStage();if(H.ph==="menu"&&H.wheel.dark&&H.wheel.sel)spotOn(H.wheel.sel,0)});
   if(snap&&snap.H){Object.assign(H,snap.H,{lastView:"",lastKey:""});H.k++; // new step number: stale phone actions are ignored
     if(H.ph==="topic"){const G=GAMES[H.game],t=H.g.topic;H.g.afterTopic=G&&G.afterTopic?()=>G.afterTopic(t):null;if(!H.g.afterTopic)goMenu()}
@@ -501,6 +546,8 @@ function hostTick(){
   // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
+  if(H.ph==="menu"||H.ph==="lobby"){choirMix();H.sing=H.sing||{};
+    H.order.forEach((id,s)=>{const a=actOf(id);if(a&&a.sing&&a.sing!==H.sing[id]){H.sing[id]=a.sing;if(s<CHOIR.n)choirShout(s)}})}
   // paused: the clock stands still and the game waits
   if(H.paused){H.end=now+H.pauseLeft;publish();renderHost();return}
   if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
@@ -636,7 +683,8 @@ function joinPanel(){
   </div>`;
 }
 const kickRow=ids=>`<div class="troupe">${ids.map((id,i)=>`<div class="kickwrap">${plHTML(id,"",i)}<button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`).join("")}</div>`;
-const rosterHTML=()=>H.order.length?kickRow(H.order):`<p class="note center">ولا أحد دخل للحين… وين الشباب؟</p>`;
+const monRow=ids=>`<div class="monrow">${ids.map(id=>{const s=H.order.indexOf(id);return`<div class="kickwrap monwrap" style="--i:${s}">${monHTML(s,col(id))}<span class="monname">${esc(nm(id))}</span><button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`}).join("")}</div>`;
+const rosterHTML=()=>H.order.length?monRow(H.order):`<p class="note center">ولا أحد دخل للحين… كل واحد يدخل يطلع له وحش يغني 🎤</p>`;
 function renderHost(){
   const key=[H.game,H.ph,H.k,H.g.rvI,H.paused?1:0,(H.kicked||[]).length].join("|");
   if(key===H.lastKey){
@@ -1060,8 +1108,10 @@ function renderPlayer(){
   ME.lastKey=key;ME.padSend=null;ME.autoSend=null;
   if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=MAXP?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
   const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
-  if(v.ph==="menu"){root.innerHTML=head+`<div class="emoji">${f}</div><p class="big">أنت داخل!</p><p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;return}
-  if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<div class="emoji">${G?G.emoji:f}</div><p class="big">${G?G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>`;return}
+  const myMon=()=>{const s=(v.order||[]).indexOf(myPeer);return s<0?"":`<div class="mymon">${monHTML(s,COLORS[s%8],"big")}<button class="btn sing" id="singBtn">🎤 غنّ!</button><p class="note center">وحشك يغني على الشاشة الكبيرة 🎶</p></div>`};
+  const wireSing=()=>{const b=$("singBtn");if(b)b.onclick=()=>{sendAct({k:v.k,sing:Date.now()});const m=root.querySelector(".mymon .mon");if(m){m.classList.remove("shout");void m.offsetWidth;m.classList.add("shout")}}};
+  if(v.ph==="menu"){root.innerHTML=head+`<p class="big">أنت داخل!</p>${myMon()}<p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;wireSing();return}
+  if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<p class="big">${G?G.emoji+" "+G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>${myMon()}`;wireSing();return}
   if(v.ph==="pick"){
     if(v.picker===myPeer){root.innerHTML=head+`<h2 style="font-size:30px">اختر الموضوع 👇</h2>${tline}<div class="tgrid">${(v.cats||[]).map((cc,i)=>{const t=theme(cc);return`<button class="pbtn tbtn" data-i="${i}" style="--a:${t.a};--b:${t.b}"><span>${t.e}</span>${esc(cc)}</button>`}).join("")}</div>`;
       root.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,pick:+b.dataset.i});root.querySelectorAll("[data-i]").forEach(x=>x.disabled=true)})}
