@@ -171,8 +171,13 @@ const VO={welcome:["welcome_1"],menu:["welcome_2"],ready:["players_ready"],
   truthIntro:["truth_1"],truth:["truth_2"],notruth:["no_truth"],caught:["caught"],escaped:["escaped"],guess:["guess_last"],artist:["artist_win"],
   scores:["scores_1","scores_2"],final:["final_round"],winner:["winner"],again:["play_again"]};
 const AUD={buf:{},voice:null,busyUntil:0,music:null,musicKey:null,musicGain:null,last:{},lastPhase:"",welcomed:false};
-// waiting background (menu and game lobby), looping: the owner's file in the private edition
-const WAIT_BG=CFG.edition==="commercial"?"music_lobby":"bg_wait";
+// background tracks (private edition): the main one loops in the menu and the game lobby; each game has its own
+// track for the whole game, which continues from where it stopped (it pauses for reveals and the end)
+const PRIV=CFG.edition!=="commercial";
+const WAIT_BG=PRIV?"bg/main":"music_lobby";
+const GAME_MUSIC=PRIV?{huroof:"bg/tabarka",fabraka:"bg/track4",sahkidb:"bg/track4",sawalif:"bg/ramadan",insan:"bg/ramadan",
+  arsimha:"bg/track10",maksoora:"bg/track10",muhami:"bg/faseero",qissa:"bg/faseero",latidhak:"bg/kandari",mumathil:"bg/kandari",
+  emoji:"bg/doowop",lisan:"bg/doowop",shakli:"bg/hza",xo:"bg/hza",mazad:"bg/track4"}:{};
 const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win","huroof_win",WAIT_BG])];
 function loadAudio(key){
   if(!AUD.buf[key])AUD.buf[key]=fetch("/audio/"+key+".mp3").then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()})
@@ -206,12 +211,14 @@ function duck(at,dur){
   g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
 async function music(key){
   if(!ac||AUD.musicKey===key)return;
-  AUD.musicKey=key;
+  const prev=AUD.musicKey;AUD.musicKey=key;
   const old=AUD.music,oldG=AUD.musicGain;
+  if(old&&prev&&old.buffer){AUD.pos=AUD.pos||{};AUD.pos[prev]=((ac.currentTime-old._t0)%old.buffer.duration+old.buffer.duration)%old.buffer.duration}
   if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}
   AUD.music=null;AUD.musicGain=null;
   if(!key)return;const b=await loadAudio(key);if(!b||AUD.musicKey!==key)return;
-  const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.loop=true;g.gain.value=0;src.connect(g).connect(ac.destination);src.start();
+  const off=(AUD.pos&&AUD.pos[key])||0;
+  const src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;src.loop=true;g.gain.value=0;src.connect(g).connect(ac.destination);src.start(0,off);src._t0=ac.currentTime-off;
   g.gain.setTargetAtTime(ST.mus?MUSIC_LEVEL:0,ac.currentTime,.6);AUD.music=src;AUD.musicGain=g;
 }
 /* Monsters: every player in the room is an original monster on the big screen (pictures only,
@@ -243,7 +250,7 @@ function setVoiceOn(on){ST.vo=on;saveST();if(!on&&AUD.voice){try{AUD.voice.stop(
 function onPhase(){
   const ph=H.ph,G=H.game;
   const GG=G?GAMES[G]:null,thinking=["lie","choose","draw","ask","vote","guess","pick"].includes(ph)||!!(GG&&(GG.timed||[]).includes(ph));
-  if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(ph==="menu"||ph==="lobby"?WAIT_BG:thinking?"music_thinking":"music_lobby");
+  if(ph==="reveal"||ph==="tally"||ph==="end")music(null);else music(ph==="menu"||ph==="lobby"?WAIT_BG:GAME_MUSIC[G]||(thinking?"music_thinking":"music_lobby"));
   if(ph==="menu"){playVO(AUD.welcomed?VO.menu:VO.welcome);AUD.welcomed=true}
   else if(ph==="lobby")playVO(VO.intro[G]);
   else if(ph==="lie"){const p=playVO(G==="arsimha"?VO.dlie:(G==="fabraka"&&FAB.m()===3?VO.final:VO.lie));
@@ -611,7 +618,7 @@ function leadCtl(ps){const id=leadId();if(!id)return;const p=ps.find(x=>x.peer==
     case"again":if(H.ph==="end"&&H.game)pickGame(H.game);break;
     case"menu":if(H.ph!=="menu")goMenu();break;
   }}
-function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
+function pickGame(id){if(ac&&GAME_MUSIC[id])loadAudio(GAME_MUSIC[id]);if(AUD.pos&&GAME_MUSIC[id]&&H.game!==id)delete AUD.pos[GAME_MUSIC[id]];H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
 function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
 function settle(){if(CFG.edition==="commercial")return;
