@@ -202,9 +202,9 @@ const MUSIC_LEVEL=.45;
 function duck(at,dur){if(YTB.ready&&!YTB.failed&&YTB.want){YTB.duckUntil=performance.now()+(dur+.3)*1000;ytApply();setTimeout(ytApply,(dur+.35)*1000)}
   const g=AUD.musicGain;if(!g)return;const lvl=ST.mus?MUSIC_LEVEL*(AUD.musicKey==="choir"?1.6:1):0;
   g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(lvl*.25,at,.08);g.gain.setTargetAtTime(lvl,at+dur+.1,.4)}
-/* Background sound from a YouTube video (private edition): a hidden player on the big screen.
-   Fades in and out, gets quiet under the host's voice, softer while people think, pauses on reveals
-   and continues from the same spot. If it can't load, the game's own sounds are used instead. */
+/* Waiting background (menu and game lobby) from a YouTube video (private edition): a hidden player
+   on the big screen that loops. Fades in and out, gets quiet under the host's voice, pauses while a
+   game is played and continues from the same spot. If it can't load, the monster choir plays instead. */
 const BG_YT=CFG.edition==="commercial"?null:"bQNuigI_DYs";
 const YTB={p:null,ready:false,failed:!BG_YT,loading:false,want:0,cur:0,duckUntil:0,tm:null,playing:false};
 function ytFail(){if(YTB.failed)return;YTB.failed=true;const k=AUD.musicKey;AUD.musicKey=null;if(k)music(k)}
@@ -214,7 +214,8 @@ function ytLoad(){if(YTB.loading||YTB.failed)return;YTB.loading=true;
   window.onYouTubeIframeAPIReady=()=>{try{YTB.p=new YT.Player(host,{videoId:BG_YT,width:200,height:120,
     playerVars:{autoplay:0,controls:0,loop:1,playlist:BG_YT,playsinline:1,disablekb:1,rel:0,iv_load_policy:3,fs:0},
     events:{onReady:()=>{YTB.ready=true;YTB.p.setVolume(0);ytApply()},onError:ytFail,
-      onStateChange:e=>{YTB.playing=e.data===1}}})}catch(e){ytFail()}};
+      // when it ends, start again from the top (loop)
+      onStateChange:e=>{YTB.playing=e.data===1;if(e.data===0&&YTB.want>0){YTB.p.seekTo(0,true);YTB.p.playVideo()}}}})}catch(e){ytFail()}};
   const sc=document.createElement("script");sc.src="https://www.youtube.com/iframe_api";sc.onerror=ytFail;document.head.appendChild(sc);
   setTimeout(()=>{if(!YTB.ready)ytFail()},12000)}
 // move the volume smoothly toward where it should be
@@ -227,9 +228,10 @@ function ytApply(){if(!YTB.ready||YTB.failed)return;clearInterval(YTB.tm);
 async function music(key){
   if(!ac||AUD.musicKey===key)return;
   if(BG_YT&&!YTB.failed){
-    if(key&&["choir","music_lobby","music_thinking"].includes(key)){AUD.musicKey=key;
+    // the video is the waiting background (menu and game lobby), looping; games keep their own sounds
+    if(key==="choir"){AUD.musicKey=key;
       const old=AUD.music,oldG=AUD.musicGain;if(oldG){oldG.gain.setTargetAtTime(0,ac.currentTime,.3);setTimeout(()=>{try{old.stop()}catch(e){}},1500)}AUD.music=null;AUD.musicGain=null;
-      YTB.want=key==="music_thinking"?26:42;ytLoad();ytApply();monIdle();return}
+      YTB.want=42;ytLoad();ytApply();monIdle();return}
     YTB.want=0;ytApply()}
   AUD.musicKey=key;
   const old=AUD.music,oldG=AUD.musicGain;
