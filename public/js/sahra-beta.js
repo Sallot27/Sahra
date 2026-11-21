@@ -932,6 +932,14 @@ B.push(K=>{
   const goal=(nt,t)=>nt===3?"يوصل الأضلاع الثلاثة":t===0?"يربط يمين ↔ يسار":"يربط فوق ↕ تحت";
   // the win song plays in full, for a gem and for a board win
   const winMusic=()=>K.playSting("huroof_win",sfx.applause);
+  // the show host's own voice (private edition): clips cut from episodes of the TV show, listed in index.json
+  // {L:{letter:[[file,secs],…]}, correct:[…], wrong:[…], timeup:[…], buzz:[…], gem:[…], gemwin:[…], start:[…], boardwin:[…]}
+  const HV={m:null,last:{}};
+  const hvLoad=()=>{if(K.commercial||HV.m)return;HV.m={};fetch("/audio/huroof_vo/index.json").then(r=>r.ok?r.json():{}).then(j=>{HV.m=j||{}}).catch(()=>{})};
+  // plays a clip of that kind (and letter), never the same one twice in a row; returns its length in seconds (0 = none)
+  function hv(cat,L){if(!K.voOn()||!HV.m)return 0;const list=L?(HV.m.L||{})[L]:HV.m[cat];if(!list||!list.length)return 0;
+    const key=L?"L"+L:cat,c=list.length>1?list.filter(x=>x[0]!==HV.last[key]):list,x=c[Math.floor(Math.random()*c.length)];
+    HV.last[key]=x[0];K.playSting("huroof_vo/"+x[0]);return x[1]}
   return{
     id:"huroof",name:"حروف",emoji:"🔠",color:"#22a052",min:2,
     desc:"لوحة حروف مثل البرنامج المشهور: فريقين أو ثلاثة، تضغطون الجرس وتجاوبون، وتحت بعض الحروف جواهر 💎",
@@ -940,7 +948,7 @@ B.push(K=>{
     winTitle:"بطل الحروف!",likeTitle:"",
     timed:["hq","hans"],
     options:[K.roundsOpt([1,2,3],1,"عدد اللوحات"),{key:"teams",label:"عدد الفرق",choices:[["2","فريقين"],["3","ثلاث فرق"]],def:"2"}],
-    start(){const pl=shuffle([...H.order]),nt=K.opt("teams")==="3"&&pl.length>=3?3:2;
+    start(){hvLoad();setTimeout(()=>hv("start"),700);const pl=shuffle([...H.order]),nt=K.opt("teams")==="3"&&pl.length>=3?3:2;
       const g=H.g={pl,nt,team:{},rot:0,cap:[0,0,0],usedQ:[],boards:K.opt("r"),bn:0,wins:[0,0,0],tp:[0,0,0]};
       pl.forEach((id,i)=>g.team[id]=i%nt);this.newBoard()},
     newBoard(){const g=H.g,G=geo(g.nt);g.bn++;g.own=Array(G.n).fill(null);g.n=0;g.done=undefined;g.bp=[0,0,0];g.log=[];g.catN={};
@@ -971,7 +979,10 @@ B.push(K=>{
     ask(cell,retry){const g=H.g,L=g.letters[cell];
       g.wasNum=!retry&&g.num[cell]&&!g.shown[cell]?g.num[cell]:(retry?g.wasNum:0);g.shown[cell]=true;
       g.cell=cell;g.q={L,...this.chooseQ(L)};g.truths=[g.q.a,...g.q.alt].map(norm);g.winner=null;g.locked=[];g.buzzer=null;g.tried=[];
-      g.qTry=retry?g.qTry+1:1;H.ph="hcat";H.k++;setTimer(g.wasNum&&!retry?4:3);sfx.swoosh();
+      g.qTry=retry?g.qTry+1:1;H.ph="hcat";H.k++;sfx.swoosh();
+      // the host says the letter (after his opening line on the very first question)
+      const first=g.n===0&&g.bn===1&&!retry;if(!retry)setTimeout(()=>hv(null,L),first?2600:250);
+      setTimer(Math.max(g.wasNum&&!retry?4:3,first?5:0));
       H.quip=g.wasNum&&!retry?`رقم ${fmt(g.wasNum)}… طلع حرف «${L}»! والسؤال في:`:`حرف «${L}»… والسؤال في:`},
     openBuzz(secs){const g=H.g;g.buzzer=null;H.ph="hq";H.k++;setTimer(secs);sfx.tada();
       H.quip=g.locked.length?`الفرصة للفريق ${g.locked.length===g.nt-1?TEAM[[0,1,2].find(t=>t<g.nt&&!g.locked.includes(t))]:"الثاني"}! اضغطوا الجرس 🔔`:"اللي يعرف الجواب يضغط الجرس 🔔"},
@@ -983,7 +994,7 @@ B.push(K=>{
       else if(H.ph==="hq"){
         // first press of the buzzer from a team that hasn't missed yet
         const presses=g.pl.filter(id=>active().includes(id)&&!g.locked.includes(g.team[id])).map(id=>[id,K.act(id)]).filter(([,a])=>a&&a.buzz);
-        if(presses.length){presses.sort((x,y)=>(x[1].t||0)-(y[1].t||0));g.buzzer=presses[0][0];H.ph="hans";H.k++;setTimer(7);sfx.coin();
+        if(presses.length){presses.sort((x,y)=>(x[1].t||0)-(y[1].t||0));g.buzzer=presses[0][0];H.ph="hans";H.k++;setTimer(7);sfx.coin();setTimeout(()=>hv("buzz"),350);
           H.quip=`${nm(g.buzzer)} ضغط الجرس! يلا جاوب ⏱️`;return}
         if(now>H.end||g.forceSkip){g.forceSkip=false;this.swap()}}
       else if(H.ph==="hswap"){if(now>H.end)this.ask(g.cell,true)}
@@ -997,26 +1008,28 @@ B.push(K=>{
       else if(H.ph==="hend"&&g.forceSkip){g.forceSkip=false;H.end=0}
       else if(H.ph==="hend"){if(now>H.end){if(g.bn<g.boards)this.newBoard();else K.finishGame()}}},
     // wrong answer (or no answer): that team is out for this letter, the others get a chance
-    miss(){const g=H.g;sfx.lie();g.locked.push(g.team[g.buzzer]);
+    miss(){const g=H.g;sfx.lie();setTimeout(()=>hv("wrong"),300);g.locked.push(g.team[g.buzzer]);
       const left=[...Array(g.nt).keys()].filter(t=>!g.locked.includes(t)&&this.members(t).length);
       if(left.length)this.openBuzz(12);else this.swap()},
     // nobody got it: a new question on the same letter (up to 3 per letter, then move on)
-    swap(){const g=H.g;if(g.qTry>=3)return this.resolve();g.prevQ=g.q;H.ph="hswap";H.k++;setTimer(4);sfx.swoosh();H.quip=`ولا أحد عرفها… سؤال ثاني بحرف «${g.q.L}»!`},
+    swap(){const g=H.g;if(!g.tried.length||H.ph==="hq")hv("timeup");if(g.qTry>=3)return this.resolve();g.prevQ=g.q;H.ph="hswap";H.k++;setTimer(4);sfx.swoosh();H.quip=`ولا أحد عرفها… سؤال ثاني بحرف «${g.q.L}»!`},
     resolve(){const g=H.g;g.n++;g.gemNow=false;
       if(g.winner){const t=g.team[g.winner],gem=g.gems.includes(g.cell),pts=gem?GEM_PTS:LETTER_PTS;
         g.own[g.cell]=t;g.tp[t]+=pts;g.bp[t]+=pts;C.add(g.winner,pts);g.gained=pts;
         g.log.push({L:g.q.L,q:g.q.q,a:g.q.a,by:g.winner,t,gem});
-        if(gem){g.gemNow=true;g.gemFound.push(g.cell);winMusic();confetti()}else sfx.applause();
+        // gem: the host says it's a golden letter, then the whole win song; otherwise "صحيح" and applause
+        if(gem){g.gemNow=true;g.gemFound.push(g.cell);const d=hv("gem");g.gemDelay=d?d+.3:0;setTimeout(winMusic,g.gemDelay*1000);confetti()}
+        else{hv("correct");setTimeout(sfx.applause,500)}
         if(won(geo(g.nt),g.own,g.nt,t))g.done=t}
       else sfx.lie();
       if(g.done===undefined&&(g.own.every(o=>o!==null)||g.n>=45))g.done=this.leader();
       // a gem: stay on the answer until the whole win song has played, then back to the board
-      H.ph="hres";H.k++;setTimer(g.gemNow?WIN_SONG:4)},
+      H.ph="hres";H.k++;setTimer(g.gemNow?WIN_SONG+(g.gemDelay||0):4)},
     // board ended without a chain: the team with most points on this board takes it
     leader(){const g=H.g,b=g.bp.slice(0,g.nt),m=Math.max(...b);return b.filter(x=>x===m).length===1&&m>0?b.indexOf(m):null},
     finish(t){const g=H.g;g.done=t;
-      if(t!==null&&t!==undefined){g.wins[t]++;g.tp[t]+=BOARD_PTS;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,BOARD_PTS)});winMusic();sfx.truth();confetti()}
-      H.ph="hend";H.k++;setTimer(Math.max(t!==null&&t!==undefined?WIN_SONG:0,Math.min(30,12+g.log.length*1.2)))},
+      let bd=0;if(t!==null&&t!==undefined){g.wins[t]++;g.tp[t]+=BOARD_PTS;g.pl.forEach(id=>{if(g.team[id]===t)C.add(id,BOARD_PTS)});const d=hv("boardwin");bd=d?d+.3:0;setTimeout(winMusic,bd*1000);sfx.truth();confetti()}
+      H.ph="hend";H.k++;setTimer(Math.max(t!==null&&t!==undefined?WIN_SONG+bd:0,Math.min(30,12+g.log.length*1.2)))},
     doneMap(){return null},
     after(){const b=document.getElementById("hxRand");if(b)b.onclick=()=>{H.g.forceSkip=true}},
     view(v){const g=H.g;if(!g.letters)return;v.lab=this.labs();v.own=g.own;v.team=g.team;v.picker=g.picker;v.nt=g.nt;v.gems=g.gemFound;v.tp=g.tp;
