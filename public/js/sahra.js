@@ -587,6 +587,7 @@ function hostTick(){
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
   if(H.ph==="menu"||H.ph==="lobby"){choirMix();H.sing=H.sing||{};
     H.order.forEach((id,s)=>{const a=actOf(id);if(a&&a.sing&&a.sing!==H.sing[id]){H.sing[id]=a.sing;if(s<CHOIR.n)choirShout(s)}})}
+  leadCtl(ps);
   // paused: the clock stands still and the game waits
   if(H.paused){H.end=now+H.pauseLeft;publish();renderHost();return}
   if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
@@ -610,6 +611,9 @@ function publish(){
   if(H.game&&GAMES[H.game].view)GAMES[H.game].view(v);
   if(H.game&&GAMES[H.game].themeName)v.theme=GAMES[H.game].themeName()||null;
   if(H.ph==="topic"){v.topic=H.g.topic;v.picker=H.g.pickedBy}
+  v.lead=leadId();if(v.lead){if(H.ph==="menu"){v.sel=H.wheel.sel||null;if(H.wheel.spinning)v.spin=1}
+    if(H.ph==="lobby"){v.op={};(GAMES[H.game].options||[]).forEach(o=>v.op[o.key]=opt(o.key));v.bots=BOTS.length;v.botMax=Math.max(0,Math.min(6,8-H.order.filter(id=>!isBot(id)).length))}
+    if(canSkip())v.skip=1;if(inPlay())v.inplay=1}
   if(["scores","end","reveal","tally","result"].includes(H.ph))v.sc=H.sc;
   const s=JSON.stringify(v);if(s===H.lastView)return;H.lastView=s;
   room.presence(v).catch(()=>{});
@@ -644,6 +648,25 @@ function kickPlayer(id){const bi=BOTS.findIndex(b=>botPeer(b)===id);if(bi>=0){BO
   let t=null;try{t=JSON.parse(sessionStorage.getItem("sahra_host")||"{}").t}catch(_){}
   if(t&&/^p-/.test(id))api("POST","/rooms/"+ST.code+"/kick",{host_token:t,uid:id.slice(2)}).catch(()=>{});
   H.lastKey="";sfx.pop()}
+// the first phone in the room (not a bot) is the controller: it can do from the phone what the big screen's buttons do
+const isBot=id=>BOTS.some(b=>botPeer(b)===id);
+const leadId=()=>H.order.find(id=>!isBot(id))||null;
+function canSkip(){const G=H.game?GAMES[H.game]:null;return!H.paused&&!!H.game&&(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")}
+function leadCtl(ps){const id=leadId();if(!id)return;const p=ps.find(x=>x.peer===id),c=p&&P(p).ctl;
+  if(!c||typeof c!=="object"||typeof c.n!=="number"||c.n===H._ctlN||c.k!==H.k)return;H._ctlN=c.n;initAudio();
+  const G=H.game?GAMES[H.game]:null;
+  switch(c.c){
+    case"pick":if(H.ph==="menu"&&!H.wheel.spinning&&GAMES[c.g]&&!HIDDEN_GAMES.has(c.g)){H.wheel.sel=c.g;pickGame(c.g)}break;
+    case"rand":if(H.ph==="menu"){if(!$("shelf"))goMenu();wheelSpin()}break;
+    case"play":if(H.ph==="menu"&&!H.wheel.spinning&&H.wheel.sel)pickGame(H.wheel.sel);break;
+    case"opt":if(H.ph==="lobby"&&G){const o=(G.options||[]).find(x=>x.key===c.o),ch=o&&o.choices.find(x=>String(x[0])===String(c.v));if(ch){setOpt(o.key,ch[0]);H.lastKey="";sfx.pop()}}break;
+    case"bots":if(H.ph==="lobby"&&Number.isInteger(c.v)&&c.v>=0&&c.v<=6)setBots(c.v);break;
+    case"start":if(H.ph==="lobby"&&G&&H.order.length>=G.min)startGame();break;
+    case"skip":if(canSkip()&&Date.now()-(H._skipAt||0)>1500){H._skipAt=Date.now();skipNow(true)}break;
+    case"pause":if(inPlay())setPaused(!H.paused);break;
+    case"again":if(H.ph==="end"&&H.game)pickGame(H.game);break;
+    case"menu":if(H.ph!=="menu")goMenu();break;
+  }}
 function pickGame(id){H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
 function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
@@ -796,7 +819,7 @@ function renderHost(){
   }else if(H.ph==="topic"){
     body=`<div class="landing"><p class="lbl">الموضوع</p>${topicCardHTML(H.g.topic,"land")}${H.g.pickedBy?`<p class="note" style="font-size:20px">اختاره ${esc(nm(H.g.pickedBy))}</p>`:""}</div>`;
   }else body=G.render();
-  const skip=!H.paused&&(["pick","lie","choose","scores","draw","ask","vote","guess"].includes(H.ph)||(G&&(G.timed||[]).includes(H.ph)))&&!(H.game==="sawalif"&&H.ph==="ask")?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
+  const skip=canSkip()?`<div class="row"><button class="btn ghost" id="skipBtn">تخطَّ الوقت ⏭</button></div>`:"";
   root.innerHTML=bar+body+skip;
   root.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{initAudio();wheelSelect(b.dataset.g)});
   const sp=$("spinBtn");if(sp)sp.onclick=()=>{initAudio();wheelSpin()};
@@ -1133,11 +1156,25 @@ function startPlayer(){
   setTimeout(renderPlayer,50);setInterval(renderPlayer,500);
 }
 function sendAct(a){room.presence({act:a}).catch(()=>{})}
+function sendCtl(c,v){room.presence({ctl:{...c,k:v.k,n:Date.now()}}).catch(()=>{});try{navigator.vibrate&&navigator.vibrate(15)}catch(_){}}
 function hostView(){
   const hs=peers().filter(p=>P(p).role==="host");
   if(!myPeer){const me=peers().find(p=>p.sameTab);if(me)myPeer=me.peer}
   return hs.length?P(hs[0]):null;
 }
+// the controller's small bar during a game: skip, pause, back to the menu (two taps), play again at the end
+const armed=()=>Date.now()-(ME.armAt||0)<3000;
+function leadBar(v,lead){let bar=$("leadbar");
+  const show=lead&&v&&(v.inplay||v.ph==="end");
+  if(!show){if(bar)bar.remove();ME.lbKey="";return}
+  const key=[v.k,v.ph,!!v.skip,!!v.paused].join("|");if(bar&&ME.lbKey===key)return;ME.lbKey=key;
+  if(!bar){bar=document.createElement("div");bar.id="leadbar";document.body.appendChild(bar)}
+  bar.innerHTML=v.ph==="end"?`<button class="lb coral" data-lc="again">🔁 مرة ثانية</button><button class="lb" data-lc="menu">🎮 لعبة ثانية</button>`
+    :`${v.skip?`<button class="lb" data-lc="skip">⏭ تخطَّ</button>`:""}<button class="lb" data-lc="pause">${v.paused?"▶ كمّل":"⏸ وقّف"}</button><button class="lb ghost" data-lc="menu" data-two="1">${armed()?"متأكد؟ اضغط مرة ثانية":"↩ القائمة"}</button>`;
+  bar.querySelectorAll("[data-lc]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.two&&!armed()){ME.armAt=Date.now();b.textContent="متأكد؟ اضغط مرة ثانية";setTimeout(()=>{if(b.isConnected&&!armed())b.textContent="↩ القائمة"},3100);return}
+    if(b.dataset.two)ME.armAt=0;
+    sendCtl({c:b.dataset.lc},v);b.disabled=true;setTimeout(()=>{if(b.isConnected)b.disabled=false},1600)})}
 function renderPlayer(){
   if(ME.lost)return;
   const v=hostView();root.className="wrap narrow";
@@ -1148,8 +1185,8 @@ function renderPlayer(){
   if(!v){if(ME.lastKey!=="none"){ME.lastKey="none";root.innerHTML=head+`<div class="emoji">📡</div><p class="big">بانتظار الشاشة الكبيرة…</p>`}return}
   if(myPeer&&Array.isArray(v.kick)&&v.kick.includes(myPeer)){ME.lost=true;rememberKick(ST.code);try{pusher&&pusher.disconnect()}catch(_){}
     root.innerHTML=`<div class="emoji">🚪</div><p class="big">تم إخراجك من الغرفة</p><p class="note center">المضيف أخرجك من هذي السهرة.</p><a class="btn wide" href="/" style="text-align:center;text-decoration:none">الصفحة الرئيسية</a>`;return}
-  if(v.paused){if(ME.lastKey!=="paused"){ME.lastKey="paused";root.innerHTML=head+`<div class="emoji">⏸️</div><p class="big">اللعبة متوقفة</p><p class="note center">استريحوا شوي… بنكمل من نفس المكان 😌</p>`}return}
-  const key=[v.game,v.ph,v.k,v.rvI,idx>=0].join("|");
+  if(v.paused){leadBar(v,v.lead===myPeer);if(ME.lastKey!=="paused"){ME.lastKey="paused";root.innerHTML=head+`<div class="emoji">⏸️</div><p class="big">اللعبة متوقفة</p><p class="note center">استريحوا شوي… بنكمل من نفس المكان 😌</p>`}return}
+  const key=[v.game,v.ph,v.k,v.rvI,idx>=0,v.lead===myPeer?[v.ph==="menu"?[v.sel,v.spin]:"",v.ph==="lobby"?[JSON.stringify(v.op||{}),v.bots,v.botMax,(v.order||[]).length]:""].join("/"):""].join("|");
   if(key===ME.lastKey){
     if(v.ph==="lie"&&$("perr")){const bad=v.bad&&v.bad[myPeer]===ME.n&&ME.n>0;const done=(v.done||[]).includes(myPeer);
       if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"",true)}
@@ -1167,6 +1204,26 @@ function renderPlayer(){
   const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
   const myMon=()=>{const s=(v.order||[]).indexOf(myPeer);return s<0?"":`<div class="mymon">${monHTML(s,COLORS[s%8],"big")}<button class="btn sing" id="singBtn">🎤 غنّ!</button><p class="note center">وحشك يغني على الشاشة الكبيرة 🎶</p></div>`};
   const wireSing=()=>{const b=$("singBtn");if(b)b.onclick=()=>{sendAct({k:v.k,sing:Date.now()});const m=root.querySelector(".mymon .mon");if(m){m.classList.remove("shout");void m.offsetWidth;m.classList.add("shout")}}};
+  const lead=v.lead===myPeer;leadBar(v,lead);
+  if(lead&&v.ph==="menu"){const gs=wheelGames(),sel=v.sel&&GAMES[v.sel];
+    root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف: اختر اللعبة من هنا</p>
+      ${sel&&!v.spin?`<button class="btn coral wide" id="lcPlay">يلا نلعب ${sel.emoji} ${esc(sel.name)} ▶</button>`:""}
+      <button class="btn wide" id="lcRand" ${v.spin?"disabled":""}>${v.spin?"🔦 الإضاءة تختار…":"🎲 اختيار عشوائي"}</button>
+      <div class="lcgames">${gs.map(g=>`<button class="lcg" data-lg="${g.id}" style="--g:${g.color}" ${v.spin?"disabled":""}><span>${g.emoji}</span>${esc(g.name)}</button>`).join("")}</div>`;
+    root.querySelectorAll("[data-lg]").forEach(b=>b.onclick=()=>{sendCtl({c:"pick",g:b.dataset.lg},v);root.querySelectorAll(".lcg").forEach(x=>x.disabled=true)});
+    $("lcRand").onclick=e=>{e.target.disabled=true;sendCtl({c:"rand"},v)};const lp=$("lcPlay");if(lp)lp.onclick=()=>{lp.disabled=true;sendCtl({c:"play"},v)};return}
+  if(lead&&v.ph==="lobby"&&GAMES[v.game]){const G=GAMES[v.game],n=(v.order||[]).length,op=v.op||{};
+    const seg=(label,items)=>`<div class="optrow"><span>${label}</span><div class="seg">${items}</div></div>`;
+    root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف</p><p class="big">${G.emoji} ${esc(G.name)}</p>
+      <div class="col">
+      ${seg("🤖 بوتات",[...Array((v.botMax||0)+1).keys()].map(i=>`<button class="segb" data-lb="${i}" aria-pressed="${(v.bots||0)===i}">${i?fmt(i):"بدون"}</button>`).join(""))}
+      ${(G.options||[]).map(o=>seg(esc(o.label),o.choices.map(([val,l])=>`<button class="segb" data-lo="${esc(o.key)}" data-lv="${esc(String(val))}" aria-pressed="${String(op[o.key])===String(val)}">${esc(l)}</button>`).join(""))).join("")}
+      <button class="btn coral wide" id="lcStart" ${n<G.min?"disabled":""}>يلا نبدأ!</button>
+      ${n<G.min?`<p class="note center">تحتاج ${fmt(G.min)} لاعبين على الأقل (الحين ${fmt(n)}).</p>`:""}
+      <button class="btn ghost wide" id="lcMenu">↩ قائمة الألعاب</button></div>`;
+    root.querySelectorAll("[data-lb]").forEach(b=>b.onclick=()=>{sendCtl({c:"bots",v:+b.dataset.lb},v);root.querySelectorAll("[data-lb]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+    root.querySelectorAll("[data-lo]").forEach(b=>b.onclick=()=>{sendCtl({c:"opt",o:b.dataset.lo,v:b.dataset.lv},v);root.querySelectorAll(`[data-lo="${b.dataset.lo}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b))});
+    $("lcStart").onclick=e=>{e.target.disabled=true;e.target.textContent="جاري البدء…";sendCtl({c:"start"},v)};$("lcMenu").onclick=()=>sendCtl({c:"menu"},v);return}
   if(v.ph==="menu"){root.innerHTML=head+`<p class="big">أنت داخل!</p>${myMon()}<p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;wireSing();return}
   if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<p class="big">${G?G.emoji+" "+G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>${myMon()}`;wireSing();return}
   if(v.ph==="pick"){
