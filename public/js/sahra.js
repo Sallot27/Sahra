@@ -175,9 +175,11 @@ const AUD={buf:{},voice:null,busyUntil:0,music:null,musicKey:null,musicGain:null
 // track for the whole game, which continues from where it stopped (it pauses for reveals and the end)
 const PRIV=CFG.edition!=="commercial";
 const WAIT_BG=PRIV?"bg/main":"music_lobby";
-const GAME_MUSIC=PRIV?{huroof:"bg/tabarka",fabraka:"bg/track4",sahkidb:"bg/track4",sawalif:"bg/ramadan",insan:"bg/ramadan",
-  arsimha:"bg/track10",maksoora:"bg/track10",muhami:"bg/faseero",qissa:"bg/faseero",latidhak:"bg/kandari",mumathil:"bg/kandari",
-  emoji:"bg/doowop",lisan:"bg/doowop",shakli:"bg/hza",xo:"bg/hza",mazad:"bg/track4"}:{};
+// mixed: every new game gets a random track, never the same as the previous game's
+const GAME_TRACKS=PRIV?["bg/tabarka","bg/track4","bg/ramadan","bg/track10","bg/faseero","bg/kandari","bg/doowop","bg/hza"]:[];
+const GAME_MUSIC={};
+function shuffleTrack(id){if(!GAME_TRACKS.length)return;const last=AUD.lastTrack,c=GAME_TRACKS.filter(t=>t!==last),t=c[Math.floor(Math.random()*c.length)];
+  AUD.lastTrack=t;Object.keys(GAME_MUSIC).forEach(k=>delete GAME_MUSIC[k]);GAME_MUSIC[id]=t;if(AUD.pos)delete AUD.pos[t];if(ac)loadAudio(t)}
 const ALL_AUDIO=[...new Set([...Object.values(VO).flatMap(v=>Array.isArray(v)?v:Object.values(v).flat()),"music_lobby","music_thinking","sting_reveal","sting_win","huroof_win",WAIT_BG])];
 function loadAudio(key){
   if(!AUD.buf[key])AUD.buf[key]=fetch("/audio/"+key+".mp3").then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()})
@@ -618,7 +620,7 @@ function leadCtl(ps){const id=leadId();if(!id)return;const p=ps.find(x=>x.peer==
     case"again":if(H.ph==="end"&&H.game)pickGame(H.game);break;
     case"menu":if(H.ph!=="menu")goMenu();break;
   }}
-function pickGame(id){if(ac&&GAME_MUSIC[id])loadAudio(GAME_MUSIC[id]);if(AUD.pos&&GAME_MUSIC[id]&&H.game!==id)delete AUD.pos[GAME_MUSIC[id]];H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
+function pickGame(id){shuffleTrack(id);H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
 function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
 function settle(){if(CFG.edition==="commercial")return;
