@@ -500,10 +500,13 @@ function landing(msg,hostMsg){
     <button class="btn wide" id="hostBtn">افتح سهرة جديدة</button>
     <p class="err" id="hmsg">${hostMsg?esc(hostMsg):""}</p>
   </div>
+  ${viaQr?`<button class="btn ghost wide" id="showHost" type="button">📺 أبغى أفتح شاشة كبيرة جديدة</button>`:""}
   <footer class="homefoot note center"><span>👨‍👩‍👧 محتوى عائلي، ويُفضَّل إشراف الكبار على الأطفال دون ١٣ سنة.</span><a href="/privacy">سياسة الخصوصية وشروط الاستخدام</a></footer>`;
   $("hostBtn").onclick=async e=>{initAudio();if(CFG.hostCode){ST.hcode=clip($("hcodeIn").value,40).toUpperCase();if(!ST.hcode){$("hmsg").textContent="اكتب رمز الشراء أول.";return}saveST()}e.target.disabled=true;e.target.textContent="جاري التجهيز…";
     try{sessionStorage.removeItem("sahra_host");sessionStorage.removeItem("sahra_snap")}catch(_){}
     const err=await connect(true);if(err)return landing("",err);saveST();startHost()};
+  const dropCode=()=>{try{const u=new URL(location.href);u.searchParams.delete("code");history.replaceState(null,"",u.pathname+u.search+u.hash)}catch(_){}};
+  const sh=$("showHost");if(sh)sh.onclick=()=>{dropCode();$("hostCard").style.display="";sh.remove();$("hostCard").scrollIntoView({behavior:"smooth"})};
   const rb=$("resumeBtn");if(rb)rb.onclick=async()=>{initAudio();rb.disabled=true;rb.textContent="جاري الرجوع للسهرة…";
     const snap=resumeInfo();const err=await connect(true,true);if(err)return landing("",err);saveST();startHost(ST.code===snap.code?snap:null)};
   $("codeIn").oninput=e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"")};
@@ -525,7 +528,7 @@ function landing(msg,hostMsg){
     if(wasKicked(cd))return m.textContent="المضيف أخرجك من هذي الغرفة، فما تقدر تدخلها مرة ثانية.";
     ST.nick=nk;ST.code=cd;saveST();
     const jb=$("joinBtn");jb.disabled=true;jb.textContent="جاري الاتصال…";
-    const err=await connect(false);if(err)return landing(err);
+    const err=await connect(false);if(err){dropCode();return landing(err)}
     startPlayer();
   };
 }
