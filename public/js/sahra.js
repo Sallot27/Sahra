@@ -523,6 +523,7 @@ function startHost(snap){
     H.hold=Date.now()+4000} // wait for every phone to report back before judging "everyone answered"
   else H.quip=pick(QUIP.menu);
   preloadAudio();
+  root.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("[data-tshuf]")){teamShuffle();return}});
   root.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-kick]");if(!b)return;
     if(b.dataset.sure==="1"){kickPlayer(b.dataset.kick);return}
     b.dataset.sure="1";b.textContent="متأكد؟";b.classList.add("sure");setTimeout(()=>{if(b.isConnected){b.dataset.sure="";b.textContent="✕";b.classList.remove("sure")}},3000)});
@@ -541,6 +542,7 @@ function hostTick(){
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
   leadCtl(ps);
+  if(H.ph==="lobby")teamTick();
   // paused: the clock stands still and the game waits
   if(H.paused){H.end=now+H.pauseLeft;publish();renderHost();return}
   if(H.g&&H.g.forceSkip&&H.g._skipK!==H.k)H.g.forceSkip=false;
@@ -564,6 +566,7 @@ function publish(){
   if(H.game&&GAMES[H.game].view)GAMES[H.game].view(v);
   if(H.game&&GAMES[H.game].themeName)v.theme=GAMES[H.game].themeName()||null;
   if(H.ph==="topic"){v.topic=H.g.topic;v.picker=H.g.pickedBy}
+  if(H.ph==="lobby"&&teamCount()){tInit();v.tn=teamCount();v.tsel=H.tsel;v.tcol=H.tcol}
   v.lead=leadId();if(v.lead){if(H.ph==="menu"){v.sel=H.wheel.sel||null;if(H.wheel.spinning)v.spin=1}
     if(H.ph==="lobby"){v.op={};(GAMES[H.game].options||[]).forEach(o=>v.op[o.key]=opt(o.key));v.bots=BOTS.length;v.botMax=Math.max(0,Math.min(6,8-H.order.filter(id=>!isBot(id)).length))}
     if(canSkip())v.skip=1;if(inPlay())v.inplay=1}
@@ -620,6 +623,30 @@ function leadCtl(ps){const id=leadId();if(!id)return;const p=ps.find(x=>x.peer==
     case"again":if(H.ph==="end"&&H.game)pickGame(H.game);break;
     case"menu":if(H.ph!=="menu")goMenu();break;
   }}
+/* ===== Team picking in the lobby (games with teams) =====
+   Each phone picks a team and any member can change the team's colour. Players who don't pick
+   are spread over the teams when the game starts; 🎲 on the big screen shuffles everyone. */
+const TPAL=[{n:"الأخضر",c:"#2ee6a6",e:"🟢"},{n:"البرتقالي",c:"#ff9a3c",e:"🟠"},{n:"البنفسجي",c:"#b892ff",e:"🟣"},
+  {n:"الأزرق",c:"#4cc2ff",e:"🔵"},{n:"الأحمر",c:"#ff6b7f",e:"🔴"},{n:"الأصفر",c:"#ffd34d",e:"🟡"}];
+const teamCount=()=>{const G=H.game&&GAMES[H.game];try{return G&&G.teamN?G.teamN():0}catch(e){return 0}};
+function tInit(){H.tsel=H.tsel||{};H.tcol=H.tcol||[0,1,2];H.tseen=H.tseen||{}}
+function teamTick(){const nt=teamCount();if(!nt)return;tInit();
+  H.order.forEach(id=>{const a=actOf(id);if(!a||a.n===H.tseen[id])return;
+    if(Number.isInteger(a.tj)&&a.tj>=0&&a.tj<nt){H.tseen[id]=a.n;H.tsel[id]=a.tj;sfx.pop()}
+    else if(Array.isArray(a.tc)&&Number.isInteger(a.tc[0])&&Number.isInteger(a.tc[1])&&a.tc[0]<nt&&a.tc[1]>=0&&a.tc[1]<TPAL.length){H.tseen[id]=a.n;
+      const [t,c]=a.tc,o=H.tcol.indexOf(c);if(o>=0&&o!==t)H.tcol[o]=H.tcol[t];H.tcol[t]=c;sfx.pop()}})}
+function teamShuffle(){tInit();const nt=teamCount()||2,ids=shuffle([...H.order]);H.tsel={};ids.forEach((id,i)=>H.tsel[id]=i%nt);sfx.swoosh()}
+// the teams a game starts with: what players picked, the rest spread out, and no team left empty if it can be helped
+function teamsFor(nt,ids){tInit();const ids0=ids||H.order,team={},size=Array(nt).fill(0);
+  ids0.forEach(id=>{const t=H.tsel[id];if(Number.isInteger(t)&&t<nt){team[id]=t;size[t]++}});
+  shuffle(ids0.filter(id=>!(id in team))).forEach(id=>{const t=size.indexOf(Math.min(...size));team[id]=t;size[t]++});
+  for(let t=0;t<nt;t++)if(!size[t]){const big=size.indexOf(Math.max(...size));if(size[big]<2)break;const id=ids0.find(x=>team[x]===big);team[id]=t;size[big]--;size[t]++}
+  return team}
+const teamColors=nt=>[...Array(nt).keys()].map(t=>TPAL[(H.tcol||[0,1,2])[t]]||TPAL[t]);
+function teamsLobbyHTML(){const nt=teamCount();tInit();const cols=teamColors(nt),free=H.order.filter(id=>!(Number.isInteger(H.tsel[id])&&H.tsel[id]<nt));
+  return`<div class="tl-wrap"><div class="tl-teams">${cols.map((c,t)=>`<div class="tl-team" style="--c:${c.c}"><b>${c.e} الفريق ${c.n}</b><div>${H.order.filter(id=>H.tsel[id]===t).map(id=>`<span>${plHTML(id,"",H.order.indexOf(id))}</span>`).join("")||'<small>ولا أحد للحين</small>'}</div></div>`).join("")}</div>
+    ${free.length?`<p class="note center">بدون فريق (بينقسمون تلقائياً): ${free.map(id=>esc(nm(id))).join("، ")}</p>`:""}
+    <p class="note center">📱 كل واحد يختار فريقه ولونه من جواله · <button class="btn ghost tl-shuf" data-tshuf="1">🎲 قسّم الفرق عشوائي</button></p></div>`}
 function pickGame(id){shuffleTrack(id);H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){H.sc={};H.lk={};H.order.forEach(id=>{H.sc[id]=0;H.lk[id]=0});sfx.go();playVO(VO.ready,{queue:false});GAMES[H.game].start()}
 function finishGame(){const G=GAMES[H.game];if(!(G&&G.noScore))settle();H.ph="end";H.k++;setTimeout(()=>confetti(260),300)}
@@ -710,7 +737,7 @@ function joinPanel(){
     <p class="note" style="font-size:19px">بالرمز:</p>
     <div class="code">${ST.code}</div>
     ${qrHTML()}
-    <div id="dyn" class="still" style="min-height:96px;display:flex;align-items:center;justify-content:center">${rosterHTML()}</div>
+    <div id="dyn" class="still" style="min-height:96px;display:flex;align-items:center;justify-content:center">${H.ph==="lobby"&&teamCount()?teamsLobbyHTML():rosterHTML()}</div>
   </div>`;
 }
 const kickRow=ids=>`<div class="troupe">${ids.map((id,i)=>`<div class="kickwrap">${plHTML(id,"",i)}<button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`).join("")}</div>`;
@@ -722,7 +749,7 @@ function renderHost(){
     const r=$("ring");
     if(r){const t=tl(),c=2*Math.PI*42;$("ringT").textContent=t;const arc=$("ringArc");arc.setAttribute("stroke-dashoffset",c*(1-t/Math.max(1,H.total)));arc.setAttribute("stroke",t<=10?"#ff4f6d":"#ffcc33");r.classList.toggle("low",t<=10)}
     const dyn=$("dyn");
-    if(dyn){const html=H.paused&&inPlay()?kickRow(active()):(H.ph==="menu"||H.ph==="lobby")?rosterHTML():H.game&&GAMES[H.game].dyn?GAMES[H.game].dyn():"";
+    if(dyn){const html=H.paused&&inPlay()?kickRow(active()):H.ph==="lobby"&&teamCount()?teamsLobbyHTML():(H.ph==="menu"||H.ph==="lobby")?rosterHTML():H.game&&GAMES[H.game].dyn?GAMES[H.game].dyn():"";
       if(html&&dyn.dataset.h!==html){dyn.dataset.h=html;dyn.innerHTML=html}}
     const sb=$("startBtn");if(sb)sb.disabled=H.order.length<GAMES[H.game].min;
     return;
@@ -1090,6 +1117,7 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,colorOf,
   sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),autoSend:f=>{ME.autoSend=f},me:()=>myPeer,code:()=>ST.code,
+  teamsFor,teamColors,TPAL,
   commercial:CFG.edition==="commercial",voOn:()=>!!ST.vo&&!!ac,avImg,opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
@@ -1128,6 +1156,15 @@ function leadBar(v,lead){let bar=$("leadbar");
     if(b.dataset.two&&!armed()){ME.armAt=Date.now();b.textContent="متأكد؟ اضغط مرة ثانية";setTimeout(()=>{if(b.isConnected&&!armed())b.textContent="↩ القائمة"},3100);return}
     if(b.dataset.two)ME.armAt=0;
     sendCtl({c:b.dataset.lc},v);b.disabled=true;setTimeout(()=>{if(b.isConnected)b.disabled=false},1600)})}
+// phone: pick your team and its colour (lobby of a team game)
+function phoneTeamsHTML(v){if(!v.tn)return"";const me=myPeer,mine=v.tsel?v.tsel[me]:undefined,cols=[...Array(v.tn).keys()].map(t=>TPAL[(v.tcol||[0,1,2])[t]]||TPAL[t]);
+  return`<div class="tp-box"><h3>👥 اختار فريقك</h3>${cols.map((c,t)=>{const mem=(v.order||[]).filter(id=>v.tsel&&v.tsel[id]===t),inT=mine===t;
+    return`<div class="tp-team ${inT?"on":""}" style="--c:${c.c}"><div class="tp-head"><b>${c.e} الفريق ${c.n}</b>${inT?'<span class="tp-me">✓ فريقك</span>':`<button class="btn tp-join" data-tj="${t}">انضم</button>`}</div>
+      <div class="tp-mem">${mem.map(id=>`<span>${esc((v.nm&&v.nm[id])||"لاعب")}</span>`).join("")||"<small>ولا أحد للحين</small>"}</div>
+      ${inT?`<div class="tp-cols">${TPAL.map((p,i)=>`<button class="tp-c ${i===(v.tcol||[])[t]?"sel":""}" data-tc="${t},${i}" style="--c:${p.c}" aria-label="${p.n}"></button>`).join("")}</div>`:""}</div>`}).join("")}
+    ${mine===undefined?`<p class="note center">إذا ما اخترت، بتنحط في فريق تلقائياً</p>`:""}</div>`}
+function wireTeams(v){root.querySelectorAll("[data-tj]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,tj:+b.dataset.tj,n:Date.now()});b.disabled=true;b.textContent="…"});
+  root.querySelectorAll("[data-tc]").forEach(b=>b.onclick=()=>{const [t,c]=b.dataset.tc.split(",").map(Number);sendAct({k:v.k,tc:[t,c],n:Date.now()});root.querySelectorAll(".tp-c").forEach(x=>x.classList.toggle("sel",x===b))})}
 function renderPlayer(){
   if(ME.lost)return;
   const v=hostView();root.className="wrap narrow";
@@ -1139,7 +1176,7 @@ function renderPlayer(){
   if(myPeer&&Array.isArray(v.kick)&&v.kick.includes(myPeer)){ME.lost=true;rememberKick(ST.code);try{pusher&&pusher.disconnect()}catch(_){}
     root.innerHTML=`<div class="emoji">🚪</div><p class="big">تم إخراجك من الغرفة</p><p class="note center">المضيف أخرجك من هذي السهرة.</p><a class="btn wide" href="/" style="text-align:center;text-decoration:none">الصفحة الرئيسية</a>`;return}
   if(v.paused){leadBar(v,v.lead===myPeer);if(ME.lastKey!=="paused"){ME.lastKey="paused";root.innerHTML=head+`<div class="emoji">⏸️</div><p class="big">اللعبة متوقفة</p><p class="note center">استريحوا شوي… بنكمل من نفس المكان 😌</p>`}return}
-  const key=[v.game,v.ph,v.k,v.rvI,idx>=0,v.lead===myPeer?[v.ph==="menu"?[v.sel,v.spin]:"",v.ph==="lobby"?[JSON.stringify(v.op||{}),v.bots,v.botMax,(v.order||[]).length]:""].join("/"):""].join("|");
+  const key=[v.game,v.ph,v.k,v.rvI,idx>=0,v.tn?JSON.stringify([v.tn,v.tsel,v.tcol]):"",v.lead===myPeer?[v.ph==="menu"?[v.sel,v.spin]:"",v.ph==="lobby"?[JSON.stringify(v.op||{}),v.bots,v.botMax,(v.order||[]).length]:""].join("/"):""].join("|");
   if(key===ME.lastKey){
     if(v.ph==="lie"&&$("perr")){const bad=v.bad&&v.bad[myPeer]===ME.n&&ME.n>0;const done=(v.done||[]).includes(myPeer);
       if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"",true)}
@@ -1166,7 +1203,7 @@ function renderPlayer(){
     $("lcRand").onclick=e=>{e.target.disabled=true;sendCtl({c:"rand"},v)};const lp=$("lcPlay");if(lp)lp.onclick=()=>{lp.disabled=true;sendCtl({c:"play"},v)};return}
   if(lead&&v.ph==="lobby"&&GAMES[v.game]){const G=GAMES[v.game],n=(v.order||[]).length,op=v.op||{};
     const seg=(label,items)=>`<div class="optrow"><span>${label}</span><div class="seg">${items}</div></div>`;
-    root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف</p><p class="big">${G.emoji} ${esc(G.name)}</p>
+    root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف</p><p class="big">${G.emoji} ${esc(G.name)}</p>${phoneTeamsHTML(v)}
       <div class="col">
       ${seg("🤖 بوتات",[...Array((v.botMax||0)+1).keys()].map(i=>`<button class="segb" data-lb="${i}" aria-pressed="${(v.bots||0)===i}">${i?fmt(i):"بدون"}</button>`).join(""))}
       ${(G.options||[]).map(o=>seg(esc(o.label),o.choices.map(([val,l])=>`<button class="segb" data-lo="${esc(o.key)}" data-lv="${esc(String(val))}" aria-pressed="${String(op[o.key])===String(val)}">${esc(l)}</button>`).join(""))).join("")}
@@ -1175,9 +1212,9 @@ function renderPlayer(){
       <button class="btn ghost wide" id="lcMenu">↩ قائمة الألعاب</button></div>`;
     root.querySelectorAll("[data-lb]").forEach(b=>b.onclick=()=>{sendCtl({c:"bots",v:+b.dataset.lb},v);root.querySelectorAll("[data-lb]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
     root.querySelectorAll("[data-lo]").forEach(b=>b.onclick=()=>{sendCtl({c:"opt",o:b.dataset.lo,v:b.dataset.lv},v);root.querySelectorAll(`[data-lo="${b.dataset.lo}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b))});
-    $("lcStart").onclick=e=>{e.target.disabled=true;e.target.textContent="جاري البدء…";sendCtl({c:"start"},v)};$("lcMenu").onclick=()=>sendCtl({c:"menu"},v);return}
+    wireTeams(v);$("lcStart").onclick=e=>{e.target.disabled=true;e.target.textContent="جاري البدء…";sendCtl({c:"start"},v)};$("lcMenu").onclick=()=>sendCtl({c:"menu"},v);return}
   if(v.ph==="menu"){root.innerHTML=head+`<p class="big">أنت داخل!</p>${myMon()}<p class="note center">المضيف يختار اللعبة الحين… 👀</p>`;return}
-  if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<p class="big">${G?G.emoji+" "+G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>${myMon()}`;return}
+  if(v.ph==="lobby"){const G=GAMES[v.game];root.innerHTML=head+`<p class="big">${G?G.emoji+" "+G.name:""}</p><p class="note center">${G?esc(G.desc):""}<br>اللعبة بتبدأ قريب، ناظر الشاشة.</p>${v.tn?phoneTeamsHTML(v):myMon()}`;wireTeams(v);return}
   if(v.ph==="pick"){
     if(v.picker===myPeer){root.innerHTML=head+`<h2 style="font-size:30px">اختر الموضوع 👇</h2>${tline}<div class="tgrid">${(v.cats||[]).map((cc,i)=>{const t=theme(cc);return`<button class="pbtn tbtn" data-i="${i}" style="--a:${t.a};--b:${t.b}"><span>${t.e}</span>${esc(cc)}</button>`}).join("")}</div>`;
       root.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,pick:+b.dataset.i});root.querySelectorAll("[data-i]").forEach(x=>x.disabled=true)})}

@@ -900,6 +900,8 @@ B.push(K=>{
   const hxSeen=()=>{try{return JSON.parse(localStorage.getItem("sahra_hx_seen")||"[]")}catch(e){return[]}};
   const hxRemember=id=>{try{const a=hxSeen().filter(x=>x!==id);a.push(id);localStorage.setItem("sahra_hx_seen",JSON.stringify(a.slice(-1500)))}catch(e){}};
   const TEAM=["الأخضر","البرتقالي","البنفسجي"],TC=["#2ee6a6","#ff9a3c","#b892ff"],TE=["🟢","🟠","🟣"];
+  // the colours the teams picked in the lobby (names follow the colour)
+  const applyCols=cols=>(cols||[]).forEach((c,t)=>{TEAM[t]=c.n;TC[t]=c.c;TE[t]=c.e});
   const LETTER_PTS=10,GEM_PTS=100,BOARD_PTS=200,GEMS=3,WIN_SONG=20; // the win song is ~18.6s
   // two teams: 5×5 hex board, green links right↔left, orange links top↕bottom.
   // three teams: triangle board of 28 hexes (every Arabic letter once), first team whose chain touches all three sides wins.
@@ -948,9 +950,11 @@ B.push(K=>{
     winTitle:"بطل الحروف!",likeTitle:"",
     timed:["hq","hans"],
     options:[K.roundsOpt([1,2,3],1,"عدد اللوحات"),{key:"teams",label:"عدد الفرق",choices:[["2","فريقين"],["3","ثلاث فرق"]],def:"2"}],
+    teamN(){return K.opt("teams")==="3"&&H.order.length>=3?3:2},
     start(){hvLoad();setTimeout(()=>hv("start"),700);const pl=shuffle([...H.order]),nt=K.opt("teams")==="3"&&pl.length>=3?3:2;
-      const g=H.g={pl,nt,team:{},rot:0,cap:[0,0,0],usedQ:[],boards:K.opt("r"),bn:0,wins:[0,0,0],tp:[0,0,0]};
-      pl.forEach((id,i)=>g.team[id]=i%nt);this.newBoard()},
+      const cols=K.teamColors(nt);applyCols(cols);
+      const g=H.g={pl,nt,cols,team:K.teamsFor(nt,pl),rot:0,cap:[0,0,0],usedQ:[],boards:K.opt("r"),bn:0,wins:[0,0,0],tp:[0,0,0]};
+      this.newBoard()},
     newBoard(){const g=H.g,G=geo(g.nt);g.bn++;g.own=Array(G.n).fill(null);g.n=0;g.done=undefined;g.bp=[0,0,0];g.log=[];g.catN={};
       g.letters=g.nt===3?shuffle(Object.keys(BANK)):shuffle(Object.keys(BANK)).slice(0,G.n);
       g.gems=shuffle([...Array(G.n).keys()].filter(i=>i!==G.center)).slice(0,GEMS);g.gemFound=[];
@@ -1032,7 +1036,7 @@ B.push(K=>{
       H.ph="hend";H.k++;setTimer(Math.max(t!==null&&t!==undefined?WIN_SONG+bd:0,Math.min(30,12+g.log.length*1.2)))},
     doneMap(){return null},
     after(){const b=document.getElementById("hxRand");if(b)b.onclick=()=>{H.g.forceSkip=true}},
-    view(v){const g=H.g;if(!g.letters)return;v.lab=this.labs();v.own=g.own;v.team=g.team;v.picker=g.picker;v.nt=g.nt;v.gems=g.gemFound;v.tp=g.tp;
+    view(v){const g=H.g;if(!g.letters)return;v.cols=g.cols;v.lab=this.labs();v.own=g.own;v.team=g.team;v.picker=g.picker;v.nt=g.nt;v.gems=g.gemFound;v.tp=g.tp;
       if(H.ph==="hcat"){v.cat=CATS[g.q.c];v.L=g.q.L;v.num=g.qTry===1?g.wasNum:0;v.cell=g.cell}
       if(H.ph==="hq"){v.q={L:g.q.L,q:g.q.q,c:CATS[g.q.c]};v.locked=g.locked;v.cell=g.cell}
       if(H.ph==="hans"){v.q={L:g.q.L,q:g.q.q};v.buzzer=g.buzzer;v.cell=g.cell}
@@ -1042,7 +1046,7 @@ B.push(K=>{
     pill(){const g=H.g;return`<span class="pill">${g.boards>1?`اللوحة ${fmt(g.bn)} من ${fmt(g.boards)} · `:""}${[...Array(g.nt).keys()].map(t=>`${TE[t]} ${fmt(g.tp[t])}`).join(" · ")}</span>`},
     boardHTML(sel,small){const g=H.g;return hexBoard({nt:g.nt,own:g.own,lab:this.labs(),gems:g.gemFound},sel,small?"sm":"")},
     teamsHTML(){const g=H.g,turn=H.ph==="hpick"&&g.picker?g.team[g.picker]:-1;
-      return`<div class="hx-teams">${[...Array(g.nt).keys()].map(t=>`<div class="hx-team t${t} ${turn===t?"turn":""}"><b>${TE[t]} ${TEAM[t]} <span class="hx-pts">${fmt(g.tp[t])}</span></b><small>${goal(g.nt,t)}</small><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span>${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
+      return`<div class="hx-teams">${[...Array(g.nt).keys()].map(t=>`<div class="hx-team t${t} ${turn===t?"turn":""}" style="background:${TC[t]}"><b>${TE[t]} ${TEAM[t]} <span class="hx-pts">${fmt(g.tp[t])}</span></b><small>${goal(g.nt,t)}</small><div>${g.pl.filter(id=>g.team[id]===t).map(id=>`<span>${C.avatar(id)}${esc(nm(id))}</span>`).join("")}</div></div>`).join("")}</div>`},
     render(){const g=H.g;
       if(H.ph==="hpick")return`<div class="spread">${K.sayHTML(H.quip)}</div><div class="hx-wrap">${this.teamsHTML()}${this.boardHTML()}</div><div class="row"><button class="btn ghost" id="hxRand">🎲 حرف عشوائي</button></div>`;
       if(H.ph==="hcat"){const c=CATS[g.q.c]||"",e=c.split(" ")[0],n=c.slice(e.length+1);
@@ -1061,7 +1065,7 @@ B.push(K=>{
         <p class="note" style="font-size:22px">النقاط: ${[...Array(g.nt).keys()].map(x=>`${TE[x]} ${fmt(g.tp[x])}`).join(" · ")}</p></div></div>
         ${g.log.length?`<div class="hx-recap"><h3>الأسئلة اللي انجاوبت صح</h3><div class="hx-rlist">${g.log.map((x,i)=>`<div class="hx-r" style="--c:${TC[x.t]};--i:${i}"><span class="hx-rl">${esc(x.L)}</span><div><p>${esc(x.q)}</p><b>${esc(x.a)}${x.gem?" 💎":""}</b></div><small>${C.avatar(x.by)}${esc(nm(x.by))}</small></div>`).join("")}</div></div>`:""}`}
       return""},
-    phone(v,{root,tline}){const me=K.me(),t=v.team?v.team[me]:undefined,nt=v.nt||2;C.fresh(v);
+    phone(v,{root,tline}){const me=K.me(),t=v.team?v.team[me]:undefined,nt=v.nt||2;C.fresh(v);applyCols(v.cols);
       if(t===undefined){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
       const pathTip=nt===2?`<div class="hx-path">${TE[0]} الأخضر يوصّل اليمين باليسار · ${TE[1]} البرتقالي يوصّل فوق بتحت</div>`:`<div class="hx-path">🔺 كل فريق لازم يوصّل أضلاع المثلث الثلاثة</div>`;
       const board=(pick)=>v.lab?`<div class="hx-phone">${hexBoard({nt,own:v.own,lab:v.lab,gems:v.gems},v.cell,"ph",pick)}${pathTip}</div>`:"";
@@ -1256,6 +1260,7 @@ B.push(K=>{
   const CAT={isl:{e:"🕌",n:"إسلامية"},sci:{e:"🔬",n:"علمية"},his:{e:"🏛️",n:"تاريخية"},geo:{e:"🌍",n:"جغرافيا"},gen:{e:"💡",n:"عامة"}};
   const OPT=[{c:"#ff5a6e",s:"▲"},{c:"#3fa9ff",s:"◆"},{c:"#ffc534",s:"●"},{c:"#38d39f",s:"■"}];
   const TEAM=["الأخضر","البرتقالي"],TC=["#2ee6a6","#ff9a3c"],TE=["🟢","🟠"];
+  const applyCols=cols=>(cols||[]).forEach((c,t)=>{TEAM[t]=c.n;TC[t]=c.c;TE[t]=c.e});
   const DOORS=10,BASE=500;
   const st=k=>K.playSting("ikh/"+k);
   const bank=()=>window.IKH_BANK||{};
@@ -1297,9 +1302,10 @@ B.push(K=>{
     options:[K.roundsOpt([10,15,20],10,"عدد الأسئلة"),{key:"mode",label:"طريقة اللعب",choices:[["solo","فردي"],["team","فريقين"]],def:"solo"},
       {key:"qt",label:"وقت السؤال",choices:[["15","١٥ ثانية"],["20","٢٠ ثانية"],["30","٣٠ ثانية"]],def:"20"},
       {key:"vib",label:"اهتزاز الجوال",choices:[["1","شغّال"],["0","مطفّي"]],def:"1"}],
+    teamN(){return K.opt("mode")==="team"?2:0},
     start(){const team=K.opt("mode")==="team"&&H.order.length>=2,pl=team?shuffle([...H.order]):[...H.order];
-      const g=H.g={team,pl,tm:{},tp:[0,0],rot:0,cap:[0,0],turn:0,total:K.opt("r"),qn:0,used:[]};
-      if(team)pl.forEach((id,i)=>g.tm[id]=i%2);
+      const cols=team?K.teamColors(2):null;if(cols)applyCols(cols);
+      const g=H.g={team,pl,cols,tm:team?K.teamsFor(2,pl):{},tp:[0,0],rot:0,cap:[0,0],turn:0,total:K.opt("r"),qn:0,used:[]};
       this.newDoors();this.pickStep()},
     newDoors(){const g=H.g,cs=Object.keys(CAT),list=shuffle([...cs,...cs]).slice(0,DOORS),gi=Math.floor(Math.random()*DOORS);
       g.doors=list.map((c,i)=>({c,gold:i===gi,open:false}))},
@@ -1354,7 +1360,7 @@ B.push(K=>{
       else if(H.ph==="krev"){if(now>H.end)this.next()}
       else if(H.ph==="kscore"){if(now>H.end)this.pickStep()}},
     doneMap(){const g=H.g;if(H.ph!=="kq")return null;const m={};Object.keys(g.ans).forEach(id=>m[id]=1);return m},
-    view(v){const g=H.g;if(!g.doors)return;v.doors=g.doors;v.picker=g.picker;v.teamOn=g.team;v.tm=g.tm;v.vib=K.opt("vib")!=="0";
+    view(v){const g=H.g;if(!g.doors)return;v.cols=g.cols;v.doors=g.doors;v.picker=g.picker;v.teamOn=g.team;v.tm=g.tm;v.vib=K.opt("vib")!=="0";
       if(H.ph==="kq"){v.gold=g.q.gold;v.cat=CAT[g.q.c].n}
       if(H.ph==="krev"){v.cor=g.q.cor;v.ans=g.ans;v.ok=g.ok;v.pts=g.pts;v.corT=g.q.o[g.q.cor]}
       if(["krev","kscore"].includes(H.ph))v.sc=H.sc},
@@ -1375,7 +1381,7 @@ B.push(K=>{
     dyn(){const g=H.g;if(H.ph==="kq"){const t=tl();return`<div class="ik-timer ${t<=5?"hot":""}"><b>${fmt(t)}</b><small>ثانية</small></div>${K.troupe(active(),new Set(Object.keys(g.ans)))}`}
       if(H.ph==="kpick")return`<div class="ik-timer"><b>${fmt(tl())}</b><small>للاختيار</small></div>`;return""},
     after(){const b=document.getElementById("ikRand");if(b)b.onclick=()=>{H.g.forceSkip=true}},
-    phone(v,{root,tline}){const me=K.me();C.fresh(v);if(!v.doors){C.watch(root,v);return}
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);applyCols(v.cols);if(!v.doors){C.watch(root,v);return}
       const team=v.teamOn&&v.tm?v.tm[me]:undefined;
       const head=team!==undefined?`<div class="xo-me" style="background:${TC[team]}">أنت في الفريق ${TEAM[team]}</div>`:"";
       const vib=p=>{if(v.vib)try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
