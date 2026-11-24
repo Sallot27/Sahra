@@ -1931,4 +1931,147 @@ B.push(K=>{
   };
 });
 
+/* =====================================================================
+   18) عجلة الحظ: a hidden phrase (every letter in its own box), a category, and a wheel.
+   Normal rounds: spin (the host decides where it stops), pick a consonant, buy a vowel (ا و ي) for 250,
+   or solve. Only the round's winner keeps that round's money. Speed rounds: letters appear by
+   themselves and anyone can buzz. Final: the leader gets ا ل م ن, picks 3 more and a vowel, 10 s to solve.
+   5-10 players; 7 or more play in 3 teams by default. Bank: window.WHEEL_BANK.
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,tl,norm}=K;
+  const C=common(K);
+  const CONS="بتثجحخدذرزسشصضطظعغفقكلمنه".split(""),VOW=["ا","و","ي"];
+  // one letter for matching: أ إ آ = ا, ة = ه, ى = ي
+  const base=ch=>({"أ":"ا","إ":"ا","آ":"ا","ة":"ه","ى":"ي","ؤ":"و","ئ":"ي"}[ch]||ch);
+  const isL=ch=>/[ء-ي]/.test(ch);
+  const SEG=[500,"bank",300,700,450,"lose",600,350,"free",800,400,250,550,"bank",650,300,1000,450,"lose",500,2000,350,750,400];
+  const SEGC=["#ff5a6e","#ffcc33","#2ee6a6","#4cc2ff","#b98cff","#ff9a3c","#ff7fd0","#a8e05f"];
+  const segLabel=s=>s==="bank"?"💥 إفلاس":s==="lose"?"⏭️ خسارة دور":s==="free"?"🃏 دور إضافي":fmt(s);
+  const TEAM=["الأخضر","البرتقالي","البنفسجي"],TC=["#2ee6a6","#ff9a3c","#b892ff"],TE=["🟢","🟠","🟣"];
+  const applyCols=cols=>(cols||[]).forEach((c,t)=>{TEAM[t]=c.n;TC[t]=c.c;TE[t]=c.e});
+  return{
+    id:"wheel",name:"عجلة الحظ",emoji:"🎡",color:"#ffcc33",min:2,max:10,
+    desc:"لفّ العجلة، خمّن الحروف، واكشف العبارة المخفية قبل غيرك! وانتبه من الإفلاس 💥",
+    tags:["٢-١٠ لاعبين","حروف","حظ"],
+    rules:["العبارة مخفية وكل حرف في خانة، ومعها فئة تساعدك","بدورك: لفّ العجلة واختار حرف، أو اشترِ حرف علة (ا و ي) بـ٢٥٠، أو حلّ العبارة","الحرف الموجود = المبلغ × عدد مرات ظهوره. 💥 الإفلاس يصفّر رصيد الجولة","بس اللي يحل العبارة ياخذ رصيد الجولة! وفي الجولات السريعة ⚡ أي أحد يضغط الجرس"],
+    winTitle:"ملك العجلة! 🎡",likeTitle:"",
+    timed:["wact","wlet","wbuy","wsol","wspeed","wbuzz","wfpick","wfsol"],
+    options:[{key:"len",label:"طول اللعبة",choices:[["short","قصيرة (٣ جولات)"],["full","كاملة (٥ جولات)"]],def:"short"},
+      {key:"tm",label:"اللعب",choices:[["auto","تلقائي (٧+ فرق)"],["solo","كل واحد لحاله"],["team","٣ فرق"]],def:"auto"}],
+    teamN(){const n=H.order.length,m=K.opt("tm");return(m==="team"||(m==="auto"&&n>=7))&&n>=3?3:0},
+    start(){const nt=this.teamN(),pl=[...H.order];const cols=nt?K.teamColors(nt):null;if(cols)applyCols(cols);
+      const g=H.g={pl,nt,cols,tm:nt?K.teamsFor(nt,pl):{},plan:K.opt("len")==="full"?["speed","norm","speed","norm","norm2"]:["speed","norm","norm2"],ri:-1,
+        P:shuffle([...(window.WHEEL_BANK||[])]),pi:0,tot:{},turn:0,cap:[0,0,0],rot:0,ang:0};
+      g.movers=nt?[...Array(nt).keys()].map(t=>"t"+t):pl.slice();g.movers.forEach(m=>g.tot[m]=0);this.nextRound()},
+    moverOf(id){const g=H.g;return g.nt?"t"+g.tm[id]:id},
+    label(m){const g=H.g;return m&&m[0]==="t"&&g.nt?`الفريق ${TEAM[+m[1]]}`:nm(m)},
+    mcol(m){const g=H.g;return m&&m[0]==="t"&&g.nt?TC[+m[1]]:K.col(m)},
+    phrase(){const g=H.g,p=g.P[g.pi++%g.P.length];g.cat=p[0];g.ph=p[1];g.shown=[...p[1]].map(ch=>!isL(ch));g.said=[];g.rb={};g.movers.forEach(m=>g.rb[m]=0);g.free={}},
+    reveal(letter){const g=H.g;let n=0;[...g.ph].forEach((ch,i)=>{if(isL(ch)&&!g.shown[i]&&base(ch)===letter){g.shown[i]=true;n++}});g.said.push(letter);return n},
+    solved(){return H.g.shown.every(Boolean)},
+    check(t){const g=H.g,a=x=>norm(String(x||"")).replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/\s+/g," ").trim();return a(t)===a(g.ph)},
+    nextRound(){const g=H.g;g.ri++;if(g.ri>=g.plan.length)return this.finalStart();this.phrase();g.kind=g.plan[g.ri];
+      if(g.kind==="speed"){g.lock=[];g.nextAt=Date.now()+2500;H.ph="wspeed";H.k++;setTimer(60);sfx.tada();H.quip="⚡ جولة سريعة! الحروف تنكشف لحالها… اضغط الجرس إذا عرفتها"}
+      else{H.quip=g.kind==="norm2"?"🎡 جولة عادية والمبالغ دبل! 💰💰":"🎡 جولة عادية! لفّوا العجلة";this.turnNext(true)}},
+    // whose turn: movers in order; in teams the members of the team take turns
+    turnNext(first){const g=H.g;if(!first)g.turn++;const m=g.movers[g.turn%g.movers.length];
+      let id=m;if(g.nt){const mem=g.pl.filter(x=>g.tm[x]===+m[1]&&active().includes(x));id=mem.length?mem[g.cap[+m[1]]++%mem.length]:null}
+      if(!id||!active().includes(id)){if(g.movers.every(mm=>!g.pl.some(x=>this.moverOf(x)===mm&&active().includes(x))))return K.finishGame();return this.turnNext()}
+      g.cur=id;g.curM=m;g.seg=null;H.ph="wact";H.k++;setTimer(15);sfx.pop()},
+    lose(msg){const g=H.g;if(g.free[g.curM]){g.free[g.curM]--;H.quip=`🃏 ${this.label(g.curM)} استخدم الدور الإضافي!`;H.ph="wact";H.k++;setTimer(15);return}
+      H.quip=msg;this.turnNext()},
+    spin(power){const g=H.g;const i=Math.floor(Math.random()*SEG.length);g.segI=i;g.seg=SEG[i];
+      // the wheel turns a few full rounds plus the angle of the chosen segment (power only changes how long it spins)
+      const per=360/SEG.length;g.prevAng=g.ang;g.ang=Math.ceil(g.ang/360)*360+360*(3+Math.round(power*3))+(360-(i*per+per/2));
+      H.ph="wspin";H.k++;setTimer(5);sfx.swoosh();g.spinUntil=Date.now()+4300},
+    afterSpin(){const g=H.g,s=g.seg;
+      if(s==="bank"){g.rb[g.curM]=0;sfx.trombone?sfx.trombone():sfx.lie();g.free[g.curM]=0;H.quip=`💥 إفلاس! ${this.label(g.curM)} خسر رصيد الجولة`;return this.turnNext()}
+      if(s==="lose"){sfx.lie();return this.lose(`⏭️ خسارة دور لـ ${this.label(g.curM)}`)}
+      if(s==="free"){g.free[g.curM]=(g.free[g.curM]||0)+1;sfx.coin();H.quip="🃏 دور إضافي! خلّه عندك… والحين لفّ مرة ثانية";H.ph="wact";H.k++;setTimer(15);return}
+      g.val=s*(g.kind==="norm2"?2:1);H.ph="wlet";H.k++;setTimer(15);H.quip=`${fmt(g.val)} لكل حرف! اختار حرف 🔤`},
+    letterRes(L,price){const g=H.g;
+      if(g.said.includes(L)){sfx.lie();return this.lose(`حرف «${L}» انقال قبل!`)}
+      const n=this.reveal(L);g.lastL=L;g.lastN=n;
+      if(n){if(price)g.rb[g.curM]+=g.val*n;sfx.coin();H.quip=`فيه ${fmt(n)} «${L}»!${price?` +${fmt(g.val*n)}`:""}`;if(this.solved())return this.roundWin(g.curM,g.cur);H.ph="wact";H.k++;setTimer(15)}
+      else{sfx.lie();this.lose(`ما فيه «${L}» 😬`)}},
+    roundWin(m,id,bonus){const g=H.g;const amt=Math.max(g.rb[m]||0,bonus||0,g.kind==="speed"?1000:500);g.tot[m]+=amt;g.won={m,id,amt};g.shown=g.shown.map(()=>true);
+      (g.nt?g.pl.filter(x=>this.moverOf(x)===m):[m]).forEach(x=>C.add(x,amt));sfx.truth();confetti(90);
+      H.ph="wround";H.k++;setTimer(7);H.quip=`🎉 ${this.label(m)} حلّها! +${fmt(amt)}`},
+    finalStart(){const g=H.g;const m=g.movers.slice().sort((a,b)=>g.tot[b]-g.tot[a])[0];g.fm=m;this.phrase();g.kind="final";
+      let id=m;if(g.nt){const mem=g.pl.filter(x=>g.tm[x]===+m[1]&&active().includes(x));id=mem[0]}g.cur=id;g.curM=m;
+      ["ا","ل","م","ن"].forEach(L=>this.reveal(L));g.fp=[];H.ph="wfpick";H.k++;setTimer(30);K.playSting("sting_reveal",sfx.drum);
+      H.quip=`🏆 الجولة النهائية لـ ${this.label(m)}! كشفنا ا ل م ن… اختار ٣ حروف وحرف علة`},
+    tick(now){const g=H.g;
+      if(H.ph==="wact"){const a=K.act(g.cur);
+        if(a&&a.do==="spin")return this.spin(Math.max(0,Math.min(1,+a.p||.5)));
+        if(a&&a.do==="buy"&&g.rb[g.curM]>=250){g.rb[g.curM]-=250;H.ph="wbuy";H.k++;setTimer(15);H.quip="🛒 اختار حرف علة";return}
+        if(a&&a.do==="solve"){H.ph="wsol";H.k++;setTimer(20);H.quip=`💡 ${nm(g.cur)} يحاول يحل!`;return}
+        if(now>H.end||g.forceSkip||!active().includes(g.cur)){g.forceSkip=false;this.lose("⏰ خلص الوقت!")}}
+      else if(H.ph==="wspin"){if(now>g.spinUntil)this.afterSpin()}
+      else if(H.ph==="wlet"){const a=K.act(g.cur);if(a&&CONS.includes(a.L))return this.letterRes(a.L,true);if(now>H.end||g.forceSkip){g.forceSkip=false;this.lose("⏰ خلص الوقت!")}}
+      else if(H.ph==="wbuy"){const a=K.act(g.cur);if(a&&VOW.includes(a.L))return this.letterRes(a.L,false);if(now>H.end||g.forceSkip){g.forceSkip=false;this.lose("⏰ خلص الوقت!")}}
+      else if(H.ph==="wsol"){const a=K.act(g.cur);if(a&&typeof a.s==="string"){if(this.check(a.s))return this.roundWin(g.curM,g.cur);sfx.lie();return this.lose(`«${a.s}»… غلط! ❌`)}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;this.lose("⏰ خلص الوقت!")}}
+      else if(H.ph==="wspeed"){
+        for(const id of g.pl){if(g.lock.includes(id)||!active().includes(id))continue;const a=K.act(id);if(a&&a.buzz){g.cur=id;g.curM=this.moverOf(id);H.ph="wbuzz";H.k++;setTimer(12);sfx.coin();H.quip=`🔔 ${nm(id)} ضغط الجرس! يكتب الحل…`;return}}
+        if(now>g.nextAt){const hid=g.shown.map((s,i)=>s?-1:i).filter(i=>i>=0);if(hid.length>1){g.shown[pick(hid)]=true;sfx.pop();g.nextAt=now+2000}}
+        if(now>H.end||g.forceSkip||g.shown.filter(x=>!x).length<=1){g.forceSkip=false;g.won=null;g.shown=g.shown.map(()=>true);H.ph="wround";H.k++;setTimer(6);H.quip="ولا أحد حلها! 😅"}}
+      else if(H.ph==="wbuzz"){const a=K.act(g.cur);
+        if(a&&typeof a.s==="string"){if(this.check(a.s))return this.roundWin(g.curM,g.cur,1000);sfx.lie();g.lock.push(g.cur);if(g.nt)g.pl.forEach(x=>{if(this.moverOf(x)===g.curM&&!g.lock.includes(x))g.lock.push(x)});H.quip=`«${a.s}» غلط! ❌ كمّلوا`;H.ph="wspeed";H.k++;setTimer(Math.max(10,Math.ceil((H.end-now)/1000)));g.nextAt=now+1500;return}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;g.lock.push(g.cur);H.ph="wspeed";H.k++;setTimer(30);g.nextAt=now+1500}}
+      else if(H.ph==="wround"){if(now>H.end)this.nextRound()}
+      else if(H.ph==="wfpick"){const a=K.act(g.cur);
+        if(a&&Array.isArray(a.fl)&&a.fl.length===4){const c=a.fl.slice(0,3).filter(L=>CONS.includes(L)),v=a.fl[3];if(c.length===3&&["و","ي"].includes(v)){g.fp=[...c,v];[...c,v].forEach(L=>this.reveal(L));H.ph="wfsol";H.k++;setTimer(12);sfx.tada();H.quip="⏱️ عندك ١٠ ثواني تحلها!";return}}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;["ر","ت","س","و"].forEach(L=>this.reveal(L));H.ph="wfsol";H.k++;setTimer(12)}}
+      else if(H.ph==="wfsol"){const a=K.act(g.cur);
+        if(a&&typeof a.s==="string"&&this.check(a.s)){g.fwin=true;(g.nt?g.pl.filter(x=>this.moverOf(x)===g.fm):[g.fm]).forEach(x=>H.sc[x]=(H.sc[x]||0)*2);g.shown=g.shown.map(()=>true);H.ph="wfres";H.k++;setTimer(8);sfx.truth();confetti(200);H.quip="🏆 حلّها! النقاط دبل!";return}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;g.fwin=false;g.shown=g.shown.map(()=>true);H.ph="wfres";H.k++;setTimer(8);sfx.lie();H.quip=`ما لحق! العبارة: «${g.ph}»`}}
+      else if(H.ph==="wfres"){if(now>H.end)K.finishGame()}},
+    doneMap(){return null},
+    view(v){const g=H.g;if(!g.ph)return;v.cat=g.cat;v.tiles=[...g.ph].map((ch,i)=>ch===" "?" ":g.shown[i]?ch:"");v.said=g.said;v.cur=g.cur;v.curM=g.curM;v.kind=g.kind;v.cols=g.cols;v.tm=g.tm;v.nt=g.nt;
+      v.rb=g.curM?g.rb[g.curM]:0;v.free=g.curM?g.free[g.curM]||0:0;if(H.ph==="wspeed")v.lock=g.lock},
+    pill(){const g=H.g;return`<span class="pill">${g.kind==="final"?"🏆 النهائية":`الجولة ${fmt(g.ri+1)} من ${fmt(g.plan.length)} ${g.kind==="speed"?"⚡":"🎡"}`}</span>`},
+    boardHTML(){const g=H.g;const words=g.ph.split(" ");let k=0;
+      return`<div class="wf-board">${words.map(w=>{const html=`<div class="wf-word">${[...w].map(ch=>{const i=k++;return`<span class="wf-t ${g.shown[i]?"on":""}">${g.shown[i]?esc(ch):""}</span>`}).join("")}</div>`;k++;return html}).join("")}</div><div class="wf-cat">${esc(g.cat)}</div>`},
+    wheelSVG(){const g=H.g,n=SEG.length,per=360/n,r=200;
+      const wedge=i=>{const a0=(i*per-90)*Math.PI/180,a1=((i+1)*per-90)*Math.PI/180;return`M0 0 L${(r*Math.cos(a0)).toFixed(1)} ${(r*Math.sin(a0)).toFixed(1)} A${r} ${r} 0 0 1 ${(r*Math.cos(a1)).toFixed(1)} ${(r*Math.sin(a1)).toFixed(1)}Z`};
+      return`<div class="wf-wheel"><div class="wf-ptr">▼</div><svg viewBox="-210 -210 420 420" style="transform:rotate(${H.ph==="wspin"?(g.prevAng||0):g.ang}deg)" class="wf-rot" id="wfRot">${SEG.map((s,i)=>`<path d="${wedge(i)}" fill="${s==="bank"?"#111":s==="lose"?"#fff":s==="free"?"#2ee6a6":s===2000?"#ffd34d":SEGC[i%SEGC.length]}" stroke="#2a1a55" stroke-width="2"/>
+        <text transform="rotate(${i*per+per/2}) translate(0 -${r*.62}) rotate(90)" text-anchor="middle" dominant-baseline="middle" font-size="${typeof s==="number"?18:14}" font-weight="900" fill="${s==="bank"?"#fff":"#1a1033"}">${s==="bank"?"💥":s==="lose"?"⏭️":s==="free"?"🃏":fmt(s)}</text>`).join("")}<circle r="30" fill="#ffd34d" stroke="#b8860b" stroke-width="5"/></svg></div>`},
+    scores(){const g=H.g;return`<div class="wf-sc">${g.movers.map(m=>`<div class="${m===g.curM?"on":""}" style="--c:${this.mcol(m)}"><b>${esc(this.label(m))}</b><span>💰 ${fmt(g.tot[m])}</span>${g.kind!=="final"&&g.kind!=="speed"?`<small>الجولة: ${fmt(g.rb[m]||0)}</small>`:""}${g.free[m]?`<small>🃏×${fmt(g.free[m])}</small>`:""}</div>`).join("")}</div>`},
+    render(){const g=H.g;
+      const used=`<div class="wf-used">${[...CONS,...VOW].map(L=>`<i class="${g.said.includes(L)?"x":""}">${L}</i>`).join("")}</div>`;
+      if(["wact","wspin","wlet","wbuy","wsol"].includes(H.ph))return C.head(H.quip)+`<div class="wf-main">${this.wheelSVG()}<div class="wf-right">${this.boardHTML()}${used}<div class="wf-turn">${K.body(g.cur,H.ph==="wspin"?"cheer":"think","sm")}<span>دور ${esc(nm(g.cur))}${g.nt?` (${esc(this.label(g.curM))})`:""}${H.ph==="wspin"?"":g.seg&&typeof g.seg==="number"?` • ${fmt(g.val||g.seg)} للحرف`:""}</span></div></div></div>${this.scores()}`;
+      if(["wspeed","wbuzz"].includes(H.ph))return C.head(H.quip)+`<div class="col center">${this.boardHTML()}${H.ph==="wbuzz"?`<div class="wf-turn">${K.body(g.cur,"think","sm")}<span>🔔 ${esc(nm(g.cur))} يكتب…</span></div>`:`<p class="ks-steal">🔔 اضغط الجرس من جوالك إذا عرفتها!</p>`}</div>${this.scores()}`;
+      if(H.ph==="wround")return C.head(H.quip)+`<div class="col center">${this.boardHTML()}${g.won?`<div class="wf-turn">${K.body(g.won.id,"cheer","lg")}<span class="wf-amt">+${fmt(g.won.amt)}</span></div>`:""}</div>${this.scores()}`;
+      if(["wfpick","wfsol","wfres"].includes(H.ph))return C.head(H.quip)+`<div class="col center"><div class="tb-grade">🏆 النهائية</div>${this.boardHTML()}${g.fp.length?`<p class="note" style="font-size:22px">اختار: ${g.fp.join(" • ")}</p>`:""}<div class="wf-turn">${K.body(g.cur,H.ph==="wfres"?(g.fwin?"cheer":"sad"):"think","lg")}</div></div>`;
+      return""},
+    // the spin: start from where the wheel stood, then turn to the stop the host picked
+    after(){const g=H.g;if(H.ph!=="wspin")return;const el=document.getElementById("wfRot");if(!el)return;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.transition="transform 4.1s cubic-bezier(.15,.85,.25,1)";el.style.transform=`rotate(${g.ang}deg)`}))},
+    phoneLive(v){const b=document.querySelector(".wf-pboard");if(!b||!v.tiles)return;const h=v.tiles.map(t=>t===" "?`<i class="sp"></i>`:`<b>${esc(t)}</b>`).join("");if(b.dataset.h!==h){b.dataset.h=h;b.innerHTML=h}},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);applyCols(v.cols);
+      const mini=`<div class="wf-pboard">${v.tiles.map(t=>t===" "?`<i class="sp"></i>`:`<b>${esc(t)}</b>`).join("")}</div><p class="note center">${esc(v.cat||"")}</p>`;
+      const keys=(list,vow)=>`<div class="wf-keys">${list.map(L=>`<button class="wf-k ${vow?"v":""}" data-L="${L}" ${(v.said||[]).includes(L)?"disabled":""}>${L}</button>`).join("")}</div>`;
+      const solveForm=()=>{root.insertAdjacentHTML("beforeend",`${tline}<div id="wfS"></div>`);C.textForm(document.getElementById("wfS"),{ph:"اكتب العبارة كاملة…",max:60,btn:"💡 حل",onSend:t=>{K.sendAct({k:v.k,s:t});document.getElementById("wfS").innerHTML=`<p class="big">🤞…</p>`}})};
+      if(v.cur===me){
+        if(v.ph==="wact"){root.insertAdjacentHTML("beforeend",mini+`<p class="center" style="font-weight:800">رصيد الجولة: ${fmt(v.rb||0)}${v.free?` • 🃏×${fmt(v.free)}`:""}</p>${tline}
+          <div class="wf-spin" id="wfSpin"><span>🎡</span><b>اسحب لتحت عشان تلف العجلة</b><small>أو اضغط</small></div>
+          <div class="row" style="justify-content:center;gap:8px"><button class="btn" id="wfBuy" ${(v.rb||0)<250?"disabled":""}>🛒 حرف علة (٢٥٠)</button><button class="btn coral" id="wfSol">💡 أحلها</button></div>`);
+          // drag down: the longer the pull, the more power (the stop itself is decided by the big screen)
+          const sp=document.getElementById("wfSpin");let y0=null,t0=0;const go=p=>{K.sendAct({k:v.k,do:"spin",p});sp.classList.add("go");sp.style.pointerEvents="none"};
+          sp.onpointerdown=e=>{y0=e.clientY;t0=Date.now()};sp.onpointerup=e=>{if(y0===null)return;const d=Math.max(0,e.clientY-y0);go(Math.min(1,d/250+.2));y0=null};
+          document.getElementById("wfBuy").onclick=()=>K.sendAct({k:v.k,do:"buy"});document.getElementById("wfSol").onclick=()=>K.sendAct({k:v.k,do:"solve"});return}
+        if(v.ph==="wlet"||v.ph==="wbuy"){root.insertAdjacentHTML("beforeend",mini+`<h2 style="font-size:22px">${v.ph==="wbuy"?"🛒 اختار حرف علة":"🔤 اختار حرف"}</h2>${tline}${keys(v.ph==="wbuy"?VOW:CONS,v.ph==="wbuy")}`);
+          root.querySelectorAll("[data-L]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,L:b.dataset.L});root.querySelectorAll("[data-L]").forEach(x=>x.disabled=true)});return}
+        if(v.ph==="wsol"||v.ph==="wbuzz"||v.ph==="wfsol"){root.insertAdjacentHTML("beforeend",mini);solveForm();return}
+        if(v.ph==="wfpick"){root.insertAdjacentHTML("beforeend",mini+`<h2 style="font-size:20px">اختار ٣ حروف وحرف علة (و أو ي)</h2>${tline}<p class="center" id="wfSel" style="font-size:26px;font-weight:800">—</p>${keys(CONS.filter(L=>!["ل","م","ن"].includes(L)))}${keys(["و","ي"],true)}<button class="btn coral wide" id="wfGo" disabled>تأكيد ✅</button>`);
+          const sel=[];let vw=null;const up=()=>{document.getElementById("wfSel").textContent=[...sel,vw].filter(Boolean).join(" • ")||"—";document.getElementById("wfGo").disabled=!(sel.length===3&&vw)};
+          root.querySelectorAll(".wf-k").forEach(b=>b.onclick=()=>{const L=b.dataset.L;if(b.classList.contains("v")){vw=L;root.querySelectorAll(".wf-k.v").forEach(x=>x.classList.toggle("on",x===b))}else{const i=sel.indexOf(L);if(i>=0)sel.splice(i,1);else if(sel.length<3)sel.push(L);b.classList.toggle("on",sel.includes(L))}up()});
+          document.getElementById("wfGo").onclick=e=>{K.sendAct({k:v.k,fl:[...sel,vw]});e.target.disabled=true};return}}
+      if(v.ph==="wspeed"&&!(v.lock||[]).includes(me)){root.insertAdjacentHTML("beforeend",mini+`<button class="hx-buzz" id="wfBz" style="--c:#ff5a6e">🔔<b>أعرفها!</b></button>`);document.getElementById("wfBz").onclick=e=>{K.sendAct({k:v.k,buzz:1});e.target.disabled=true};return}
+      root.insertAdjacentHTML("beforeend",mini);C.watch(root,v,v.ph==="wspin"?"🎡":"👀",v.cur?`دور ${C.pnm(v,v.cur)}`:"ناظر الشاشة","");},
+  };
+});
+
 })();

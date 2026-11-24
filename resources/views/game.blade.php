@@ -32,6 +32,7 @@ if (/[?&]bot=1(&|$)/.test(location.search)) {
 <script src="/js/vendor/qrcode-1.4.4.js"></script>
 <script src="/js/shakli-data.js?v={{ filemtime(public_path('js/shakli-data.js')) }}"></script>
 <script src="/js/vendor/dicebear-lorelei.js"></script>
+<script src="/js/wheel-bank.js?v={{ filemtime(public_path('js/wheel-bank.js')) }}"></script>
 <script src="/js/taleb-bank.js?v={{ filemtime(public_path('js/taleb-bank.js')) }}"></script>
 <script src="/js/ikhtabir-bank.js?v={{ filemtime(public_path('js/ikhtabir-bank.js')) }}"></script>
 <script src="/js/sahra-beta.js?v={{ filemtime(public_path('js/sahra-beta.js')) }}"></script>
