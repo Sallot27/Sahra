@@ -648,7 +648,7 @@ const teamColors=nt=>[...Array(nt).keys()].map(t=>TPAL[(H.tcol||[0,1,2])[t]]||TP
 function teamsLobbyHTML(){const nt=teamCount();tInit();const cols=teamColors(nt),free=H.order.filter(id=>!(Number.isInteger(H.tsel[id])&&H.tsel[id]<nt));
   return`<div class="tl-wrap"><div class="tl-teams">${cols.map((c,t)=>`<div class="tl-team" style="--c:${c.c}"><b>${c.e} الفريق ${c.n}</b><div>${H.order.filter(id=>H.tsel[id]===t).map(id=>`<span>${plHTML(id,"",H.order.indexOf(id))}</span>`).join("")||'<small>ولا أحد للحين</small>'}</div></div>`).join("")}</div>
     ${free.length?`<p class="note center">بدون فريق (بينقسمون تلقائياً): ${free.map(id=>esc(nm(id))).join("، ")}</p>`:""}
-    <p class="note center">📱 كل واحد يختار فريقه ولونه من جواله · <button class="btn ghost tl-shuf" data-tshuf="1">🎲 قسّم الفرق عشوائي</button></p></div>`}
+    <p class="note center">📱 كل واحد يختار فريقه ولونه من جواله • <button class="btn ghost tl-shuf" data-tshuf="1">🎲 قسّم الفرق عشوائي</button></p></div>`}
 function pickGame(id){shuffleTrack(id);H.startErrMsg="";{const mx=(GAMES[id]&&GAMES[id].max)||MAXP;if(H.order.length>mx)H.order=H.order.slice(0,mx)}H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){const G0=GAMES[H.game],err=G0&&G0.startErr?G0.startErr():"";
   // a game can refuse to start (e.g. needs an even number of players); say why on the big screen
@@ -909,7 +909,7 @@ function bluffRevealHTML(g,stageHTML){
   const s=g.rv[g.rvI],o=g.opts[s.o];
   const fooled=s.f.length?s.f.map((id,i)=>plHTML(id,"",i)).join(""):`<span class="note" style="font-size:20px">ما أحد اختارها!</span>`;
   let who;
-  if(s.t)who=s.f.length?`<span>${s.f.map(id=>esc(nm(id))).join("، ")} عرفوها</span><span class="pts">+${fmt(s.p)}</span>${g.ex&&s.ap?`<span>· ${esc(nm(g.ex))} الرسام</span><span class="pts">+${fmt(s.ap)}</span>`:""}`:`<span>ولا أحد عرفها!</span>`;
+  if(s.t)who=s.f.length?`<span>${s.f.map(id=>esc(nm(id))).join("، ")} عرفوها</span><span class="pts">+${fmt(s.p)}</span>${g.ex&&s.ap?`<span>• ${esc(nm(g.ex))} الرسام</span><span class="pts">+${fmt(s.ap)}</span>`:""}`:`<span>ولا أحد عرفها!</span>`;
   else who=o.a.length?`${o.a.map(id=>`<div class="av sm" style="--c:${col(id)}">${face(id)}</div>`).join("")}<span>كذبة ${o.a.map(id=>esc(nm(id))).join(" و")}</span><span class="pts">+${fmt(s.p)}</span>`:`<span>كذبة من عندنا 😏</span>`;
   return`<div class="col ${s.t?"late":""}" style="gap:20px">`+stageHTML(s.t)+`<div class="reveal ${g.ex?"tight":""}">
       <div class="answer">${esc(o.t)}</div>
@@ -968,7 +968,7 @@ const FAB={
     if(H.ph==="pick"){v.picker=g.picker;v.cats=g.pick}
     if(H.ph==="lie"||H.ph==="choose"){v.q=QS[g.q].q;v.ql=QS[g.q].l||"ar"}
     bluffView(g,v)},
-  pill(){const m=this.m();return`<span class="pill ${m===3?"x":""}">${m===3?"الفبركة الأخيرة":m===2?"الجولة الثانية":"الجولة الأولى"}${m>1?` · ×${fmt(m)}`:""}</span>`},
+  pill(){const m=this.m();return`<span class="pill ${m===3?"x":""}">${m===3?"الفبركة الأخيرة":m===2?"الجولة الثانية":"الجولة الأولى"}${m>1?` • ×${fmt(m)}`:""}</span>`},
   spotNames(){return H.g.pick},
   themeName(){const g=H.g;return["lie","choose","reveal"].includes(H.ph)&&QS[g.q]?QS[g.q].t:null},
   ticket(fill){const q=QS[H.g.q];return`<div class="ticket" ${fill!==undefined?'style="animation:none"':""}><span class="cat">${theme(q.t).e} ${esc(q.t)}</span><p class="qtext" dir="${q.l==="en"?"ltr":"rtl"}">${blankify(q.q,fill?q.a:"")}</p></div>`},
@@ -1024,7 +1024,7 @@ const DRW={
     if(H.ph==="draw"){v.prompts=g.prompts;v.done=Object.keys(g.drawings)}
     if(H.ph==="lie"||H.ph==="choose")v.q="وش اللي رسمه "+nm(g.ex)+"؟";
     bluffView(g,v)},
-  pill(){const g=H.g;return`<span class="pill ${g.round>1?"x":""}">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}${g.round>1?` · ×${fmt(g.round)}`:""}</span>`},
+  pill(){const g=H.g;return`<span class="pill ${g.round>1?"x":""}">الجولة ${fmt(g.round)} من ${fmt(g.rounds)}${g.round>1?` • ×${fmt(g.round)}`:""}</span>`},
   frame(small){const g=H.g;return`<div class="col center"><div class="frame ${small?"small":""}"><canvas id="art"></canvas></div><div class="artist"><div class="av sm" style="--c:${col(g.ex)}">${face(g.ex)}</div>رسمة ${esc(nm(g.ex))}</div></div>`},
   render(){const g=H.g;
     if(H.ph==="draw")return`<div class="spread">${sayHTML(H.quip)}${ringHTML()}</div>
@@ -1297,7 +1297,7 @@ function salPlayer(v,head,f){
     return}
   if(v.ph==="guess"){
     if(!isOut){root.innerHTML=head+`<div class="emoji">🤞</div><p class="big">${esc(v.nm?.[v.out]||"")} يحاول يخمّن…</p>`;return}
-    root.innerHTML=head+`<h2 style="font-size:28px">انكشفت! 😅 بس تقدر تعوّض</h2><p class="note">الموضوع: <b>${esc(v.cat)}</b> · وش كانت السالفة؟ ⏱ <b id="ptl">${v.tl}</b></p>
+    root.innerHTML=head+`<h2 style="font-size:28px">انكشفت! 😅 بس تقدر تعوّض</h2><p class="note">الموضوع: <b>${esc(v.cat)}</b> • وش كانت السالفة؟ ⏱ <b id="ptl">${v.tl}</b></p>
       <div class="col">${(v.opts||[]).map((o,i)=>`<button class="pbtn" data-o="${i}" style="--o:${OPTC[i%OPTC.length]}">${esc(o)}</button>`).join("")}</div>`;
     root.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{sendAct({k:v.k,guess:v.opts[+b.dataset.o]});root.querySelectorAll("[data-o]").forEach(x=>x.disabled=true)});
     return}

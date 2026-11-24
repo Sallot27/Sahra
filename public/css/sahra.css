@@ -976,3 +976,23 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 .ch-cbq{background:var(--paper);color:var(--ink);font-weight:800;font-size:22px;line-height:1.5;border-radius:18px;padding:12px;margin:8px 0;text-align:center}
 #chCB .pbtn{border-width:4px;border-style:solid;text-align:start}
 .portrait .ch-h2h{grid-template-columns:1fr}
+
+/* أذكى من طالب ابتدائي */
+.tb-grade{font-family:var(--display);font-size:clamp(40px,calc(var(--sh)*.09),76px);background:#2e8f5a;border:6px solid #7a4a2a;border-radius:18px;padding:10px 40px;color:#fff;box-shadow:0 8px 0 rgba(0,0,0,.3);animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+.tb-wrap{display:flex;gap:24px;align-items:center;justify-content:center}
+.tb-board{background:#2e6b4a;border:10px solid #8a5a2b;border-radius:16px;padding:12px;box-shadow:0 10px 0 rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px;min-width:min(720px,70vw)}
+.tb-row{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:8px;align-items:center}
+.tb-row>span{font-weight:800;font-size:clamp(16px,calc(var(--sh)*.028),24px);color:#fff}
+.tb-h b{text-align:center;color:#ffe680;font-family:var(--display);font-size:26px}
+.tb-c{font-style:normal;text-align:center;background:#fff8e6;color:#2b1d14;font-family:var(--display);font-size:clamp(18px,calc(var(--sh)*.034),30px);border-radius:10px;padding:6px 0}
+.tb-c.used{background:rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-family:var(--body);font-weight:700;font-size:14px}
+.tb-c.on{background:var(--sun);transform:scale(1.08)}
+.tb-qwrap{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;width:100%}
+.tb-who{display:flex;flex-direction:column;align-items:center;gap:8px}
+.tb-q{display:flex;flex-direction:column;gap:12px;align-items:center}
+.ik-opt.gone{opacity:.15;filter:grayscale(1);text-decoration:line-through}
+.tb-copies{display:flex;gap:10px;align-items:center;font-weight:800;font-size:20px}.tb-copies span{background:var(--o);color:#1a1033;border-radius:99px;padding:2px 12px}
+.tb-gr{display:flex;flex-direction:column;align-items:center;gap:4px}.tb-gr b{font-size:15px;max-width:140px;text-align:center}
+.tb-pick{display:flex;flex-direction:column;gap:8px}.tb-prow{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:6px;align-items:center}.tb-prow span{font-weight:800;font-size:15px}
+.tb-help{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.portrait .tb-wrap,.portrait .tb-qwrap{grid-template-columns:1fr;flex-direction:column}
