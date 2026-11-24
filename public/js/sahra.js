@@ -6,7 +6,7 @@ let QS=[],DRAW=[],WORDS={},TOPICS=[];
 /* ================= helpers ================= */
 const COLORS=["#ff4f6d","#ffcc33","#2ee6a6","#4cc2ff","#b98cff","#ff9a3c","#ff7fd0","#a8e05f","#ffffff","#00d1c1","#ff6b3d","#c7a6ff","#f4e04d","#7ec8ff","#ff9fb2"];
 const INK=["#ff4f6d","#e0a800","#13b884","#1e9be0","#8f5ae8","#f07b12","#e8489f","#6aab1f"];
-const FACES=["🦊","🐸","🐼","🐵","🦁","🐙","🐷","🐨"];
+const FACES=["🦊","🐸","🐼","🐵","🦁","🐙","🐷","🐨","🐯","🐰","🐻","🐔","🐧","🦄","🐶"];
 const OPTC=["#ffcc33","#4cc2ff","#2ee6a6","#ff9a3c","#b98cff","#ff7fd0","#a8e05f","#ff8a8a","#7fe0ff","#ffd98a"];
 // players per game: 8 by default, a game can allow more (مافيا: 15); the menu lets up to MAXALL in
 const MAXP=8,MAXALL=15,T_REVEAL=5200;
@@ -502,7 +502,7 @@ function saveSnap(){try{sessionStorage.setItem("sahra_snap",JSON.stringify({code
   H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g,kicked:H.kicked||[],paused:H.paused,pauseLeft:H.pauseLeft}}))}catch(e){}}
 const H={game:null,ph:"menu",k:0,order:[],names:{},sc:{},lk:{},end:0,total:1,quip:"",lastView:"",lastKey:"",g:{}};
 const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%COLORS.length];
-const face=id=>avImg((H.av||{})[id],FACES[Math.max(0,H.order.indexOf(id))%8]);
+const face=id=>avImg((H.av||{})[id],FACES[Math.max(0,H.order.indexOf(id))%FACES.length]);
 const nm=id=>H.names[id]||"لاعب";
 const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
 const setTimer=s=>{H.total=s;H.end=Date.now()+s*1000};
@@ -539,7 +539,7 @@ function hostTick(){
   H.seen=H.seen||{};
   ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;H.seen[p.peer]=now;
     H.names[p.peer]=(n=>n&&!hasBad(n)?n:"لاعب")(clip(pr.nm,14));(H.av=H.av||{})[p.peer]=okAv(pr.av)?pr.av:"";
-    if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<maxFor()){H.order.push(p.peer);sfx.join()}});
+    if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<maxFor()){H.order.push(p.peer);(H.joinAt=H.joinAt||{})[p.peer]=Date.now();sfx.join()}});
   // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
@@ -721,8 +721,26 @@ function wheelSpin(){if(H.wheel.spinning)return;const gs=wheelGames();if(gs.leng
   step()}
 
 /* shared host pieces */
+/* ===== Player characters: a cartoon body with the face the player picked (emoji or selfie) =====
+   pose: idle | wave | cheer | sad | paint | think. Each player gets a different outfit by join order. */
+const OUTFIT=["jersey","hoodie","stripes","vest","tee","jersey","hoodie","stripes","vest","tee","jersey","hoodie","stripes","vest","tee"];
+function bodyHTML(faceHTML,c,i,pose="idle",name="",size=""){const o=OUTFIT[i%OUTFIT.length],n=fmt(i+1);
+  const shirt={jersey:`<path d="M30 58 L16 66 L22 84 L32 80 L32 112 L68 112 L68 80 L78 84 L84 66 L70 58 Q50 70 30 58Z" fill="${c}"/><text x="50" y="100" text-anchor="middle" font-size="18" font-weight="900" fill="rgba(0,0,0,.35)">${n}</text>`,
+    hoodie:`<path d="M30 58 L16 66 L22 84 L32 80 L32 112 L68 112 L68 80 L78 84 L84 66 L70 58 Q50 72 30 58Z" fill="${c}"/><path d="M40 60 Q50 76 60 60" stroke="rgba(0,0,0,.25)" stroke-width="4" fill="none"/><rect x="38" y="92" width="24" height="12" rx="4" fill="rgba(0,0,0,.18)"/>`,
+    stripes:`<path d="M30 58 L16 66 L22 84 L32 80 L32 112 L68 112 L68 80 L78 84 L84 66 L70 58 Q50 70 30 58Z" fill="${c}"/><path d="M32 82 H68 M32 94 H68 M32 106 H68" stroke="rgba(255,255,255,.55)" stroke-width="5"/>`,
+    vest:`<path d="M30 58 L16 66 L22 84 L32 80 L32 112 L68 112 L68 80 L78 84 L84 66 L70 58 Q50 70 30 58Z" fill="#f4f1ea"/><path d="M32 66 L44 62 L50 112 L32 112Z M68 66 L56 62 L50 112 L68 112Z" fill="${c}"/><circle cx="50" cy="84" r="2.5" fill="#333"/><circle cx="50" cy="96" r="2.5" fill="#333"/>`,
+    tee:`<path d="M30 58 L18 64 L24 80 L32 78 L32 112 L68 112 L68 78 L76 80 L82 64 L70 58 Q50 68 30 58Z" fill="${c}"/><text x="50" y="96" text-anchor="middle" font-size="20">⭐</text>`}[o];
+  return`<div class="bd ${pose} ${size}" style="--c:${c};--i:${i}"><div class="bd-fig"><svg class="bd-svg" viewBox="0 0 100 160" aria-hidden="true">
+      <g class="bd-legs"><rect class="bd-l1" x="36" y="108" width="11" height="34" rx="5" fill="#3b4a6b"/><rect class="bd-l2" x="53" y="108" width="11" height="34" rx="5" fill="#3b4a6b"/>
+        <path d="M30 140 h18 v8 h-22 q0-8 4-8Z" fill="#fff"/><path d="M52 140 h18 q4 0 4 8 h-22Z" fill="#fff"/><path d="M26 146 h22 M52 146 h22" stroke="${c}" stroke-width="3"/></g>
+      <g class="bd-arm bd-al"><path d="M22 70 Q10 90 14 108" stroke="${c}" stroke-width="11" fill="none" stroke-linecap="round"/><circle cx="14" cy="110" r="6.5" fill="#f3c89a"/></g>
+      <g class="bd-arm bd-ar"><path d="M78 70 Q90 90 86 108" stroke="${c}" stroke-width="11" fill="none" stroke-linecap="round"/><circle cx="86" cy="110" r="6.5" fill="#f3c89a"/></g>
+      <g class="bd-torso">${shirt}<rect x="44" y="50" width="12" height="12" rx="4" fill="#f3c89a"/></g>
+    </svg><div class="bd-head">${faceHTML}</div></div>${name?`<span class="bd-name">${esc(name)}</span>`:""}</div>`}
+const bodyOf=(id,pose,size,name)=>{const i=Math.max(0,H.order.indexOf(id));return bodyHTML(face(id),col(id),i,pose,name===undefined?nm(id):name,size)};
 const plHTML=(id,cls="",i=0)=>`<div class="pl ${cls}" style="--i:${i}"><div class="av" style="--c:${col(id)}">${face(id)}</div><span>${esc(nm(id))}</span></div>`;
-const troupe=(ids,doneSet,artist)=>`<div class="troupe">${ids.map((id,i)=>plHTML(id,id===artist?"art":doneSet?(doneSet.has(id)?"ok":"wait"):"",i)).join("")}</div>`;
+const troupe=(ids,doneSet,artist)=>`<div class="troupe bdtroupe">${ids.map(id=>{const st=id===artist?"art":doneSet?(doneSet.has(id)?"ok":"wait"):"";
+  return`<div class="bdt ${st}">${bodyOf(id,st==="art"?"paint":st==="ok"?"cheer":st==="wait"?"think":"idle","xs")}${st==="ok"?'<b class="bdt-ok">✓</b>':""}</div>`}).join("")}</div>`;
 function ringHTML(){const t=tl(),c=2*Math.PI*42,off=c*(1-t/Math.max(1,H.total));
   return`<div class="ring ${t<=10?"low":""}" id="ring"><svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="42" fill="none" stroke="#3d2c86" stroke-width="9"/><circle id="ringArc" cx="48" cy="48" r="42" fill="none" stroke="${t<=10?"#ff4f6d":"#ffcc33"}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset .25s linear"/></svg><b id="ringT">${t}</b></div>`}
 const sayHTML=t=>t?`<div class="host-say"><span class="mic" aria-hidden="true">🎤</span><div class="bubble">${esc(t)}</div></div>`:"";
@@ -747,7 +765,8 @@ function joinPanel(){
 }
 const kickRow=ids=>`<div class="troupe">${ids.map((id,i)=>`<div class="kickwrap">${plHTML(id,"",i)}<button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`).join("")}</div>`;
 const monRow=ids=>`<div class="monrow">${ids.map(id=>{const s=H.order.indexOf(id);return`<div class="kickwrap monwrap" style="--i:${s}">${monHTML(s,col(id))}<span class="monname">${esc(nm(id))}</span><button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`}).join("")}</div>`;
-const rosterHTML=()=>H.order.length?monRow(H.order):`<p class="note center">ولا أحد دخل للحين… كل واحد يدخل يطلع له وحش يغني 🎤</p>`;
+const bodyRow=ids=>`<div class="bdrow">${ids.map(id=>{const s=H.order.indexOf(id);return`<div class="kickwrap" style="--i:${s}">${bodyOf(id,(H.joinAt||{})[id]&&Date.now()-H.joinAt[id]<4000?"wave":"idle","sm")}<button class="kickx" data-kick="${esc(id)}" title="إخراج اللاعب" aria-label="إخراج ${esc(nm(id))}">✕</button></div>`}).join("")}</div>`;
+const rosterHTML=()=>H.order.length?bodyRow(H.order):`<p class="note center">ولا أحد دخل للحين… كل واحد يدخل يطلع له شخصيته هنا 🕺</p>`;
 function renderHost(){
   const key=[H.game,H.ph,H.k,H.g.rvI,H.paused?1:0,(H.kicked||[]).length].join("|");
   if(key===H.lastKey){
@@ -798,7 +817,7 @@ function renderHost(){
   }else if(H.ph==="end"){
     const ids=[...H.order].sort((a,b)=>(H.sc[b]||0)-(H.sc[a]||0)),w=ids[0];
     const fav=[...H.order].sort((a,b)=>(H.lk[b]||0)-(H.lk[a]||0))[0];
-    body=`<div class="col center" style="gap:8px"><span class="crown">👑</span><div class="av lg" style="--c:${col(w)}">${face(w)}</div><div class="winner">${esc(nm(w))} ${esc(G.winTitle)}</div>
+    body=`<div class="col center" style="gap:8px"><div class="bd-stage"><span class="crown">👑</span>${bodyOf(w,"cheer","xl","")}<div class="bd-crowd">${ids.slice(1,8).map((id,i)=>bodyOf(id,i<2?"cheer":"wave","sm")).join("")}</div></div><div class="winner">${esc(nm(w))} ${esc(G.winTitle)}</div>
     ${fav&&H.lk[fav]?`<p class="bubble" style="margin-top:8px">😂 ${esc(G.likeTitle)}: ${esc(nm(fav))} (${fmt(H.lk[fav])} 👍)</p>`:""}</div>
     ${boardHTML()}
     <div class="row" style="justify-content:center"><button class="btn coral" id="againBtn">نفس اللعبة مرة ثانية</button><button class="btn" id="menuBtn">لعبة ثانية</button></div>`;
@@ -1123,7 +1142,7 @@ const GAMES={fabraka:FAB,arsimha:DRW,sawalif:SAL};
 const KIT={H,ME:null,esc,clip,pick,fmt,norm,nearTruth,shuffle,$,sfx,playSting,playVO,VO,confetti,setTimer,tl,active,nm,col,face,
   act:id=>actOf(id),plHTML,troupe,ringHTML,sayHTML,boardHTML,finishGame,QUIP,OPTC,COLORS,FACES,INK,theme,paint,cleanStrokes,api,colorOf,
   sendAct:a=>sendAct(a),drawPad:(b,v,i)=>drawPad(b,v,i),autoSend:f=>{ME.autoSend=f},me:()=>myPeer,code:()=>ST.code,
-  teamsFor,teamColors,TPAL,
+  teamsFor,teamColors,TPAL,body:bodyOf,
   commercial:CFG.edition==="commercial",voOn:()=>!!ST.vo&&!!ac,avImg,opt:k=>opt(k),roundsOpt,okDraw:x=>typeof x==="string"&&/^[0-9A-Za-z]{10,40}$/.test(x),
   // drops items that use other companies' titles/characters in the commercial edition
   own:list=>CFG.edition==="commercial"?list.filter(x=>!x.lic):list};
@@ -1176,7 +1195,7 @@ function renderPlayer(){
   const v=hostView();root.className="wrap narrow";
   setThemeBg(v?(v.ph==="topic"?v.topic:v.theme):null);
   const idx=v&&Array.isArray(v.order)?v.order.indexOf(myPeer):-1;
-  const c=idx>=0?COLORS[idx%8]:"#a99bd9",f=avImg(v&&v.av&&v.av[myPeer],idx>=0?FACES[idx%8]:"🙂");
+  const c=idx>=0?COLORS[idx%COLORS.length]:"#a99bd9",f=avImg(v&&v.av&&v.av[myPeer],idx>=0?FACES[idx%FACES.length]:"🙂");
   const head=`<div class="phead"><span class="me"><div class="av sm" style="--c:${c}">${f}</div><span>${esc(ST.nick)}</span></span><span class="pill" style="direction:ltr">${esc(ST.code)}</span></div>`;
   if(!v){if(ME.lastKey!=="none"){ME.lastKey="none";root.innerHTML=head+`<div class="emoji">📡</div><p class="big">بانتظار الشاشة الكبيرة…</p>`}return}
   if(myPeer&&Array.isArray(v.kick)&&v.kick.includes(myPeer)){ME.lost=true;rememberKick(ST.code);try{pusher&&pusher.disconnect()}catch(_){}
@@ -1198,7 +1217,7 @@ function renderPlayer(){
   ME.lastKey=key;ME.padSend=null;ME.autoSend=null;
   if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=(v.maxp||MAXP)?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(v.maxp||MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
   const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
-  const myMon=()=>{const s=(v.order||[]).indexOf(myPeer);return s<0?"":`<div class="mymon">${monHTML(s,COLORS[s%8],"big")}<p class="note center">هذا وحشك على الشاشة الكبيرة 👾</p></div>`};
+  const myMon=()=>{const s=(v.order||[]).indexOf(myPeer);return s<0?"":`<div class="mymon">${bodyHTML(avImg(v.av&&v.av[myPeer],FACES[s%8]),COLORS[s%COLORS.length],s,"wave","","lg")}<p class="note center">هذي شخصيتك على الشاشة الكبيرة 🕺</p></div>`};
   const lead=v.lead===myPeer;leadBar(v,lead);
   if(lead&&v.ph==="menu"){const gs=wheelGames(),sel=v.sel&&GAMES[v.sel];
     root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف: اختر اللعبة من هنا</p>

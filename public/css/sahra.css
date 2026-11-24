@@ -892,3 +892,54 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 .mf-list .pbtn.on{outline:4px solid var(--sun);background:var(--sun);color:#1a1033}
 .mf-ghost{font-size:100px;text-align:center;animation:wob 2s ease-in-out infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== player characters (body + chosen face) ===== */
+.bd{display:inline-flex;flex-direction:column;align-items:center;--h:150px;width:calc(var(--h)*.62);position:relative}
+.bd.xs{--h:84px}.bd.sm{--h:118px}.bd.lg{--h:200px}.bd.xl{--h:min(260px,calc(var(--sh)*.3))}
+.bd-fig{position:relative;width:100%;height:var(--h);transform-origin:50% 100%}
+.bd-svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:calc(var(--h)*.74);overflow:visible}
+.bd-head{position:absolute;left:50%;top:0;transform:translateX(-50%);width:calc(var(--h)*.42);aspect-ratio:1;border-radius:50%;background:var(--paper,#fff8e6);border:calc(var(--h)*.025) solid var(--c);
+  display:grid;place-items:center;font-size:calc(var(--h)*.27);line-height:1;overflow:hidden;z-index:2;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.bd-head .avimg{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.bd-name{font-weight:800;font-size:calc(var(--h)*.11 + 4px);margin-top:2px;max-width:calc(var(--h)*.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-arm,.bd-l1,.bd-l2{transform-box:fill-box}
+.bd-al{transform-origin:85% 5%}.bd-ar{transform-origin:15% 5%}
+.bd-l1,.bd-l2{transform-origin:50% 0}
+/* idle: breathing and a little sway, each player a bit out of step */
+.bd.idle .bd-fig{animation:bdbreath 2.6s ease-in-out calc(var(--i)*-.37s) infinite}
+.bd.idle .bd-head{animation:bdlook 4s ease-in-out calc(var(--i)*-.6s) infinite}
+@keyframes bdbreath{50%{transform:scale(1.02,.98) rotate(1deg)}}
+@keyframes bdlook{0%,100%{transform:translateX(-50%) rotate(0)}30%{transform:translateX(-50%) rotate(-6deg)}70%{transform:translateX(-50%) rotate(5deg)}}
+/* wave: the right arm waves hello */
+.bd.wave .bd-ar{animation:bdwave .5s ease-in-out infinite alternate}
+.bd.wave .bd-fig{animation:bdhop .9s ease-in-out infinite}
+@keyframes bdwave{from{transform:rotate(-150deg)}to{transform:rotate(-110deg)}}
+@keyframes bdhop{50%{transform:translateY(-4%)}}
+/* cheer: both arms up and jumping */
+.bd.cheer .bd-al{transform:rotate(150deg);animation:bdcheerL .35s ease-in-out infinite alternate}
+.bd.cheer .bd-ar{transform:rotate(-150deg);animation:bdcheerR .35s ease-in-out infinite alternate}
+.bd.cheer .bd-fig{animation:bdjump .7s cubic-bezier(.3,1.5,.5,1) calc(var(--i)*-.13s) infinite}
+.bd.cheer .bd-l1{animation:bdkick .35s ease-in-out infinite alternate}.bd.cheer .bd-l2{animation:bdkick .35s ease-in-out infinite alternate-reverse}
+@keyframes bdcheerL{from{transform:rotate(140deg)}to{transform:rotate(170deg)}}
+@keyframes bdcheerR{from{transform:rotate(-140deg)}to{transform:rotate(-170deg)}}
+@keyframes bdjump{0%,100%{transform:translateY(0) scale(1)}10%{transform:scale(1.06,.92)}45%{transform:translateY(-16%) scale(.97,1.04)}}
+@keyframes bdkick{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+/* think: hand on the chin, head tilted */
+.bd.think .bd-ar{transform:rotate(-118deg) translate(-6%,6%)}
+.bd.think .bd-head{transform:translateX(-50%) rotate(-8deg);animation:bdthink 2s ease-in-out calc(var(--i)*-.3s) infinite}
+@keyframes bdthink{50%{transform:translateX(-50%) rotate(6deg)}}
+/* sad: slumped */
+.bd.sad .bd-fig{transform:translateY(4%) scale(1,.95)}.bd.sad .bd-head{transform:translateX(-50%) translateY(10%) rotate(10deg);filter:grayscale(.4)}
+/* paint: drawing arm moves */
+.bd.paint .bd-ar{animation:bdpaint .4s ease-in-out infinite alternate}
+@keyframes bdpaint{from{transform:rotate(-70deg)}to{transform:rotate(-110deg)}}
+/* rows */
+.bdrow{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;align-items:flex-end}
+.bdrow>.kickwrap{animation:drop .6s cubic-bezier(.3,1.6,.5,1) calc(var(--i)*.06s) both}
+.bdtroupe{gap:6px 10px;align-items:flex-end}
+.bdt{position:relative}.bdt.wait{opacity:.75}
+.bdt-ok{position:absolute;top:0;right:-4px;background:#2ee6a6;color:#1a1033;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:14px;z-index:3;animation:pop .3s cubic-bezier(.2,1.6,.4,1) both}
+.bd-stage{position:relative;display:flex;flex-direction:column;align-items:center}
+.bd-stage .crown{margin-bottom:-14px;position:relative;z-index:3}
+.bd-crowd{display:flex;gap:4px;margin-top:-10px;flex-wrap:wrap;justify-content:center}
+.mymon .bd{margin-inline:auto}
