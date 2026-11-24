@@ -1675,4 +1675,144 @@ B.push(K=>{
   };
 });
 
+/* =====================================================================
+   16) المطاردة: a family take on The Chase. Points instead of money.
+   1) Cash builder: everyone at once, 45 s of quick questions on the phone.
+   2) Head to head, one by one on a 7-step ladder: pick high/middle/low offer, the chaser
+      (the computer, or one of you) answers too; reach home to bank, get caught and you're out.
+   3) Final chase: the survivors build a target together, then the chaser has to catch it;
+      when the chaser misses, the team can push him back.
+   Questions: the كأس العلم bank (window.IKH_BANK), used with three options.
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,tl}=K;
+  const C=common(K);
+  const OPT3=[{c:"#3fa9ff",s:"أ"},{c:"#ffc534",s:"ب"},{c:"#ff5a6e",s:"ج"}];
+  const STEP=1000,LAD=7;
+  const NAMES=["الوحش","الدهّية","أبو العرّيف","الذيب"];
+  // every question as three options: the right one and two of the wrong ones
+  function pool(){const b=window.IKH_BANK||{},out=[];Object.values(b).forEach(l=>l.forEach(q=>out.push(q)));return out}
+  const make=q=>{const o=shuffle([q[1],...shuffle([q[2],q[3],q[4]]).slice(0,2)]);return{t:q[0],o,cor:o.indexOf(q[1]),f:q[5]}};
+  const chaserFace="🦹";
+  return{
+    id:"chase",name:"المطاردة",emoji:"🏃",color:"#5b4bd8",min:2,max:8,
+    desc:"اجمع نقاطك بسرعة، وبعدها اهرب من المطارد على السلّم! والناجين يواجهونه مع بعض في المطاردة النهائية",
+    tags:["٢-٨ لاعبين","معلومات","فريق ضد المطارد"],
+    rules:["جولة بناء الرصيد: الكل يجاوب من جواله بنفس الوقت، كل جواب صح = ١٠٠٠","المواجهة: كل واحد يختار عرض (أعلى، رصيده، أدنى) ويهرب من المطارد على السلّم","توصل البيت؟ رصيدك يروح لصندوق الفريق. يلحقك المطارد؟ تطلع","المطاردة النهائية: الناجين يبنون هدف، والمطارد يحاول يوصله قبل ما يخلص الوقت"],
+    winTitle:"نجا من المطارد! 🏃",likeTitle:"",
+    timed:["ccash","cpick","cq","fteam","fchase","fpush"],
+    options:[{key:"who",label:"المطارد",choices:[["bot","الكمبيوتر 🤖"],["player","واحد منكم 🦹"]],def:"bot"},
+      {key:"lvl",label:"قوة المطارد الكمبيوتر",choices:[["60","سهل"],["75","متوسط"],["88","صعب"]],def:"75"},
+      {key:"ft",label:"وقت المطاردة النهائية",choices:[["60","دقيقة"],["90","دقيقة ونص"],["120","دقيقتين"]],def:"90"}],
+    optLock(key){if(key==="lvl"&&K.opt("who")==="player")return{v:"75",msg:"المطارد لاعب منكم"};if(key==="who"&&H.order.length<3)return{v:"bot",msg:"لاعب منكم يحتاج ٣ لاعبين"};return null},
+    start(){const pl=[...H.order],human=K.opt("who")==="player"&&pl.length>=3,ch=human?pick(pl):null;
+      const g=H.g={pl:pl.filter(x=>x!==ch),ch,cname:pick(NAMES),acc:(+K.opt("lvl")||75)/100,P:shuffle(pool()),qi:0,cash:{},cbq:{},cbAns:{},bank:0,surv:[],out:[],turn:-1};
+      g.pl.forEach(id=>{g.cash[id]=0;g.cbq[id]={n:0,ord:shuffle([...Array(g.P.length).keys()])}});
+      H.ph="cintro";H.k++;setTimer(6);K.playSting("sting_reveal",sfx.drum);
+      H.quip=ch?`المطارد الليلة: ${nm(ch)} «${g.cname}» 🦹`:`المطارد الليلة: الكمبيوتر «${g.cname}» 🤖`},
+    nextQ(){const g=H.g;const q=make(g.P[g.qi%g.P.length]);g.qi++;return q},
+    cbQ(id){const g=H.g,s=g.cbq[id];return make(g.P[s.ord[s.n%s.ord.length]])},
+    // the computer chaser answers right acc% of the time, after a little "thinking"
+    botAns(q){const g=H.g;return Math.random()<g.acc?q.cor:pick([0,1,2].filter(i=>i!==q.cor))},
+    h2hStart(){const g=H.g;g.turn++;if(g.turn>=g.pl.length)return this.finalStart();
+      const id=g.pl[g.turn];if(!active().includes(id)){g.out.push(id);return this.h2hStart()}
+      const c=g.cash[id];g.cur=id;g.offers={hi:Math.max(c*3,5000),mid:c,lo:Math.round(c/4)-1000};
+      H.ph="cpick";H.k++;setTimer(20);sfx.pop();H.quip=`${nm(id)} ضد ${g.cname}! اختار عرضك 🪜`},
+    h2hPlay(choice){const g=H.g;g.choice=choice;g.amt=g.offers[choice];g.pos={hi:2,mid:3,lo:4}[choice];g.cpos=0;this.h2hQ()},
+    h2hQ(){const g=H.g;g.q=this.nextQ();g.a={};g.botA=null;g.botAt=Date.now()+2000+Math.random()*5000;H.ph="cq";H.k++;setTimer(15);sfx.tada();H.quip=`سؤال لـ ${nm(g.cur)}…`},
+    h2hReveal(){const g=H.g,me=g.a[g.cur],ca=g.ch?g.a[g.ch]:g.botA;g.meOk=me===g.q.cor;g.chOk=ca===g.q.cor;g.meA=me;g.chA=ca;
+      if(g.meOk)g.pos++;if(g.chOk)g.cpos++;g.res=g.cpos>=g.pos?"caught":g.pos>=LAD?"home":null;
+      H.ph="cqr";H.k++;setTimer(g.res?5:4);if(g.meOk)sfx.coin();else sfx.lie();
+      if(g.res==="home"){g.bank+=g.amt;g.surv.push(g.cur);sfx.truth();confetti(80);H.quip=`${nm(g.cur)} وصل البيت! +${fmt(g.amt)} للصندوق 🏠`}
+      else if(g.res==="caught"){g.out.push(g.cur);K.playSting("sting_reveal",sfx.trombone);H.quip=`${g.cname} لحق ${nm(g.cur)}! 😱`}
+      else H.quip=g.meOk?(g.chOk?"الاثنين جابوها!":"صح! والمطارد غلط 😏"):(g.chOk?"المطارد يقرّب… 😬":"الاثنين غلط!")},
+    finalStart(){const g=H.g;
+      // nobody made it home: the team picks one to run the final for them (here: the best cash builder)
+      if(!g.surv.length){const best=g.pl.slice().sort((a,b)=>g.cash[b]-g.cash[a])[0];g.surv=[best];g.stand=1}
+      g.target=g.surv.length;g.ft=+K.opt("ft")||90;g.tLeft=g.ft;g.fq=this.nextQ();
+      H.ph="fteam";H.k++;setTimer(g.ft);sfx.tada();H.quip=`المطاردة النهائية! تبدأون بـ ${fmt(g.target)} خطوات. أول واحد يجاوب صح ✋`},
+    fNext(){const g=H.g;g.fq=this.nextQ();g.fa={};g.botAt=Date.now()+1500+Math.random()*3500;H.k++},
+    tick(now){const g=H.g;
+      if(H.ph==="cintro"){if(now>H.end){H.ph="ccash";H.k++;setTimer(45);sfx.tada();H.quip="جولة بناء الرصيد! جاوبوا بأسرع ما تقدرون ⏱️"}}
+      else if(H.ph==="ccash"){g.pl.forEach(id=>{const a=K.act(id),s=g.cbq[id];if(!a||a.cn!==s.n||!Number.isInteger(a.c))return;
+          const q=this.cbQ(id);if(a.c===q.cor){g.cash[id]+=STEP;sfx.coin()}s.n++});
+        if(now>H.end||g.forceSkip){g.forceSkip=false;H.ph="ccr";H.k++;setTimer(6);sfx.truth();H.quip="خلص الوقت! شوفوا أرصدتكم 💰"}}
+      else if(H.ph==="ccr"){if(now>H.end)this.h2hStart()}
+      else if(H.ph==="cpick"){const a=K.act(g.cur);const c=a&&["hi","mid","lo"].includes(a.offer)?a.offer:null;
+        if(c||now>H.end||g.forceSkip||!active().includes(g.cur)){g.forceSkip=false;this.h2hPlay(c||"mid")}}
+      else if(H.ph==="cq"){[g.cur,g.ch].forEach(id=>{if(!id||id in g.a)return;const a=K.act(id);if(a&&Number.isInteger(a.a)&&a.a>=0&&a.a<3){g.a[id]=a.a;sfx.pop()}});
+        if(!g.ch&&g.botA===null&&now>g.botAt)g.botA=this.botAns(g.q);
+        const chDone=g.ch?(g.ch in g.a||!active().includes(g.ch)):g.botA!==null;
+        if(now>H.end||g.forceSkip||((g.cur in g.a)&&chDone)){g.forceSkip=false;if(!g.ch&&g.botA===null)g.botA=this.botAns(g.q);this.h2hReveal()}}
+      else if(H.ph==="cqr"){if(now>H.end){if(g.res){H.ph="cdone";H.k++;setTimer(1);return}this.h2hQ()}}
+      else if(H.ph==="cdone"){if(now>H.end)this.h2hStart()}
+      else if(H.ph==="fteam"){
+        // any survivor: first answer to this question counts
+        if(!g.fa)g.fa={};let done=false;
+        for(const id of g.surv){const a=K.act(id);if(a&&a.fq===g.qi&&Number.isInteger(a.a)){if(a.a===g.fq.cor){g.target++;sfx.coin()}else sfx.lie();done=true;break}}
+        if(done)this.fNext();
+        if(now>H.end||g.forceSkip){g.forceSkip=false;g.cp=0;g.tLeft=g.ft;H.ph="fready";H.k++;setTimer(5);H.quip=`الهدف: ${fmt(g.target)} خطوات! الحين دور ${g.cname} 🦹`}}
+      else if(H.ph==="fready"){if(now>H.end){g.fq=this.nextQ();g.botAt=now+1500+Math.random()*3000;H.ph="fchase";H.k++;setTimer(g.tLeft);g.fStart=now;H.quip=`${g.cname} يطارد!`}}
+      else if(H.ph==="fchase"){let ans=null;
+        if(g.ch){const a=K.act(g.ch);if(a&&a.fq===g.qi&&Number.isInteger(a.a))ans=a.a}else if(now>g.botAt)ans=this.botAns(g.fq);
+        if(ans!==null){if(ans===g.fq.cor){g.cp++;sfx.coin();if(g.cp>=g.target)return this.finalEnd(false);g.fq=this.nextQ();g.botAt=now+1500+Math.random()*3500;H.k++}
+          else{// a miss: the clock stops and the team can push him back
+            g.tLeft=Math.max(1,Math.ceil((H.end-now)/1000));g.pq=g.fq;H.ph="fpush";H.k++;setTimer(8);sfx.lie();H.quip="المطارد غلط! ⏸️ جاوبوا صح وارجعوه خطوة"}}
+        if(now>H.end||g.forceSkip){g.forceSkip=false;this.finalEnd(true)}}
+      else if(H.ph==="fpush"){let r=null;for(const id of g.surv){const a=K.act(id);if(a&&a.fq===g.qi&&Number.isInteger(a.a)){r=a.a===g.pq.cor;break}}
+        if(r!==null||now>H.end||g.forceSkip){g.forceSkip=false;if(r){if(g.cp>0)g.cp--;else g.target++;sfx.truth();H.quip="رجّعتوه خطوة! 💪"}
+          g.fq=this.nextQ();g.botAt=now+1500+Math.random()*3500;H.ph="fchase";H.k++;setTimer(g.tLeft)}}
+      else if(H.ph==="cend"){if(now>H.end)K.finishGame()}},
+    finalEnd(teamWon){const g=H.g;g.teamWon=teamWon;
+      const share=g.stand?0:Math.round(g.bank/Math.max(1,g.surv.length));
+      g.pl.forEach(id=>H.sc[id]=teamWon&&g.surv.includes(id)?Math.max(share,100):0);if(g.ch)H.sc[g.ch]=teamWon?0:Math.max(g.bank,1000);
+      H.ph="cend";H.k++;setTimer(9);if(teamWon){sfx.truth();confetti(180);H.quip=`نجيتوا من ${g.cname}! 🎉 كل ناجي ياخذ ${fmt(share)}`}
+      else{K.playSting("sting_reveal",sfx.trombone);H.quip=`${g.cname} لحقكم! 🦹 راحت الجائزة`}},
+    doneMap(){return null},
+    view(v){const g=H.g;if(!g.pl)return;v.pl=g.pl;v.ch=g.ch;v.cur=g.cur;v.cname=g.cname;v.surv=g.surv;
+      if(H.ph==="ccash"){v.cb={};g.pl.forEach(id=>{const q=this.cbQ(id);v.cb[id]={n:g.cbq[id].n,t:q.t,o:q.o}});v.cash=g.cash}
+      if(H.ph==="cpick")v.offers=g.offers;
+      if(H.ph==="cq"){v.o=g.q.o}
+      if(["fteam","fchase","fpush"].includes(H.ph)){const q=H.ph==="fpush"?g.pq:g.fq;v.fq=g.qi;v.o=q.o;v.ft=q.t}
+      if(H.ph==="cqr"){v.res=g.res;v.meOk=g.meOk}if(H.ph==="cend")v.teamWon=g.teamWon},
+    pill(){const g=H.g;return`<span class="pill">💰 الصندوق ${fmt(g.bank||0)}${g.surv&&g.surv.length?` · ناجين ${fmt(g.surv.length)}`:""}</span>`},
+    chaser(pose){const g=H.g;return g.ch?K.body(g.ch,pose,"sm",`🦹 ${g.cname}`):`<div class="bd ${pose} sm" style="--c:#222;--i:0"><div class="bd-fig"><svg class="bd-svg" viewBox="0 0 100 160"><g class="bd-legs"><rect class="bd-l1" x="36" y="108" width="11" height="34" rx="5" fill="#111"/><rect class="bd-l2" x="53" y="108" width="11" height="34" rx="5" fill="#111"/></g><g class="bd-arm bd-al"><path d="M22 70 Q10 90 14 108" stroke="#222" stroke-width="11" fill="none" stroke-linecap="round"/></g><g class="bd-arm bd-ar"><path d="M78 70 Q90 90 86 108" stroke="#222" stroke-width="11" fill="none" stroke-linecap="round"/></g><path d="M30 58 L18 66 L22 84 L32 80 L32 112 L68 112 L68 80 L78 84 L82 66 L70 58 Q50 70 30 58Z" fill="#222"/><path d="M46 60 L50 80 L54 60Z" fill="#c0392b"/></svg><div class="bd-head" style="--c:#c0392b">${chaserFace}</div></div><span class="bd-name">🤖 ${esc(g.cname)}</span></div>`},
+    ladder(){const g=H.g;const rows=[...Array(LAD+1).keys()];
+      return`<div class="ch-lad">${rows.map(r=>{const me=g.pos===r,ch=g.cpos===r&&g.cpos>0;return`<div class="ch-row ${r===LAD?"home":""} ${r<g.cpos?"red":""} ${me?"me":""}">${r===0?`<span class="ch-tag">🦹</span>`:r===LAD?`<span class="ch-tag">🏠 البيت</span>`:""}${ch?this.chaser("idle"):""}${me?K.body(g.cur,g.res==="home"?"cheer":g.res==="caught"?"sad":"think","xs",""):""}${r===g.pos&&g.amt!==undefined&&!me?"":""}</div>`}).join("")}</div>`},
+    q3(q,cls){return`<p class="ik-qt kq-qt">${esc(q.t)}</p><div class="ch-opts">${q.o.map((o,i)=>`<div class="ik-opt ${cls?cls(i):""}" style="--o:${OPT3[i].c};--i:${i}"><span class="ik-shape">${OPT3[i].s}</span><b>${esc(o)}</b></div>`).join("")}</div>`},
+    render(){const g=H.g;
+      if(H.ph==="cintro")return C.head(H.quip)+`<div class="col center"><div class="ch-vs">${this.chaser("wave")}<b>ضد</b><div class="bdrow">${g.pl.map(id=>K.body(id,"idle","sm")).join("")}</div></div></div>`;
+      if(H.ph==="ccash"||H.ph==="ccr")return C.head(H.quip)+`<div class="col center"><span style="font-size:60px">💰</span><p class="mf-big">${H.ph==="ccash"?"جاوبوا من جوالاتكم! كل صح = ١٠٠٠":"أرصدتكم"}</p><div class="ch-cash">${g.pl.map(id=>`<div>${K.body(id,H.ph==="ccr"?"cheer":"think","sm","")}<b>${esc(nm(id))}</b><span>${fmt(g.cash[id])}</span></div>`).join("")}</div></div>`;
+      if(H.ph==="cpick")return C.head(H.quip)+`<div class="ch-pick"><div class="ch-off hi"><b>⬆️ العرض الأعلى</b><span>${fmt(g.offers.hi)}</span><small>تبدأ خطوتين قدّامه</small></div><div class="ch-off mid"><b>➡️ رصيدك</b><span>${fmt(g.offers.mid)}</span><small>٣ خطوات قدّامه</small></div><div class="ch-off lo"><b>⬇️ العرض الأدنى</b><span>${fmt(g.offers.lo)}</span><small>٤ خطوات قدّامه</small></div></div><p class="note center" style="font-size:20px">📱 ${esc(nm(g.cur))} يختار من جواله</p>`;
+      if(H.ph==="cq"||H.ph==="cqr"){const rev=H.ph==="cqr";
+        return C.head(H.quip)+`<div class="ch-h2h">${this.ladder()}<div class="ch-side"><div class="ch-amt">💰 ${fmt(g.amt)}</div>${this.q3(g.q,rev?(i=>i===g.q.cor?"cor":"dim"):null)}
+          ${rev?`<div class="ch-ans"><span>${esc(nm(g.cur))}: ${g.meA===undefined?"⏳":g.meOk?"✅":"❌"}</span><span>${esc(g.cname)}: ${g.chA===null||g.chA===undefined?"⏳":g.chOk?"✅":"❌"}</span></div>`:`<p class="note">📱 ${esc(nm(g.cur))} و${esc(g.cname)} يجاوبون بالسر</p>`}</div></div>`}
+      if(H.ph==="cdone")return"";
+      if(["fteam","fready","fchase","fpush"].includes(H.ph)){const q=H.ph==="fpush"?g.pq:g.fq,team=H.ph==="fteam";
+        return C.head(H.quip)+`<div class="ch-final"><div class="ch-track"><div class="ch-bar team" style="--w:${Math.min(100,g.target/Math.max(g.target,12)*100)}%"><b>🎯 هدف الفريق ${fmt(g.target)}</b></div>
+          ${H.ph!=="fteam"?`<div class="ch-bar chs" style="--w:${Math.min(100,(g.cp||0)/Math.max(1,g.target)*100)}%"><b>🦹 ${esc(g.cname)} ${fmt(g.cp||0)}</b></div>`:""}</div>
+          ${H.ph==="fready"?`<div class="col center">${this.chaser("wave")}</div>`:`${this.q3(q)}<p class="note center">${team||H.ph==="fpush"?"📱 أول واحد من الناجين يجاوب صح":"📱 المطارد يجاوب…"}</p>`}
+          <div class="bdrow">${g.surv.map(id=>K.body(id,team?"think":"idle","xs")).join("")}</div></div>`}
+      if(H.ph==="cend")return`<div class="reveal" style="padding-top:10px"><div class="answer">${g.teamWon?"🎉 نجيتوا!":"🦹 المطارد فاز!"}</div><div class="bdrow">${g.surv.map(id=>K.body(id,g.teamWon?"cheer":"sad","sm")).join("")}${this.chaser(g.teamWon?"sad":"cheer")}</div></div>`;
+      return""},
+    // cash builder: a new question on the phone every time the last one is answered
+    cbDraw(v){const me=K.me(),q=v.cb&&v.cb[me],box=document.getElementById("chCB");if(!q||!box)return;box.dataset.n=q.n;
+      box.innerHTML=`<div class="ch-cbhead">💰 ${fmt((v.cash||{})[me]||0)}</div><p class="ch-cbq">${esc(q.t)}</p><div class="col">${q.o.map((o,i)=>`<button class="pbtn" data-c="${i}" style="border-color:${OPT3[i].c}">${OPT3[i].s}) ${esc(o)}</button>`).join("")}</div>`;
+      box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,c:+b.dataset.c,cn:q.n});box.querySelectorAll("[data-c]").forEach(x=>x.disabled=true)})},
+    phoneLive(v){if(v.ph!=="ccash")return;const me=K.me(),q=v.cb&&v.cb[me],box=document.getElementById("chCB");if(q&&box&&String(q.n)!==box.dataset.n)this.cbDraw(v)},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);const isCh=v.ch===me,surv=(v.surv||[]).includes(me);
+      const btn3=(field,extra)=>`<div class="ch-pad">${OPT3.map((o,i)=>`<button class="ik-pb" data-a="${i}" style="--o:${o.c}"><span>${o.s}</span>${extra?`<small>${esc(extra[i]||"")}</small>`:""}</button>`).join("")}</div>`;
+      const wire=(mk)=>root.querySelectorAll(".ch-pad .ik-pb").forEach(b=>b.onclick=()=>{K.sendAct(mk(+b.dataset.a));root.querySelectorAll(".ch-pad .ik-pb").forEach(x=>x.disabled=true);b.classList.add("sel")});
+      if(v.ph==="ccash"){const q=v.cb&&v.cb[me];if(!q){C.watch(root,v,isCh?"🦹":"👀",isCh?"أنت المطارد! استنى دورك 😈":"تفرّج","");return}
+        root.insertAdjacentHTML("beforeend",`${tline}<div id="chCB"></div>`);this.cbDraw(v);return}
+      if(v.ph==="cpick"&&v.cur===me){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:24px">اختار عرضك ضد ${esc(v.cname)} 🪜</h2><div class="col">
+          <button class="pbtn" data-of="hi">⬆️ الأعلى: ${fmt(v.offers.hi)} (خطوتين قدّامه)</button><button class="pbtn" data-of="mid">➡️ رصيدك: ${fmt(v.offers.mid)} (٣ خطوات)</button><button class="pbtn" data-of="lo">⬇️ الأدنى: ${fmt(v.offers.lo)} (٤ خطوات)</button></div>`);
+        root.querySelectorAll("[data-of]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,offer:b.dataset.of});root.querySelectorAll("[data-of]").forEach(x=>x.disabled=true)});return}
+      if(v.ph==="cq"&&(v.cur===me||isCh)){root.insertAdjacentHTML("beforeend",`<p class="note center">${isCh?"🦹 جاوب بالسر يا المطارد":"ناظر السؤال على الشاشة واختار"}</p>${tline}${btn3()}`);wire(a=>({k:v.k,a}));return}
+      if((v.ph==="fteam"||v.ph==="fpush")&&surv){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">✋ أسرع واحد يجاوب!</h2>${tline}${btn3()}`);wire(a=>({k:v.k,a,fq:v.fq}));return}
+      if(v.ph==="fchase"&&isCh){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">🦹 طاردهم!</h2>${tline}${btn3()}`);wire(a=>({k:v.k,a,fq:v.fq}));return}
+      C.watch(root,v,isCh?"🦹":v.ph==="cend"?(v.teamWon?"🎉":"😱"):"👀","ناظر الشاشة الكبيرة!","");},
+  };
+});
+
 })();
