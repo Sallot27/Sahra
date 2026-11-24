@@ -2074,4 +2074,105 @@ B.push(K=>{
   };
 });
 
+/* =====================================================================
+   19) الأقل يفوز (Pointless, "we asked the family"): a question with many right answers.
+   Your points = how many of you wrote the same answer; an answer only you wrote is «ولا نقطة» 💎.
+   Wrong or empty = +10. Lowest total wins. Rounds: open questions, a choice round (6 options),
+   a letter round, then a final for the lowest three: three tries to find a rare right answer.
+   Bank: window.POINTLESS_BANK. The big screen can accept a doubtful answer by hand.
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti,tl}=K;
+  const C=common(K);
+  const PEN=10;
+  const N=s=>String(s||"").trim().toLowerCase().replace(/[ً-ْـ]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/ؤ/g,"و").replace(/ئ/g,"ي").replace(/\s+/g," ").split(" ").map(w=>w.length>3&&w.startsWith("ال")?w.slice(2):w).join(" ");
+  const lev=(a,b)=>{if(Math.abs(a.length-b.length)>1)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]};
+  // which item of the list an answer is (index), or -1
+  function match(list,ans){const a=N(ans);if(!a)return-1;for(let i=0;i<list.length;i++){for(const v of list[i].split("|")){const n=N(v);if(n===a||(n.length>=4&&lev(n,a)<=1))return i}}return-1}
+  const first=s=>N(s.split("|")[0]).replace(/\s/g,"")[0];
+  const LET="مبسجتقكعحرطن".split("");
+  return{
+    id:"pointless",name:"الأقل يفوز",emoji:"🎯",color:"#7fe9ff",min:3,max:10,
+    desc:"اذكر جواب صحيح… بس ما يفكر فيه أحد غيرك! كل ما قل اللي كتبوا نفس جوابك، قلّت نقاطك، والأقل يفوز 💎",
+    tags:["٣-١٠ لاعبين","تفكير","توقع العائلة"],
+    rules:["يطلع سؤال له أجوبة صحيحة كثيرة، مثل «اذكر دولة عربية»","كل واحد يكتب جواب واحد بالسر من جواله","نقاطك = عدد اللي كتبوا نفس جوابك. لو كتبته لحالك = ولا نقطة 💎","الجواب الغلط أو بدون جواب = ١٠ نقاط. الأقل مجموعاً يفوز!"],
+    winTitle:"صاحب ولا نقطة! 💎",likeTitle:"",
+    timed:["pq","pfinal"],
+    options:[{key:"r",label:"عدد الأسئلة العادية",choices:[[2,"٢"],[4,"٤"]],def:4}],
+    start(){const b=window.POINTLESS_BANK||{open:[],choice:[],letter:[]};const n=+K.opt("r")||4;
+      const opens=shuffle([...b.open.keys()]);const plan=opens.slice(0,n).map(i=>({t:"open",i}));
+      if(b.choice&&b.choice.length)plan.push({t:"choice",i:Math.floor(Math.random()*b.choice.length)});
+      if(b.letter&&b.letter.length){const L=pick(b.letter);const list=b.open[L.list].a;const ok=LET.filter(x=>list.filter(s=>first(s)===N(x)).length>=3);if(ok.length)plan.push({t:"letter",L,ch:pick(ok)})}
+      H.g={pl:[...H.order],plan,ri:-1,tot:{},gems:{},spare:opens.slice(n)};H.g.pl.forEach(id=>{H.g.tot[id]=0;H.g.gems[id]=0});this.next()},
+    next(){const g=H.g;g.ri++;if(g.ri>=g.plan.length)return this.finalStart();const r=g.plan[g.ri],b=window.POINTLESS_BANK;
+      if(r.t==="open"){const q=b.open[r.i];g.q={c:q.c,t:q.q,list:q.a}}
+      else if(r.t==="letter"){const q=b.open[r.L.list];g.q={c:r.L.c,t:`${r.L.q} «${r.ch}»`,list:q.a.filter(s=>first(s)===N(r.ch)),letter:r.ch}}
+      else{const q=b.choice[r.i];g.q={c:q.c,t:q.q,opts:q.o}}
+      g.kind=r.t;g.ans={};H.ph="pq";H.k++;setTimer(r.t==="choice"?25:30);sfx.tada();
+      H.quip=r.t==="choice"?"جولة الخيارات! اختار جواب صحيح… ونادر 🤫":r.t==="letter"?`جولة الحرف: لازم يبدأ بـ«${r.ch}» (بدون «ال»)`:"اكتب جواب صحيح ما يفكر فيه أحد غيرك 🤫"},
+    // group the answers: right ones by list item (or by option), wrong/empty apart
+    score(){const g=H.g,q=g.q,groups={},res={};
+      g.pl.forEach(id=>{const a=g.ans[id];let key=null,label="";
+        if(g.kind==="choice"){if(Number.isInteger(a)&&q.opts[a]){label=q.opts[a][0];key=q.opts[a][1]?"o"+a:null;if(!key)res[id]={wrong:label}}}
+        else if(typeof a==="string"&&a.trim()){const i=(g.accepted||{})[N(a)]!==undefined?g.accepted[N(a)]:match(q.list,a);if(i>=0){key=typeof i==="number"?"i"+i:i;label=typeof i==="number"?q.list[i].split("|")[0]:a}else res[id]={wrong:a}}
+        if(key){(groups[key]=groups[key]||{label,ids:[]}).ids.push(id)}else if(!res[id])res[id]={none:1}});
+      Object.values(groups).forEach(gr=>gr.ids.forEach(id=>res[id]={label:gr.label,pts:gr.ids.length===1?0:gr.ids.length}));
+      Object.entries(res).forEach(([id,r])=>{if(r.wrong!==undefined||r.none)r.pts=PEN});
+      g.res=res;g.groups=Object.values(groups).sort((a,b)=>b.ids.length-a.ids.length);
+      // answers nobody thought of (from the end of the list: the rare ones)
+      if(q.list){const said=new Set(Object.keys(groups));g.missed=q.list.map((s,i)=>["i"+i,s.split("|")[0]]).filter(([k])=>!said.has(k)).slice(-4).map(x=>x[1])}
+      else g.missed=q.opts.filter(([o,ok],i)=>ok&&!groups["o"+i]).map(x=>x[0])},
+    reveal(){const g=H.g;this.score();g.rvI=0;g.items=[...g.pl.filter(id=>g.res[id].wrong!==undefined||g.res[id].none).map(id=>({t:"bad",id})),...g.groups.map(gr=>({t:"ok",gr}))];
+      H.ph="prev";H.k++;g.rvAt=Date.now()+1200;sfx.drum&&sfx.drum()},
+    commit(){const g=H.g;g.pl.forEach(id=>{const r=g.res[id];g.tot[id]+=r.pts;if(r.pts===0)g.gems[id]++})},
+    finalStart(){const g=H.g;const b=window.POINTLESS_BANK;const ord=g.pl.slice().sort((a,b)=>g.tot[a]-g.tot[b]);g.fin=ord.slice(0,Math.min(3,Math.max(1,ord.length-1)));
+      const qi=g.spare.length?g.spare[0]:Math.floor(Math.random()*b.open.length),q=b.open[qi];g.q={c:q.c,t:q.q,list:q.a};g.kind="final";g.tries={};g.fwin={};g.fused={};g.fin.forEach(id=>g.tries[id]=[]);
+      H.ph="pfinal";H.k++;setTimer(45);K.playSting("sting_reveal",sfx.drum);H.quip=`🏆 النهائي لـ ${g.fin.map(nm).join(" و")}! عندكم ٣ محاولات تلقون جواب نادر 💎`},
+    tick(now){const g=H.g;
+      if(H.ph==="pq"){g.pl.forEach(id=>{if(id in g.ans)return;const a=K.act(id);if(!a)return;if(g.kind==="choice"&&Number.isInteger(a.c))g.ans[id]=a.c;else if(typeof a.ans==="string")g.ans[id]=a.ans.slice(0,40)});
+        if(now>H.end||g.forceSkip||active().every(id=>id in g.ans)){g.forceSkip=false;this.reveal()}}
+      else if(H.ph==="prev"){if(now>g.rvAt){if(g.rvI<g.items.length){const it=g.items[g.rvI];g.rvI++;g.rvAt=now+1500;
+          if(it.t==="bad")sfx.lie();else if(it.gr.ids.length===1){sfx.truth();confetti(60)}else sfx.pop()}
+        else if(!g.shownMiss){g.shownMiss=1;g.rvAt=now+4000;g.rvI++}
+        else{g.shownMiss=0;this.commit();g.accepted={};H.ph="pst";H.k++;setTimer(7);sfx.swoosh();H.quip="الترتيب: الأقل فوق! 👇"}}}
+      else if(H.ph==="pst"){if(now>H.end)this.next()}
+      else if(H.ph==="pfinal"){g.fin.forEach(id=>{const a=K.act(id);if(!a||typeof a.ans!=="string"||a.n===g.fused[id]||g.fwin[id]||g.tries[id].length>=3)return;g.fused[id]=a.n;
+          const i=match(g.q.list,a.ans),taken=Object.values(g.tries).some(l=>l.some(t=>t.i===i&&i>=0)),common=i>=0&&i<Math.ceil(g.q.list.length/3);
+          const ok=i>=0&&!common&&!taken;g.tries[id].push({a:a.ans.slice(0,30),i,ok,why:i<0?"غلط":common?"مشهور":taken?"انقال":"💎"});if(ok){g.fwin[id]=1;sfx.truth();confetti(100)}else sfx.lie();H.k++});
+        const done=g.fin.every(id=>g.fwin[id]||g.tries[id].length>=3||!active().includes(id));
+        if(now>H.end||g.forceSkip||done){g.forceSkip=false;
+          const win=g.fin.filter(id=>g.fwin[id]);g.pl.forEach(id=>H.sc[id]=Math.max(0,1000-g.tot[id]*10)+(win.includes(id)?2000:0));
+          H.ph="pend";H.k++;setTimer(8);sfx.tada();H.quip=win.length?`💎 ${win.map(nm).join(" و")} لقى جواب نادر!`:"ما أحد لقى جواب نادر… الأقل مجموعاً يفوز"}}
+      else if(H.ph==="pend"){if(now>H.end)K.finishGame()}},
+    doneMap(){const g=H.g;if(H.ph==="pq"){const m={};Object.keys(g.ans).forEach(id=>m[id]=1);return m}return null},
+    view(v){const g=H.g;if(!g.pl)return;v.kind=g.kind;v.q=g.q?{c:g.q.c,t:g.q.t,o:g.q.opts?g.q.opts.map(x=>x[0]):null}:null;v.fin=g.fin;
+      if(H.ph==="pfinal"){v.tries=g.tries;v.fwin=g.fwin}if(["prev","pst"].includes(H.ph)&&g.res)v.res=g.res},
+    pill(){const g=H.g;return`<span class="pill">${g.kind==="final"?"🏆 النهائي":`السؤال ${fmt(g.ri+1)} من ${fmt(g.plan.length)}`}</span>`},
+    standing(){const g=H.g;return`<div class="pt-st">${g.pl.slice().sort((a,b)=>g.tot[a]-g.tot[b]).map((id,i)=>`<div style="--i:${i}">${K.body(id,i===0?"cheer":"idle","xs","")}<b>${esc(nm(id))}</b><span>${fmt(g.tot[id])}</span>${g.gems[id]?`<i>💎×${fmt(g.gems[id])}</i>`:""}</div>`).join("")}</div>`},
+    render(){const g=H.g;const head=`<div class="pt-q"><span class="ik-tag">${esc(g.q.c)}</span><p class="ik-qt kq-qt">${esc(g.q.t)}</p></div>`;
+      if(H.ph==="pq")return C.head(H.quip)+head+(g.kind==="choice"?`<div class="pt-opts">${g.q.opts.map(([o],i)=>`<span>${fmt(i+1)}. ${esc(o)}</span>`).join("")}</div>`:"")+`<div id="dyn" class="still">${this.dyn()}</div>`;
+      if(H.ph==="prev"){const shown=g.items.slice(0,g.rvI);
+        return C.head(g.rvI>g.items.length?"أوووه! كيف ما جات في بالكم؟ 🤯":"نكشف الأجوبة… من الأكثر للأقل")+head+`<div class="pt-rev">${shown.map(it=>it.t==="bad"?`<div class="pt-a bad">${K.body(it.id,"sad","xs","")}<b>${esc(nm(it.id))}</b><span>${g.res[it.id].none?"ما كتب":`«${esc(g.res[it.id].wrong)}» ❌`}</span><em>+١٠</em>${g.kind!=="choice"&&g.res[it.id].wrong?`<button class="btn ghost pt-acc" data-acc="${esc(it.id)}">✔ صحيحة</button>`:""}</div>`
+          :`<div class="pt-a ${it.gr.ids.length===1?"gem":""}"><b class="pt-lab">${esc(it.gr.label)}</b><span>${it.gr.ids.map(id=>esc(nm(id))).join("، ")}</span><em>${it.gr.ids.length===1?"💎 ولا نقطة":`+${fmt(it.gr.ids.length)}`}</em></div>`).join("")}
+          ${g.rvI>g.items.length&&g.missed.length?`<div class="pt-miss">🤯 ما أحد قال: ${g.missed.map(esc).join(" • ")}</div>`:""}</div>`}
+      if(H.ph==="pst")return C.head(H.quip)+this.standing();
+      if(H.ph==="pfinal"||H.ph==="pend")return C.head(H.quip)+head+`<div class="pt-fin">${g.fin.map(id=>`<div>${K.body(id,g.fwin[id]?"cheer":H.ph==="pend"?"sad":"think","sm","")}<b>${esc(nm(id))}</b>${g.tries[id].map(t=>`<span class="${t.ok?"ok":""}">${esc(t.a)} — ${t.why}</span>`).join("")}${"<span class='e'>…</span>".repeat(Math.max(0,3-g.tries[id].length-(g.fwin[id]?3:0)))}</div>`).join("")}</div>`;
+      return""},
+    dyn(){const g=H.g;if(H.ph==="pq")return K.troupe(active(),new Set(Object.keys(g.ans)));return""},
+    // the big screen can accept a doubtful answer as right
+    after(){document.querySelectorAll("[data-acc]").forEach(b=>b.onclick=()=>{const g=H.g,id=b.dataset.acc,a=g.ans[id];if(typeof a!=="string")return;g.accepted=g.accepted||{};g.accepted[N(a)]="x:"+N(a);
+      const keep=g.rvI;this.score();g.items=[...g.pl.filter(x=>g.res[x].wrong!==undefined||g.res[x].none).map(x=>({t:"bad",id:x})),...g.groups.map(gr=>({t:"ok",gr}))];g.rvI=Math.min(keep,g.items.length);H.k++;sfx.coin()})},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);if(!v.q){C.watch(root,v);return}
+      if(v.ph==="pq"){root.insertAdjacentHTML("beforeend",`<div class="pq"><small>${esc(v.q.c)}</small><b>${esc(v.q.t)}</b></div>${tline}<div id="ptBox"></div>`);const box=document.getElementById("ptBox");
+        if(v.kind==="choice"){box.innerHTML=`<div class="col">${v.q.o.map((o,i)=>`<button class="pbtn" data-c="${i}">${esc(o)}</button>`).join("")}</div>`;box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,c:+b.dataset.c});box.innerHTML=`<p class="big">✅ تم</p>`})}
+        else C.textForm(box,{ph:"جوابك (واحد بس)…",max:40,btn:"أرسل 🤫",onSend:t=>{K.sendAct({k:v.k,ans:t});box.innerHTML=`<p class="big">✅ تم</p>`}});return}
+      if(v.ph==="pfinal"&&(v.fin||[]).includes(me)){const tr=(v.tries||{})[me]||[],won=(v.fwin||{})[me];
+        root.insertAdjacentHTML("beforeend",`<div class="pq"><small>${esc(v.q.c)}</small><b>${esc(v.q.t)}</b></div><p class="note center">جواب صحيح ونادر 💎 (المشهورة ما تنحسب)</p>${tline}${tr.map(t=>`<p class="center">${esc(t.a)} — ${t.why}</p>`).join("")}<div id="ptF"></div>`);
+        if(!won&&tr.length<3)C.textForm(document.getElementById("ptF"),{ph:`محاولة ${fmt(tr.length+1)} من ٣…`,max:40,btn:"جرّب 💎",onSend:t=>{K.sendAct({k:v.k,ans:t,n:Date.now()});document.getElementById("ptF").innerHTML=`<p class="big">🤞</p>`}});
+        else if(won)root.insertAdjacentHTML("beforeend",`<div class="ik-res good"><div class="ik-mark">💎</div><p class="big">ولا نقطة!</p></div>`);return}
+      if(v.ph==="prev"&&v.res&&v.res[me]){const r=v.res[me];C.watch(root,v,r.pts===0?"💎":r.pts===10?"❌":"👀",r.pts===0?"ولا نقطة!":`+${fmt(r.pts)}`,"ناظر الشاشة");return}
+      C.watch(root,v,"🎯","ناظر الشاشة الكبيرة!","");},
+  };
+});
+
 })();

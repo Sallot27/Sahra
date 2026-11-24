@@ -1027,3 +1027,23 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 .wf-spin{display:flex;flex-direction:column;align-items:center;gap:4px;background:linear-gradient(#ffcc33,#ff9a3c);color:#1a1033;border-radius:24px;padding:24px 10px;margin:10px 0;touch-action:none;user-select:none;cursor:grab;box-shadow:0 8px 0 rgba(0,0,0,.3)}
 .wf-spin span{font-size:70px;line-height:1}.wf-spin b{font-size:20px}.wf-spin.go span{animation:spin .6s linear infinite}
 .portrait .wf-main{grid-template-columns:1fr}
+
+/* الأقل يفوز */
+.pt-q{display:flex;flex-direction:column;align-items:center;gap:8px;width:min(1000px,100%);margin-inline:auto}
+.pt-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:min(900px,100%);margin:10px auto}
+.pt-opts span{background:var(--paper);color:var(--ink);font-weight:800;font-size:24px;border-radius:14px;padding:8px;text-align:center}
+.pt-rev{display:flex;flex-direction:column;gap:8px;width:min(1000px,100%);margin:10px auto}
+.pt-a{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.1);border-radius:16px;padding:6px 14px;animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
+.pt-a .pt-lab{font-family:var(--display);font-size:26px;min-width:160px}
+.pt-a span{flex:1;font-weight:700}.pt-a em{font-style:normal;font-family:var(--display);font-size:26px}
+.pt-a.bad{background:rgba(255,90,110,.2)}.pt-a.bad .bd{--h:58px}
+.pt-a.gem{background:linear-gradient(90deg,rgba(127,233,255,.35),rgba(255,211,77,.3));box-shadow:0 0 22px rgba(127,233,255,.6)}
+.pt-acc{font-size:14px;padding:4px 10px}
+.pt-miss{background:var(--paper);color:var(--ink);font-weight:800;font-size:22px;border-radius:16px;padding:10px 16px;text-align:center;animation:pop .5s both}
+.pt-st{display:flex;flex-direction:column;gap:6px;width:min(700px,100%);margin:10px auto}
+.pt-st>div{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.1);border-radius:14px;padding:4px 14px;animation:drop .5s calc(var(--i)*.08s) both}
+.pt-st b{flex:1;font-size:20px}.pt-st span{font-family:var(--display);font-size:28px}.pt-st i{font-style:normal;font-weight:800}
+.pt-st .bd{--h:56px}
+.pt-fin{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.pt-fin>div{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,255,255,.08);border-radius:18px;padding:10px 16px;min-width:200px}
+.pt-fin span{background:rgba(255,90,110,.3);border-radius:10px;padding:3px 10px;font-weight:700}.pt-fin span.ok{background:#2fbf86}.pt-fin span.e{background:rgba(255,255,255,.1)}
