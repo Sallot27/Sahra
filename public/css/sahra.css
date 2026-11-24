@@ -866,3 +866,29 @@ button.ik-door{cursor:pointer}button.ik-door:disabled{cursor:default}
 .wl-team i.act{background:var(--c);color:#1a1033}
 .wl-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .wl-word{font-family:var(--display);font-size:clamp(40px,12vw,64px);text-align:center;background:var(--paper);color:var(--ink);border-radius:24px;padding:18px 10px;margin:12px 0;box-shadow:0 8px 0 rgba(0,0,0,.3)}
+
+/* مافيا */
+.optrow .lockmsg{display:block;font-size:12px;font-weight:700;color:var(--sun);opacity:.9}
+.optrow.locked .seg{opacity:.55}
+.lobnote{font-size:18px;font-weight:800;color:var(--sun)}
+.mf-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px;max-width:1150px;margin-inline:auto}
+.mf-p{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;width:96px;background:rgba(255,255,255,.08);border-radius:16px;padding:8px 4px;animation:pop .4s calc(var(--i)*.04s) both}
+.mf-p b{font-size:15px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mf-p.dead{opacity:.45;filter:grayscale(1)}
+.mf-p.dead::after{content:"✖";position:absolute;top:2px;left:8px;font-size:28px;color:#ff5a6e}
+.mf-r{font-size:13px;font-weight:800;background:rgba(0,0,0,.35);border-radius:99px;padding:0 8px}
+.mf-night{background:radial-gradient(ellipse at 70% 10%,#26306b,#0b0d24 70%);border-radius:30px;padding:10px 14px;margin:-6px}
+.mf-moon{font-size:90px;text-align:center;animation:wob 3s ease-in-out infinite;filter:drop-shadow(0 0 30px #fff6c0)}
+.mf-big{font-family:var(--display);font-size:clamp(26px,calc(var(--sh)*.05),42px);text-align:center}
+.mf-sun{font-size:90px;animation:pop .8s cubic-bezier(.2,1.6,.4,1) both,spin 20s linear infinite}
+.mf-ev{display:flex;flex-direction:column;gap:10px;align-items:center}
+.mf-ev p{background:var(--paper);color:var(--ink);font-weight:800;font-size:clamp(20px,calc(var(--sh)*.035),30px);border-radius:18px;padding:10px 20px;animation:pop .5s calc(.6s + var(--i)*.9s) cubic-bezier(.2,1.6,.4,1) both}
+.mf-card{border-radius:20px;background:rgba(255,255,255,.08);padding:10px;margin:8px 0;text-align:center}
+.mf-secret{display:none;flex-direction:column;align-items:center;gap:4px;padding:8px}
+.mf-card.open .mf-secret{display:flex}
+.mf-secret span{font-size:60px;line-height:1}.mf-secret b{font-family:var(--display);font-size:30px}.mf-secret p{font-weight:700;line-height:1.6}
+.mf-eye{width:100%;border:0;border-radius:14px;background:#2e1f6b;color:#fff;font:inherit;font-weight:800;font-size:18px;padding:10px;cursor:pointer}
+.mf-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.mf-list .pbtn.on{outline:4px solid var(--sun);background:var(--sun);color:#1a1033}
+.mf-ghost{font-size:100px;text-align:center;animation:wob 2s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}

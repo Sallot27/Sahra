@@ -4,11 +4,13 @@ const CFG=window.SAHRA||{};
 let QS=[],DRAW=[],WORDS={},TOPICS=[];
 
 /* ================= helpers ================= */
-const COLORS=["#ff4f6d","#ffcc33","#2ee6a6","#4cc2ff","#b98cff","#ff9a3c","#ff7fd0","#a8e05f"];
+const COLORS=["#ff4f6d","#ffcc33","#2ee6a6","#4cc2ff","#b98cff","#ff9a3c","#ff7fd0","#a8e05f","#ffffff","#00d1c1","#ff6b3d","#c7a6ff","#f4e04d","#7ec8ff","#ff9fb2"];
 const INK=["#ff4f6d","#e0a800","#13b884","#1e9be0","#8f5ae8","#f07b12","#e8489f","#6aab1f"];
 const FACES=["🦊","🐸","🐼","🐵","🦁","🐙","🐷","🐨"];
 const OPTC=["#ffcc33","#4cc2ff","#2ee6a6","#ff9a3c","#b98cff","#ff7fd0","#a8e05f","#ff8a8a","#7fe0ff","#ffd98a"];
-const MAXP=8,T_REVEAL=5200;
+// players per game: 8 by default, a game can allow more (مافيا: 15); the menu lets up to MAXALL in
+const MAXP=8,MAXALL=15,T_REVEAL=5200;
+const maxFor=()=>{if(H.ph==="menu")return MAXALL;const G=H.game&&GAMES[H.game];return(G&&G.max)||MAXP};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clip=(s,n)=>String(s??"").replace(/\s+/g," ").trim().slice(0,n);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -499,7 +501,7 @@ function resumeInfo(){try{const s=JSON.parse(sessionStorage.getItem("sahra_snap"
 function saveSnap(){try{sessionStorage.setItem("sahra_snap",JSON.stringify({code:ST.code,at:Date.now(),
   H:{game:H.game,ph:H.ph,k:H.k,order:H.order,names:H.names,sc:H.sc,lk:H.lk,end:H.end,total:H.total,quip:H.quip,g:H.g,kicked:H.kicked||[],paused:H.paused,pauseLeft:H.pauseLeft}}))}catch(e){}}
 const H={game:null,ph:"menu",k:0,order:[],names:{},sc:{},lk:{},end:0,total:1,quip:"",lastView:"",lastKey:"",g:{}};
-const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%8];
+const col=id=>COLORS[Math.max(0,H.order.indexOf(id))%COLORS.length];
 const face=id=>avImg((H.av||{})[id],FACES[Math.max(0,H.order.indexOf(id))%8]);
 const nm=id=>H.names[id]||"لاعب";
 const tl=()=>Math.max(0,Math.ceil((H.end-Date.now())/1000));
@@ -537,7 +539,7 @@ function hostTick(){
   H.seen=H.seen||{};
   ps.forEach(p=>{const pr=P(p);if(pr.role!=="player")return;H.seen[p.peer]=now;
     H.names[p.peer]=(n=>n&&!hasBad(n)?n:"لاعب")(clip(pr.nm,14));(H.av=H.av||{})[p.peer]=okAv(pr.av)?pr.av:"";
-    if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<MAXP){H.order.push(p.peer);sfx.join()}});
+    if((H.ph==="menu"||H.ph==="lobby")&&!H.order.includes(p.peer)&&H.order.length<maxFor()){H.order.push(p.peer);sfx.join()}});
   // a phone that sleeps for a moment keeps its place (and colour); gone for 20s = removed
   if(H.ph==="menu"||H.ph==="lobby"){H.order=H.order.filter(id=>now-(H.seen[id]||0)<20000)}
   actOf=id=>{const p=ps.find(x=>x.peer===id);return p&&P(p).act&&P(p).act.k===H.k?cleanAct(P(p).act):null};
@@ -567,7 +569,8 @@ function publish(){
   if(H.ph==="topic"){v.topic=H.g.topic;v.picker=H.g.pickedBy}
   if(H.ph==="lobby"&&teamCount()){tInit();v.tn=teamCount();v.tsel=H.tsel;v.tcol=H.tcol}
   v.lead=leadId();if(v.lead){if(H.ph==="menu"){v.sel=H.wheel.sel||null;if(H.wheel.spinning)v.spin=1}
-    if(H.ph==="lobby"){v.serr=H.startErrMsg||"";v.op={};(GAMES[H.game].options||[]).forEach(o=>v.op[o.key]=opt(o.key));v.bots=BOTS.length;v.botMax=Math.max(0,Math.min(6,8-H.order.filter(id=>!isBot(id)).length))}
+    v.maxp=maxFor();
+    if(H.ph==="lobby"){v.serr=H.startErrMsg||"";v.op={};v.lk={};const G9=GAMES[H.game];(G9.options||[]).forEach(o=>{v.op[o.key]=opt(o.key);const lk=G9.optLock&&G9.optLock(o.key);if(lk)v.lk[o.key]=lk});v.bots=BOTS.length;v.botMax=Math.max(0,Math.min(14,maxFor()-H.order.filter(id=>!isBot(id)).length))}
     if(canSkip())v.skip=1;if(inPlay())v.inplay=1}
   if(["scores","end","reveal","tally","result"].includes(H.ph))v.sc=H.sc;
   const s=JSON.stringify(v);if(s===H.lastView)return;H.lastView=s;
@@ -583,7 +586,7 @@ function setOpt(key,v){(H.opts[H.game]=H.opts[H.game]||{})[key]=v;try{localStora
 function roundsOpt(choices,def,label="عدد الجولات"){return{key:"r",label,choices:choices.map(n=>[n,fmt(n)]),def}}
 function goMenu(){H.paused=false;H.game=null;H.ph="menu";H.k++;H.quip=pick(QUIP.menu)}
 // test bots: hidden phones in this page
-const BOTS=[],BOT_NAMES=["بوت سعود","بوت نورة","بوت فهد","بوت ريم","بوت دانة","بوت سلطان","بوت لمى","بوت خالد"];
+const BOTS=[],BOT_NAMES=["بوت سعود","بوت نورة","بوت فهد","بوت ريم","بوت دانة","بوت سلطان","بوت لمى","بوت خالد","بوت هيا","بوت ناصر","بوت جود","بوت تركي","بوت شهد","بوت بدر"];
 const botPeer=b=>{try{return b.frame.contentWindow.__myPeer||null}catch(e){return null}};
 function setBots(n){let box=$("botbox");if(!box){box=document.createElement("div");box.id="botbox";box.setAttribute("aria-hidden","true");document.body.appendChild(box)}
   while(BOTS.length>n){const b=BOTS.pop(),id=botPeer(b);b.frame.remove();if(id)H.order=H.order.filter(x=>x!==id)}
@@ -592,7 +595,7 @@ function setBots(n){let box=$("botbox");if(!box){box=document.createElement("div
   H.lastKey="";sfx.pop()}
 // a bot knows the حروف answer about half the time
 window.__botHint=()=>H.game==="huroof"&&H.ph==="hans"&&H.g.q&&Math.random()<.55?H.g.q.a:null;
-const botsRow=()=>{const humans=H.order.filter(id=>!BOTS.some(b=>botPeer(b)===id)).length,max=Math.max(0,Math.min(6,8-humans));
+const botsRow=()=>{const humans=H.order.filter(id=>!BOTS.some(b=>botPeer(b)===id)).length,max=Math.max(0,Math.min(14,maxFor()-humans));
   return`<div class="optrow botrow"><span>🤖 بوتات للتجربة</span><div class="seg">${[...Array(max+1).keys()].map(n=>`<button class="segb" data-bots="${n}" aria-pressed="${BOTS.length===n}">${n?fmt(n):"بدون"}</button>`).join("")}</div></div>`};
 // host controls: pause the clock, remove a player (they can't come back to this room)
 const inPlay=()=>!!H.game&&!["menu","lobby","end"].includes(H.ph);
@@ -615,7 +618,7 @@ function leadCtl(ps){const id=leadId();if(!id)return;const p=ps.find(x=>x.peer==
     case"rand":if(H.ph==="menu"){if(!$("shelf"))goMenu();wheelSpin()}break;
     case"play":if(H.ph==="menu"&&!H.wheel.spinning&&H.wheel.sel)pickGame(H.wheel.sel);break;
     case"opt":if(H.ph==="lobby"&&G){const o=(G.options||[]).find(x=>x.key===c.o),ch=o&&o.choices.find(x=>String(x[0])===String(c.v));if(ch){setOpt(o.key,ch[0]);H.lastKey="";sfx.pop()}}break;
-    case"bots":if(H.ph==="lobby"&&Number.isInteger(c.v)&&c.v>=0&&c.v<=6)setBots(c.v);break;
+    case"bots":if(H.ph==="lobby"&&Number.isInteger(c.v)&&c.v>=0&&c.v<=14)setBots(c.v);break;
     case"start":if(H.ph==="lobby"&&G&&H.order.length>=G.min)startGame();break;
     case"skip":if(canSkip()&&Date.now()-(H._skipAt||0)>1500){H._skipAt=Date.now();skipNow(true)}break;
     case"pause":if(inPlay())setPaused(!H.paused);break;
@@ -646,7 +649,7 @@ function teamsLobbyHTML(){const nt=teamCount();tInit();const cols=teamColors(nt)
   return`<div class="tl-wrap"><div class="tl-teams">${cols.map((c,t)=>`<div class="tl-team" style="--c:${c.c}"><b>${c.e} الفريق ${c.n}</b><div>${H.order.filter(id=>H.tsel[id]===t).map(id=>`<span>${plHTML(id,"",H.order.indexOf(id))}</span>`).join("")||'<small>ولا أحد للحين</small>'}</div></div>`).join("")}</div>
     ${free.length?`<p class="note center">بدون فريق (بينقسمون تلقائياً): ${free.map(id=>esc(nm(id))).join("، ")}</p>`:""}
     <p class="note center">📱 كل واحد يختار فريقه ولونه من جواله · <button class="btn ghost tl-shuf" data-tshuf="1">🎲 قسّم الفرق عشوائي</button></p></div>`}
-function pickGame(id){shuffleTrack(id);H.startErrMsg="";H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
+function pickGame(id){shuffleTrack(id);H.startErrMsg="";{const mx=(GAMES[id]&&GAMES[id].max)||MAXP;if(H.order.length>mx)H.order=H.order.slice(0,mx)}H.game=id;H.ph="lobby";H.k++;H.quip=pick(QUIP.lobby)}
 function startGame(){const G0=GAMES[H.game],err=G0&&G0.startErr?G0.startErr():"";
   // a game can refuse to start (e.g. needs an even number of players); say why on the big screen
   if(err){H.quip=err;H.startErrMsg=err;H.lastKey="";sfx.lie();return}H.startErrMsg="";
@@ -778,13 +781,13 @@ function renderHost(){
         <div class="row lobhead"><span class="lobemoji">${G.emoji}</span><div style="flex:1;min-width:0"><h2 class="lobtitle">${G.name}${G.beta?' <span class="betatag">تجريبية</span>':""}</h2><p class="note" style="font-size:18px">${esc(G.desc)}</p></div></div>
         <div class="col lobrules">${G.rules.map(r=>`<p>• ${esc(r)}</p>`).join("")}</div>
         ${botsRow()}
-        ${(G.options||[]).map(o=>`<div class="optrow"><span>${esc(o.label)}</span><div class="seg">${o.choices.map(([v,l])=>`<button class="segb" data-ok="${esc(o.key)}" data-ov="${esc(String(v))}" aria-pressed="${opt(o.key)===v}">${esc(l)}</button>`).join("")}</div></div>`).join("")}
+        ${(G.options||[]).map(o=>{const lk=G.optLock?G.optLock(o.key):null;return`<div class="optrow ${lk?"locked":""}"><span>${esc(o.label)}${lk?`<small class="lockmsg">🔒 ${esc(lk.msg)}</small>`:""}</span><div class="seg">${o.choices.map(([v,l])=>`<button class="segb" data-ok="${esc(o.key)}" data-ov="${esc(String(v))}" aria-pressed="${lk?String(lk.v)===String(v):opt(o.key)===v}" ${lk?"disabled":""}>${esc(l)}</button>`).join("")}</div></div>`}).join("")}${G.lobbyNote?`<p class="note center lobnote">${G.lobbyNote()}</p>`:""}
         <div class="col">
           ${H.startErrMsg?`<p class="err">⚠️ ${esc(H.startErrMsg)}</p>`:""}
           <button class="btn coral wide" id="startBtn" ${H.order.length<G.min?"disabled":""}>يلا نبدأ!</button>
           <div class="spread"><button class="btn ghost" id="menuBtn">↩ قائمة الألعاب</button>
           </div>
-          <p class="note">من ${fmt(G.min)} إلى ${fmt(MAXP)} لاعبين. تقدر تلعب من نفس الكمبيوتر بفتح الرابط في تبويب ثانٍ.</p>
+          <p class="note">من ${fmt(G.min)} إلى ${fmt(G.max||MAXP)} لاعبين. تقدر تلعب من نفس الكمبيوتر بفتح الرابط في تبويب ثانٍ.</p>
         </div>
       </div>
       ${joinPanel()}
@@ -1179,7 +1182,7 @@ function renderPlayer(){
   if(myPeer&&Array.isArray(v.kick)&&v.kick.includes(myPeer)){ME.lost=true;rememberKick(ST.code);try{pusher&&pusher.disconnect()}catch(_){}
     root.innerHTML=`<div class="emoji">🚪</div><p class="big">تم إخراجك من الغرفة</p><p class="note center">المضيف أخرجك من هذي السهرة.</p><a class="btn wide" href="/" style="text-align:center;text-decoration:none">الصفحة الرئيسية</a>`;return}
   if(v.paused){leadBar(v,v.lead===myPeer);if(ME.lastKey!=="paused"){ME.lastKey="paused";root.innerHTML=head+`<div class="emoji">⏸️</div><p class="big">اللعبة متوقفة</p><p class="note center">استريحوا شوي… بنكمل من نفس المكان 😌</p>`}return}
-  const key=[v.game,v.ph,v.k,v.rvI,idx>=0,v.tn?JSON.stringify([v.tn,v.tsel,v.tcol]):"",v.lead===myPeer?[v.ph==="menu"?[v.sel,v.spin]:"",v.ph==="lobby"?[JSON.stringify(v.op||{}),v.bots,v.botMax,(v.order||[]).length,v.serr]:""].join("/"):""].join("|");
+  const key=[v.game,v.ph,v.k,v.rvI,idx>=0,v.tn?JSON.stringify([v.tn,v.tsel,v.tcol]):"",v.lead===myPeer?[v.ph==="menu"?[v.sel,v.spin]:"",v.ph==="lobby"?[JSON.stringify(v.op||{}),JSON.stringify(v.lk||{}),v.bots,v.botMax,(v.order||[]).length,v.serr]:""].join("/"):""].join("|");
   if(key===ME.lastKey){
     if(v.ph==="lie"&&$("perr")){const bad=v.bad&&v.bad[myPeer]===ME.n&&ME.n>0;const done=(v.done||[]).includes(myPeer);
       if(bad&&!ME.shownBad){ME.shownBad=true;showLieForm(v,"",true)}
@@ -1193,7 +1196,7 @@ function renderPlayer(){
     return;
   }
   ME.lastKey=key;ME.padSend=null;ME.autoSend=null;
-  if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=MAXP?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
+  if(idx<0){root.innerHTML=head+((v.ph==="menu"||v.ph==="lobby")?((v.order||[]).length>=(v.maxp||MAXP)?`<div class="emoji">🙈</div><p class="big">الغرفة ممتلئة</p><p class="note center">فيها ${fmt(v.maxp||MAXP)} لاعبين. تقدر تتفرج وتدخل لما يطلع أحد.</p>`:`<div class="emoji">⏳</div><p class="big">لحظة…</p>`):`<div class="emoji">🍿</div><p class="big">اللعبة بدأت</p><p class="note center">تابع من الشاشة، وتدخل في اللعبة الجاية.</p>`);return}
   const tline=`<p class="note">⏱ باقي <b id="ptl">${Number(v.tl)||0}</b> ثانية</p>`;
   const myMon=()=>{const s=(v.order||[]).indexOf(myPeer);return s<0?"":`<div class="mymon">${monHTML(s,COLORS[s%8],"big")}<p class="note center">هذا وحشك على الشاشة الكبيرة 👾</p></div>`};
   const lead=v.lead===myPeer;leadBar(v,lead);
@@ -1209,7 +1212,7 @@ function renderPlayer(){
     root.innerHTML=head+`<p class="leadtag">🎮 أنت المضيف</p><p class="big">${G.emoji} ${esc(G.name)}</p>${phoneTeamsHTML(v)}
       <div class="col">
       ${seg("🤖 بوتات",[...Array((v.botMax||0)+1).keys()].map(i=>`<button class="segb" data-lb="${i}" aria-pressed="${(v.bots||0)===i}">${i?fmt(i):"بدون"}</button>`).join(""))}
-      ${(G.options||[]).map(o=>seg(esc(o.label),o.choices.map(([val,l])=>`<button class="segb" data-lo="${esc(o.key)}" data-lv="${esc(String(val))}" aria-pressed="${String(op[o.key])===String(val)}">${esc(l)}</button>`).join(""))).join("")}
+      ${(G.options||[]).map(o=>{const lk=(v.lk||{})[o.key];return seg(esc(o.label)+(lk?`<small class="lockmsg">🔒 ${esc(lk.msg)}</small>`:""),o.choices.map(([val,l])=>`<button class="segb" data-lo="${esc(o.key)}" data-lv="${esc(String(val))}" aria-pressed="${String(lk?lk.v:op[o.key])===String(val)}" ${lk?"disabled":""}>${esc(l)}</button>`).join(""))}).join("")}
       <button class="btn coral wide" id="lcStart" ${n<G.min?"disabled":""}>يلا نبدأ!</button>
       ${n<G.min?`<p class="note center">تحتاج ${fmt(G.min)} لاعبين على الأقل (الحين ${fmt(n)}).</p>`:""}${v.serr?`<p class="err">⚠️ ${esc(v.serr)}</p>`:""}
       <button class="btn ghost wide" id="lcMenu">↩ قائمة الألعاب</button></div>`;

@@ -1543,4 +1543,136 @@ B.push(K=>{
       root.insertAdjacentHTML("beforeend",head+story);C.watch(root,v,v.ph==="kwin"?"🏆":v.ph==="kguard"?"💂":"🏰","ناظر القصر!","");},
   };
 });
+/* =====================================================================
+   15) مافيا: up to 15 players. Secret roles on the phones; night (mafia kill, doctor saves,
+   sniper shoots), dawn (what happened), day (talk), vote (the king's vote counts twice).
+   Mafia: one per 5 players by default (locked to 1 for 5 players or fewer, at most 3).
+   Doctor from 5 players, sniper from 8, king from 12. Each can be switched off.
+   ===================================================================== */
+B.push(K=>{
+  const {H,esc,fmt,pick,shuffle,setTimer,active,nm,sfx,confetti}=K;
+  const C=common(K);
+  const R={
+    maf:{e:"🔪",n:"مافيا",d:"كل ليلة تختارون مع بعض واحد تقتلونه. بالنهار تتظاهرون إنكم مواطنين 😏",side:"maf"},
+    doc:{e:"🩺",n:"الطبيب",d:"كل ليلة تختار واحد تحميه. إذا حاولوا يقتلونه، ينجو!",side:"cit"},
+    snp:{e:"🎯",n:"القناص",d:"كل ليلة تقدر تختار واحد تطلق عليه، أو تخليها. حاول تصيد المافيا!",side:"cit"},
+    king:{e:"👑",n:"الملك",d:"أنت مواطن، بس صوتك في التصويت بصوتين 👑",side:"cit"},
+    cit:{e:"👤",n:"مواطن",d:"اكتشف المافيا بالنقاش، وصوّت تطردهم قبل ما يقضون عليكم!",side:"cit"}};
+  // how many of each role for n players, from the lobby options
+  function plan(n){const o=K.opt("maf");let maf=n<=5?1:(o==="auto"||o===undefined?Math.max(1,Math.floor(n/5)):+o);
+    maf=Math.max(1,Math.min(3,maf,Math.floor((n-1)/2)));
+    const doc=K.opt("doc")==="1"&&n>=5,snp=K.opt("snp")==="1"&&n>=8,king=K.opt("king")==="1"&&n>=12;
+    return{maf,doc,snp,king,cit:n-maf-(doc?1:0)-(snp?1:0)-(king?1:0)}}
+  const planText=p=>[`🔪 ${fmt(p.maf)} مافيا`,p.doc?"🩺 طبيب":"",p.snp?"🎯 قناص":"",p.king?"👑 ملك":"",`👤 ${fmt(p.cit)} مواطن`].filter(Boolean).join(" · ");
+  return{
+    id:"mafia",name:"مافيا",emoji:"🕵️",color:"#c0392b",min:4,max:15,
+    desc:"أدوار سرية في الجوالات… المافيا تقتل بالليل، والمواطنين يكشفونهم بالنهار! من ٤ إلى ١٥ لاعب",
+    tags:["٤-١٥ لاعب","أدوار سرية","نقاش","تصويت"],
+    rules:["كل واحد يشوف دوره في جواله بالسر: مافيا، طبيب، قناص، ملك، أو مواطن","بالليل: المافيا تختار ضحية، والطبيب يحمي واحد، والقناص يقدر يطلق","بالنهار: تتناقشون وتصوّتون تطردون واحد (صوت الملك بصوتين)","يفوز المواطنين إذا طردوا كل المافيا، وتفوز المافيا إذا صار عددهم يساوي الباقين"],
+    winTitle:"الفايزين!",likeTitle:"",
+    timed:["mrole","mnight","mday","mvote"],
+    options:[{key:"maf",label:"عدد المافيا",choices:[["auto","تلقائي (١ لكل ٥)"],[1,"١"],[2,"٢"],[3,"٣"]],def:"auto"},
+      {key:"doc",label:"🩺 طبيب؟",choices:[["1","إيه"],["0","لا"]],def:"1"},
+      {key:"snp",label:"🎯 قناص؟",choices:[["1","إيه"],["0","لا"]],def:"1"},
+      {key:"king",label:"👑 ملك؟",choices:[["1","إيه"],["0","لا"]],def:"1"},
+      {key:"dt",label:"وقت النقاش",choices:[["60","دقيقة"],["120","دقيقتين"],["180","٣ دقائق"]],def:"120"}],
+    optLock(key){const n=H.order.length;
+      if(key==="maf"&&n<=5)return{v:1,msg:"٥ لاعبين أو أقل: مافيا واحد بس"};
+      if(key==="doc"&&n<5)return{v:"0",msg:"يحتاج ٥ لاعبين أو أكثر"};
+      if(key==="snp"&&n<8)return{v:"0",msg:"يحتاج ٨ لاعبين أو أكثر"};
+      if(key==="king"&&n<12)return{v:"0",msg:"يحتاج ١٢ لاعب أو أكثر"};
+      return null},
+    lobbyNote(){return"بيكون فيه: "+planText(plan(H.order.length))},
+    start(){const pl=shuffle([...H.order]),p=plan(pl.length),role={};let i=0;
+      for(let k=0;k<p.maf;k++)role[pl[i++]]="maf";if(p.doc)role[pl[i++]]="doc";if(p.snp)role[pl[i++]]="snp";if(p.king)role[pl[i++]]="king";
+      for(;i<pl.length;i++)role[pl[i]]="cit";
+      H.g={pl:[...H.order],role,plan:p,dead:{},night:0,log:[],ready:{}};
+      H.ph="mrole";H.k++;setTimer(20);sfx.tada();H.quip="📱 كل واحد يشوف دوره بالسر… لا تخلي أحد يشوف جوالك!"},
+    alive(){const g=H.g;return g.pl.filter(id=>!g.dead[id])},
+    side(id){return R[H.g.role[id]].side},
+    winner(){const a=this.alive(),m=a.filter(id=>this.side(id)==="maf").length;if(!m)return"cit";if(m>=a.length-m)return"maf";return null},
+    night(){const g=H.g;g.night++;g.picks={};g.save=null;g.shot=undefined;H.ph="mnight";H.k++;setTimer(45);K.playSting("sting_reveal",sfx.drum);
+      H.quip=`🌙 الليلة ${fmt(g.night)}… الكل ينام 😴 والمافيا تختار ضحيتها`},
+    // the night is done when every mafia, the doctor and the sniper (if alive) have chosen
+    nightDone(){const g=H.g,a=this.alive();
+      return a.every(id=>{const r=g.role[id];if(r==="maf")return id in g.picks;if(r==="doc")return g.save!==null;if(r==="snp")return g.shot!==undefined;return true})},
+    dawn(){const g=H.g,a=this.alive(),cnt={};Object.values(g.picks).forEach(t=>{if(a.includes(t))cnt[t]=(cnt[t]||0)+1});
+      const max=Math.max(0,...Object.values(cnt)),tops=Object.keys(cnt).filter(t=>cnt[t]===max),mt=tops.length?pick(tops):null;
+      const ev=[],died=[];
+      if(mt){if(mt===g.save)ev.push({t:"saved",id:mt});else{died.push(mt);ev.push({t:"maf",id:mt})}}else ev.push({t:"quiet"});
+      if(g.shot&&g.shot!=="none"&&a.includes(g.shot)&&!died.includes(g.shot)){if(g.shot===g.save)ev.push({t:"ssaved",id:g.shot});else{died.push(g.shot);ev.push({t:"snp",id:g.shot})}}
+      died.forEach(id=>g.dead[id]=g.night);g.ev=ev;g.log.push({n:g.night,ev});
+      H.ph="mdawn";H.k++;setTimer(9);died.length?sfx.lie():sfx.truth();
+      H.quip=died.length?"☀️ صباح الخير… بس مو للكل 😢":"☀️ صباح الخير! الليلة عدّت بسلام 🎉"},
+    day(){H.ph="mday";H.k++;setTimer(+K.opt("dt")||120);sfx.swoosh();H.quip="🗣️ تناقشوا! مين تشكّون فيه؟"},
+    vote(){const g=H.g;g.votes={};H.ph="mvote";H.k++;setTimer(40);sfx.pop();H.quip="🗳️ صوّتوا من جوالاتكم: مين نطرد؟"},
+    tally(){const g=H.g,a=this.alive(),w={};
+      Object.entries(g.votes).forEach(([id,t])=>{if(!a.includes(id)||t==="skip"||!a.includes(t))return;w[t]=(w[t]||0)+(g.role[id]==="king"?2:1)});
+      const skips=Object.entries(g.votes).filter(([id,t])=>a.includes(id)&&t==="skip").reduce((s,[id])=>s+(g.role[id]==="king"?2:1),0);
+      const max=Math.max(0,...Object.values(w)),tops=Object.keys(w).filter(t=>w[t]===max);
+      g.w=w;g.out=max>0&&tops.length===1&&max>skips?tops[0]:null;if(g.out)g.dead[g.out]="v"+g.night;
+      H.ph="mvres";H.k++;setTimer(9);K.playSting("sting_reveal",sfx.drum);
+      setTimeout(()=>{if(g.out)(this.side(g.out)==="maf"?(sfx.truth(),confetti(80)):sfx.lie())},1500);
+      H.quip=g.out?`${nm(g.out)} انطرد…`:"ما اتفقتوا… ما أحد انطرد"},
+    end(w){const g=H.g;g.win=w;g.pl.forEach(id=>{H.sc[id]=(this.side(id)===w?100:0)+(g.dead[id]?0:20)});
+      H.ph="mend";H.k++;setTimer(10);sfx.tada();confetti(160);H.quip=w==="maf"?"🔪 فازت المافيا!":"🎉 فاز المواطنين!"},
+    tick(now){const g=H.g;
+      if(H.ph==="mrole"){g.pl.forEach(id=>{const a=K.act(id);if(a&&a.ok)g.ready[id]=1});
+        if(now>H.end||g.forceSkip||active().every(id=>g.ready[id])){g.forceSkip=false;this.night()}}
+      else if(H.ph==="mnight"){const a=this.alive();
+        a.forEach(id=>{const x=K.act(id);if(!x||typeof x.t!=="string")return;const r=g.role[id];
+          if(r==="maf"&&a.includes(x.t)&&this.side(x.t)!=="maf")g.picks[id]=x.t;
+          else if(r==="doc"&&a.includes(x.t))g.save=x.t;
+          else if(r==="snp"&&(x.t==="none"||(a.includes(x.t)&&x.t!==id)))g.shot=x.t});
+        if(now>H.end||g.forceSkip||this.nightDone()){g.forceSkip=false;this.dawn()}}
+      else if(H.ph==="mdawn"){if(now>H.end){const w=this.winner();if(w)return this.end(w);this.day()}}
+      else if(H.ph==="mday"){if(now>H.end||g.forceSkip){g.forceSkip=false;this.vote()}}
+      else if(H.ph==="mvote"){const a=this.alive();a.forEach(id=>{const x=K.act(id);if(x&&typeof x.v==="string"&&x.v!==id&&(x.v==="skip"||a.includes(x.v)))g.votes[id]=x.v});
+        if(now>H.end||g.forceSkip||a.every(id=>g.votes[id])){g.forceSkip=false;this.tally()}}
+      else if(H.ph==="mvres"){if(now>H.end){const w=this.winner();if(w)return this.end(w);this.night()}}
+      else if(H.ph==="mend"){if(now>H.end)K.finishGame()}},
+    doneMap(){const g=H.g;if(H.ph==="mvote")return g.votes;if(H.ph==="mrole")return g.ready;return null},
+    view(v){const g=H.g;if(!g.role)return;v.pl=g.pl;v.rl=g.role;v.dead=g.dead;v.night=g.night;
+      if(H.ph==="mnight"){v.picks=g.picks;v.save=g.save;v.shot=g.shot}
+      if(H.ph==="mvote")v.voted=Object.keys(g.votes);
+      if(H.ph==="mdawn")v.ev=g.ev;if(H.ph==="mvres")v.out=g.out;if(H.ph==="mend")v.win=g.win},
+    pill(){const g=H.g,a=this.alive();return`<span class="pill">${g.night?`الليلة ${fmt(g.night)} · `:""}أحياء ${fmt(a.length)} · ${planText(g.plan)}</span>`},
+    grid(show){const g=H.g;return`<div class="mf-grid">${g.pl.map((id,i)=>{const d=g.dead[id],r=R[g.role[id]];
+      return`<div class="mf-p ${d?"dead":""}" style="--i:${i}">${C.avatar(id)}<b>${esc(nm(id))}</b>${d||show?`<span class="mf-r">${r.e} ${r.n}</span>`:""}${H.ph==="mvres"&&g.w&&g.w[id]?`<span class="vote-n">${fmt(g.w[id])}</span>`:""}</div>`}).join("")}</div>`},
+    evText(e){const n=e.id?`«${esc(nm(e.id))}»`:"",r=e.id?R[H.g.role[e.id]]:null;
+      return{maf:`🔪 المافيا قتلت ${n}… وكان ${r&&r.e} ${r&&r.n}`,saved:`🩺 المافيا حاولت تقتل ${n}… بس الطبيب أنقذه! 🙌`,quiet:"😴 الليلة عدّت بهدوء… ما أحد انقتل",
+        snp:`🎯 القناص أطلق على ${n}… وكان ${r&&r.e} ${r&&r.n}`,ssaved:`🎯 القناص أطلق على ${n}… بس الطبيب أنقذه!`}[e.t]},
+    render(){const g=H.g;
+      if(H.ph==="mrole")return C.head(H.quip)+`<div class="col center"><span style="font-size:90px;line-height:1">🤫</span><h2 style="font-size:40px">شوفوا أدواركم بالسر</h2><p class="note" style="font-size:22px">${planText(g.plan)}</p><div id="dyn" class="still">${this.dyn()}</div></div>`;
+      if(H.ph==="mnight")return`<div class="mf-night">${C.head(H.quip)}<div class="mf-moon">🌙</div><p class="mf-big">الكل يغمّض… ${g.plan.doc?"الطبيب يحمي، ":""}${g.plan.snp?"القناص يصوّب، ":""}والمافيا تختار 🔪</p>${this.grid()}</div>`;
+      if(H.ph==="mdawn")return C.head(H.quip)+`<div class="col center"><div class="mf-sun">☀️</div><div class="mf-ev">${g.ev.map((e,i)=>`<p style="--i:${i}">${this.evText(e)}</p>`).join("")}</div></div>${this.grid()}`;
+      if(H.ph==="mday")return C.head(H.quip)+`<div class="col center"><span style="font-size:70px">🗣️</span><p class="mf-big">تناقشوا… مين المافيا؟</p></div>${this.grid()}`;
+      if(H.ph==="mvote")return C.head(H.quip)+this.grid()+`<div id="dyn" class="still">${this.dyn()}</div>${g.plan.king?`<p class="note center">👑 صوت الملك بصوتين</p>`:""}`;
+      if(H.ph==="mvres"){const r=g.out?R[g.role[g.out]]:null;return`<div class="reveal" style="padding-top:10px">${g.out?`<div class="answer">${esc(nm(g.out))}</div><div class="stamp ${r.side==="maf"?"truth":"lie"}">كان ${r.e} ${r.n}${r.side==="maf"?"! 🎉":" 😢"}</div>`:`<div class="answer">ما أحد انطرد</div>`}</div>${this.grid()}`}
+      if(H.ph==="mend")return`<div class="reveal" style="padding-top:10px"><div class="answer">${g.win==="maf"?"🔪 فازت المافيا!":"🎉 فاز المواطنين!"}</div></div>${this.grid(true)}`;
+      return""},
+    dyn(){const g=H.g;if(H.ph==="mvote")return K.troupe(this.alive(),new Set(Object.keys(g.votes)));if(H.ph==="mrole")return K.troupe(g.pl,new Set(Object.keys(g.ready)));return""},
+    phone(v,{root,tline}){const me=K.me();C.fresh(v);if(!v.rl||!v.rl[me]){C.watch(root,v,"🍿","تفرّج هالمرة","");return}
+      const r=R[v.rl[me]],dead=v.dead&&v.dead[me],alive=v.pl.filter(id=>!v.dead[id]);
+      const mates=v.rl[me]==="maf"?v.pl.filter(id=>id!==me&&v.rl[id]==="maf"):[];
+      // the role stays hidden until tapped, so nobody sees it over your shoulder
+      const card=`<div class="mf-card" id="mfCard"><button class="mf-eye" id="mfEye">👁️ اضغط عشان تشوف دورك</button><div class="mf-secret"><span>${r.e}</span><b>${r.n}</b><p>${r.d}</p>${mates.length?`<p>👥 معك: ${mates.map(id=>esc(C.pnm(v,id))).join("، ")}</p>`:""}</div></div>`;
+      const wireCard=()=>{const b=document.getElementById("mfEye"),c=document.getElementById("mfCard");if(b)b.onclick=()=>{c.classList.toggle("open");b.textContent=c.classList.contains("open")?"🙈 خبّ دورك":"👁️ اضغط عشان تشوف دورك"}};
+      const list=(ids,key,extra)=>`<div class="mf-list">${ids.map(id=>`<button class="pbtn" data-mt="${id}">${esc(C.pnm(v,id))}</button>`).join("")}${extra||""}</div>`;
+      const wireList=(field)=>root.querySelectorAll("[data-mt]").forEach(b=>b.onclick=()=>{K.sendAct({k:v.k,[field]:b.dataset.mt});root.querySelectorAll("[data-mt]").forEach(x=>{x.classList.toggle("on",x===b)})});
+      if(dead&&v.ph!=="mend"){root.insertAdjacentHTML("beforeend",`<div class="mf-ghost">👻</div><p class="big">أنت طلعت من اللعبة</p><p class="note center">كنت ${r.e} ${r.n}. تفرّج بدون ما تساعد أحد 🤐</p>`);return}
+      if(v.ph==="mrole"){root.insertAdjacentHTML("beforeend",card+`<button class="btn coral wide" id="mfOk">فهمت دوري ✅</button>`);wireCard();
+        document.getElementById("mfOk").onclick=e=>{K.sendAct({k:v.k,ok:1});e.target.disabled=true;e.target.textContent="ننتظر الباقين…"};return}
+      if(v.ph==="mnight"){const role=v.rl[me];root.insertAdjacentHTML("beforeend",card);wireCard();
+        if(role==="maf"){const t=alive.filter(id=>v.rl[id]!=="maf");root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">🔪 مين تقتلون الليلة؟</h2>${tline}${list(t)}${mates.length?`<p class="note center">اختيارات المافيا: ${Object.entries(v.picks||{}).map(([a,b])=>`${esc(C.pnm(v,a))} ← ${esc(C.pnm(v,b))}`).join(" · ")||"ما أحد اختار للحين"}</p>`:""}`);wireList("t");return}
+        if(role==="doc"){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">🩺 مين تحمي الليلة؟</h2>${tline}${list(alive)}`);wireList("t");return}
+        if(role==="snp"){root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">🎯 تطلق على أحد؟</h2>${tline}${list(alive.filter(id=>id!==me),"t",`<button class="pbtn" data-mt="none">🙅 لا، الليلة لا</button>`)}`);wireList("t");return}
+        // everyone else taps too, so nobody can tell who is acting
+        root.insertAdjacentHTML("beforeend",`<h2 style="font-size:22px">😴 أنت نايم…</h2><p class="note center">اضغط على أي اسم عشان محد يعرف دورك من حركتك 😉</p>${list(alive.filter(id=>id!==me))}`);wireList("z");return}
+      if(v.ph==="mvote"){root.insertAdjacentHTML("beforeend",card+`<h2 style="font-size:22px">🗳️ مين تطرد؟${v.rl[me]==="king"?" (صوتك بصوتين 👑)":""}</h2>${tline}${list(alive.filter(id=>id!==me),"v",`<button class="pbtn" data-mt="skip">🤷 امتناع</button>`)}`);wireCard();wireList("v");return}
+      if(v.ph==="mend"){const won=R[v.rl[me]].side===v.win;root.insertAdjacentHTML("beforeend",`<div class="ik-res ${won?"good":"bad"}"><div class="ik-mark">${won?"🏆":"😅"}</div><p class="big">${won?"فزتوا!":"خسرتوا"}</p><p class="note center">كنت ${r.e} ${r.n}</p></div>`);return}
+      root.insertAdjacentHTML("beforeend",card);wireCard();C.watch(root,v,v.ph==="mday"?"🗣️":v.ph==="mdawn"?"☀️":"👀","ناظر الشاشة الكبيرة!","");},
+  };
+});
+
 })();
